@@ -50,6 +50,12 @@ const HARAKAT_LABEL: Record<string, string> = {
 
 const PAGE_SIZE = 20;
 
+const TAMIR_LABEL: Record<string, string> = {
+  katta:       "Katta ta'mirlash",
+  kichik:      "Kichik ta'mirlash",
+  profilaktika: "Profilaktika",
+};
+
 // ── helpers ────────────────────────────────────────────────────────────────────
 
 function fmtTime(ts: any): string {
@@ -175,6 +181,150 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
   doc.save(`hisobot_${fileSlug}.pdf`);
 }
 
+function exportKorxonaPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: Map<string, string>) {
+  const doc = new jsPDF("landscape", "mm", "a4");
+  const W = doc.internal.pageSize.width;
+  doc.setFontSize(10); doc.setFont("helvetica", "bold");
+  const lines = doc.splitTextToSize(titleLine, W - 28);
+  let y = 10;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
+  doc.setFont("helvetica", "normal");
+
+  const head = [["Vaqt", "Korxona nomi", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
+  const body: any[] = rows.map(s => {
+    const mashinaStr = s.mashinadaYetkazildi ? (s.mashinaRaqami ? `Ha · ${s.mashinaRaqami}` : "Ha") : "Yo'q";
+    return [
+      fmtTime(s.timestamp),
+      String(s.korxonaNomi ?? "—"),
+      s.qancha ? String(s.qancha) : "—",
+      String(s.nechaSutkalik ?? "—"),
+      s.limit ? String(s.limit) : "—",
+      mashinaStr,
+      staffMap.get(String(s.staffCode ?? "").trim()) ?? s.staffName ?? "—",
+    ];
+  });
+
+  autoTable(doc, {
+    head, body, startY: y + 4, theme: "grid",
+    styles:             { fontSize: 8, cellPadding: 1.5, valign: "middle", lineColor: [0,0,0], lineWidth: 0.2 },
+    headStyles:         { fillColor: [26,101,52], textColor: [255,255,255], fontStyle: "bold", fontSize: 9, lineColor: [0,0,0], lineWidth: 0.3, cellPadding: 2 },
+    alternateRowStyles: { fillColor: [245,252,245] },
+    columnStyles: {
+      0: { cellWidth: 18 },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 28, halign: "right" as const },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 24, halign: "right" as const },
+      5: { cellWidth: 42 },
+      6: { cellWidth: 55 },
+    },
+  });
+
+  const total = rows.reduce((s, r) => s + Number(r.qancha ?? 0), 0);
+  const fY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(9); doc.setFont("helvetica", "bold");
+  doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.save(`korxona_${fileSlug}.pdf`);
+}
+
+function exportQurulishPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: Map<string, string>) {
+  const doc = new jsPDF("landscape", "mm", "a4");
+  const W = doc.internal.pageSize.width;
+  doc.setFontSize(10); doc.setFont("helvetica", "bold");
+  const lines = doc.splitTextToSize(titleLine, W - 28);
+  let y = 10;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
+  doc.setFont("helvetica", "normal");
+
+  const head = [["Vaqt", "Korxona", "Texnika soni", "Obyekt", "Mas'ul shaxs", "Lavozim", "Qancha (kg)", "Mashinada"]];
+  const body: any[] = rows.map(s => {
+    const mashinaStr = s.mashinadaYetkazildi ? (s.mashinaRaqami ? `Ha · ${s.mashinaRaqami}` : "Ha") : "Yo'q";
+    return [
+      fmtTime(s.timestamp),
+      String(s.korxonaNomi ?? "—"),
+      String(s.texnikaSoni ?? "—"),
+      String(s.obyekt ?? "—"),
+      String(s.masulShaxs ?? "—"),
+      String(s.lavozim ?? "—"),
+      s.qanchaOlindi ? String(s.qanchaOlindi) : "—",
+      mashinaStr,
+    ];
+  });
+
+  autoTable(doc, {
+    head, body, startY: y + 4, theme: "grid",
+    styles:             { fontSize: 8, cellPadding: 1.5, valign: "middle", lineColor: [0,0,0], lineWidth: 0.2 },
+    headStyles:         { fillColor: [180,120,30], textColor: [255,255,255], fontStyle: "bold", fontSize: 9, lineColor: [0,0,0], lineWidth: 0.3, cellPadding: 2 },
+    alternateRowStyles: { fillColor: [252,249,240] },
+    columnStyles: {
+      0: { cellWidth: 18 },
+      1: { cellWidth: 55 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 50 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 35 },
+      6: { cellWidth: 22, halign: "right" as const },
+      7: { cellWidth: 35 },
+    },
+  });
+
+  const total = rows.reduce((s, r) => s + Number(r.qanchaOlindi ?? 0), 0);
+  const fY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(9); doc.setFont("helvetica", "bold");
+  doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.save(`qurulish_${fileSlug}.pdf`);
+}
+
+function exportTamirlashPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: Map<string, string>) {
+  const doc = new jsPDF("landscape", "mm", "a4");
+  const W = doc.internal.pageSize.width;
+  doc.setFontSize(10); doc.setFont("helvetica", "bold");
+  const lines = doc.splitTextToSize(titleLine, W - 28);
+  let y = 10;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
+  doc.setFont("helvetica", "normal");
+
+  const head = [["Vaqt", "Seriya", "Raqami", "Ta'mirlash turi", "Qancha (kg)", "Diz masla (kg)", "Mas'ul shaxs", "Mashinada"]];
+  const body: any[] = rows.map(s => {
+    const mashinaStr = s.mashinadaYetkazildi ? (s.mashinaRaqami ? `Ha · ${s.mashinaRaqami}` : "Ha") : "Yo'q";
+    return [
+      fmtTime(s.timestamp),
+      String(s.seriya ?? "—"),
+      String(s.raqami ?? "—"),
+      TAMIR_LABEL[s.tamirlashTuri] ?? String(s.tamirlashTuri ?? "—"),
+      s.qanchaBerildi ? String(s.qanchaBerildi) : "—",
+      s.dizMasla ? String(s.dizMasla) : "—",
+      String(s.masulShaxs ?? "—"),
+      mashinaStr,
+    ];
+  });
+
+  autoTable(doc, {
+    head, body, startY: y + 4, theme: "grid",
+    styles:             { fontSize: 8, cellPadding: 1.5, valign: "middle", lineColor: [0,0,0], lineWidth: 0.2 },
+    headStyles:         { fillColor: [80,60,20], textColor: [255,255,255], fontStyle: "bold", fontSize: 9, lineColor: [0,0,0], lineWidth: 0.3, cellPadding: 2 },
+    alternateRowStyles: { fillColor: [252,250,242] },
+    columnStyles: {
+      0: { cellWidth: 18 },
+      1: { cellWidth: 26 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 42 },
+      4: { cellWidth: 28, halign: "right" as const },
+      5: { cellWidth: 28, halign: "right" as const },
+      6: { cellWidth: 60 },
+      7: { cellWidth: 35 },
+    },
+  });
+
+  const totalFuel  = rows.reduce((s, r) => s + Number(r.qanchaBerildi ?? 0), 0);
+  const totalMasla = rows.reduce((s, r) => s + Number(r.dizMasla ?? 0), 0);
+  const fY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(9); doc.setFont("helvetica", "bold");
+  doc.text(`Jami yoqilg'i: ${totalFuel.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  if (totalMasla > 0) doc.text(`Jami diz masla: ${totalMasla.toLocaleString("uz-UZ")} kg`, 14, fY + 14);
+  doc.save(`tamirlash_${fileSlug}.pdf`);
+}
+
 // ── component ──────────────────────────────────────────────────────────────────
 
 export default function LokomotivRecentTable({ stationId }: LokomotivRecentTableProps) {
@@ -246,10 +396,20 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
     setTimeout(() => {
       try {
         const now = new Date(); now.setHours(0,0,0,0);
-        exportPDF(filtered, toIsoDateLocal(now), buildPdfTitle(now), staffMap);
+        const slug = toIsoDateLocal(now);
+        const dd = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()}`;
+        if (category === "korxona") {
+          exportKorxonaPDF(filtered, slug, `${dd} kuni korxonalarga berilgan dizel yoqilg'isi haqida ma'lumot`, staffMap);
+        } else if (category === "qurulish") {
+          exportQurulishPDF(filtered, slug, `${dd} kuni qurulish ishlari uchun berilgan dizel yoqilg'isi haqida ma'lumot`, staffMap);
+        } else if (category === "tamirlash") {
+          exportTamirlashPDF(filtered, slug, `${dd} kuni ta'mirlash uchun berilgan dizel yoqilg'isi haqida ma'lumot`, staffMap);
+        } else {
+          exportPDF(filtered, slug, buildPdfTitle(now), staffMap);
+        }
       } finally { setPdfLoading(false); }
     }, 50);
-  }, [filtered]);
+  }, [filtered, category, staffMap]);
 
   const handleYpdf = useCallback(async () => {
     setYpdfLoading(true);
