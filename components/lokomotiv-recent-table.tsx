@@ -175,6 +175,176 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
   doc.save(`hisobot_${fileSlug}.pdf`);
 }
 
+// ── Korxona PDF ────────────────────────────────────────────────────────────────
+
+function exportKorxonaCatPdf(rows: any[]) {
+  const now = new Date();
+  const dateStr = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()}`;
+  const doc = new jsPDF("landscape", "mm", "a4");
+  const W = doc.internal.pageSize.width;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  const title = `${dateStr} kuni korxonalarga berilgan dizel yoqilg'isi haqida ma'lumot`;
+  const lines = doc.splitTextToSize(title, W - 28);
+  let y = 10;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
+
+  const head = [["Vaqt", "Korxona nomi", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
+
+  const body = rows.map((sub) => {
+    const mashinaStr = sub.mashinadaYetkazildi
+      ? (sub.mashinaRaqami ? `Ha · ${sub.mashinaRaqami}` : "Ha")
+      : "Yo'q";
+    return [
+      fmtTime(sub.timestamp),
+      sub.korxonaNomi,
+      String(sub.qancha ?? 0),
+      String(sub.nechaSutkalik ?? "—"),
+      sub.limit ? String(sub.limit) : "—",
+      mashinaStr,
+      sub.staffName ?? "—",
+    ];
+  });
+
+  autoTable(doc, {
+    head, body, startY: y + 4, theme: "grid",
+    styles: { fontSize: 8, cellPadding: 2, valign: "middle", lineColor: [0, 0, 0], lineWidth: 0.2 },
+    headStyles: { fillColor: [20, 80, 20], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
+    alternateRowStyles: { fillColor: [245, 252, 245] },
+    columnStyles: {
+      0: { cellWidth: 20 }, 1: { cellWidth: 72 },
+      2: { cellWidth: 32, halign: "right" as const }, 3: { cellWidth: 32 },
+      4: { cellWidth: 30, halign: "right" as const }, 5: { cellWidth: 38 }, 6: { cellWidth: 52 },
+    },
+  });
+
+  const total = rows.reduce((s, r) => s + Number(r.qancha ?? 0), 0);
+  const fY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(8); doc.setFont("helvetica", "bold");
+  doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.save(`korxona_${dateStr}.pdf`);
+}
+
+// ── Qurulish PDF ───────────────────────────────────────────────────────────────
+
+function exportQurulishCatPdf(rows: any[]) {
+  const now = new Date();
+  const dateStr = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()}`;
+  const doc = new jsPDF("landscape", "mm", "a4");
+  const W = doc.internal.pageSize.width;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  const title = `${dateStr} kuni qurilish tashkilotlariga berilgan dizel yoqilg'isi haqida ma'lumot`;
+  const lines = doc.splitTextToSize(title, W - 28);
+  let y = 10;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
+
+  const head = [["Vaqt", "Korxona nomi", "Obyekt", "Texnika soni", "Lavozimi", "Qancha (kg)", "Limit (kg)", "Dop limit (kg)", "Holat", "Mashinada", "Mas'ul shaxs"]];
+
+  const body = rows.map((sub) => {
+    const mashinaStr = sub.mashinadaYetkazildi
+      ? (sub.mashinaRaqami ? `Ha · ${sub.mashinaRaqami}` : "Ha")
+      : "Yo'q";
+    return [
+      fmtTime(sub.timestamp),
+      sub.korxonaNomi,
+      sub.obyekt,
+      String(sub.texnikaSoni),
+      sub.lavozim ?? "—",
+      String(sub.qanchaOlindi),
+      sub.limit ? String(sub.limit) : "—",
+      sub.dopLimit != null ? String(sub.dopLimit) : "—",
+      sub.isOverLimit ? `Oshgan (+${sub.oshiqMiqdor ?? 0} kg)` : "Norma",
+      mashinaStr,
+      sub.masulShaxs,
+    ];
+  });
+
+  autoTable(doc, {
+    head, body, startY: y + 4, theme: "grid",
+    styles: { fontSize: 7, cellPadding: 1.8, valign: "middle", lineColor: [0, 0, 0], lineWidth: 0.2 },
+    headStyles: { fillColor: [180, 80, 20], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7.5 },
+    alternateRowStyles: { fillColor: [252, 248, 244] },
+    columnStyles: {
+      0: { cellWidth: 15 }, 1: { cellWidth: 38 }, 2: { cellWidth: 34 },
+      3: { cellWidth: 18 }, 4: { cellWidth: 24 },
+      5: { cellWidth: 22, halign: "right" as const }, 6: { cellWidth: 20, halign: "right" as const },
+      7: { cellWidth: 22, halign: "right" as const }, 8: { cellWidth: 24 },
+      9: { cellWidth: 22 }, 10: { cellWidth: 34 },
+    },
+  });
+
+  const total = rows.reduce((s, r) => s + Number(r.qanchaOlindi ?? 0), 0);
+  const fY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(8); doc.setFont("helvetica", "bold");
+  doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.save(`qurulish_${dateStr}.pdf`);
+}
+
+// ── Tamirlash PDF ──────────────────────────────────────────────────────────────
+
+const TAMIR_LABEL: Record<string, string> = {
+  katta: "Katta ta'mirlash",
+  kichik: "Kichik ta'mirlash",
+  profilaktika: "Profilaktika",
+};
+
+function exportTamirlashCatPdf(rows: any[]) {
+  const now = new Date();
+  const dateStr = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()}`;
+  const doc = new jsPDF("landscape", "mm", "a4");
+  const W = doc.internal.pageSize.width;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  const title = `${dateStr} kuni teplovozlar ta'mirlashiga berilgan dizel yoqilg'isi haqida ma'lumot`;
+  const lines = doc.splitTextToSize(title, W - 28);
+  let y = 10;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
+
+  const head = [["Vaqt", "Seriya", "Raqami", "Ta'mirlash Turi", "Qancha Berildi (kg)", "Diz Masla (kg)", "Mas'ul shaxs", "Mashinada yetkazildi"]];
+
+  const body = rows.map((sub) => {
+    const mashinaStr = sub.mashinadaYetkazildi
+      ? (sub.mashinaRaqami ? `Ha · ${sub.mashinaRaqami}` : "Ha")
+      : "Yo'q";
+    return [
+      fmtTime(sub.timestamp),
+      sub.seriya,
+      sub.raqami,
+      TAMIR_LABEL[sub.tamirlashTuri] ?? sub.tamirlashTuri,
+      String(sub.qanchaBerildi),
+      sub.dizMasla ? String(sub.dizMasla) : "—",
+      sub.masulShaxs,
+      mashinaStr,
+    ];
+  });
+
+  autoTable(doc, {
+    head, body, startY: y + 4, theme: "grid",
+    styles: { fontSize: 8, cellPadding: 2, valign: "middle", lineColor: [0, 0, 0], lineWidth: 0.2 },
+    headStyles: { fillColor: [80, 60, 20], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
+    alternateRowStyles: { fillColor: [252, 250, 242] },
+    columnStyles: {
+      0: { cellWidth: 16 }, 1: { cellWidth: 24 }, 2: { cellWidth: 20 },
+      3: { cellWidth: 38 }, 4: { cellWidth: 32, halign: "right" as const },
+      5: { cellWidth: 28, halign: "right" as const }, 6: { cellWidth: 50 }, 7: { cellWidth: 32 },
+    },
+  });
+
+  const totalFuel = rows.reduce((s, r) => s + Number(r.qanchaBerildi ?? 0), 0);
+  const totalMasla = rows.reduce((s, r) => s + Number(r.dizMasla ?? 0), 0);
+  const fY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(8); doc.setFont("helvetica", "bold");
+  doc.text(`Jami yoqilg'i: ${totalFuel.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  if (totalMasla > 0) {
+    doc.text(`Jami diz masla: ${totalMasla.toLocaleString("uz-UZ")} kg`, 14, fY + 14);
+  }
+  doc.save(`tamirlash_${dateStr}.pdf`);
+}
+
 // ── component ──────────────────────────────────────────────────────────────────
 
 export default function LokomotivRecentTable({ stationId }: LokomotivRecentTableProps) {
@@ -245,11 +415,19 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
     setPdfLoading(true);
     setTimeout(() => {
       try {
-        const now = new Date(); now.setHours(0,0,0,0);
-        exportPDF(filtered, toIsoDateLocal(now), buildPdfTitle(now), staffMap);
+        if (category === "korxona") {
+          exportKorxonaCatPdf(filtered);
+        } else if (category === "qurulish") {
+          exportQurulishCatPdf(filtered);
+        } else if (category === "tamirlash") {
+          exportTamirlashCatPdf(filtered);
+        } else {
+          const now = new Date(); now.setHours(0,0,0,0);
+          exportPDF(filtered, toIsoDateLocal(now), buildPdfTitle(now), staffMap);
+        }
       } finally { setPdfLoading(false); }
     }, 50);
-  }, [filtered]);
+  }, [filtered, category, staffMap]);
 
   const handleYpdf = useCallback(async () => {
     setYpdfLoading(true);
@@ -354,129 +532,337 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
 
         {/* Table */}
         {filtered.length > 0 && (
-          <div className="w-full">
-            <table className="w-full table-fixed border-collapse">
-              <colgroup>
-                <col style={{ width: "3%" }} />
-                <col style={{ width: "5%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "9%" }} />
-                <col style={{ width: "5%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "5%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "9%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "5%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "4%" }} />
-              </colgroup>
-              <thead>
-                <tr style={{ background: "#eab308" }}>
-                  {["№","VAQT","KAT","TEPLOVOZ","RAQAMI","HARAKAT","P.RAQ","INDEKS","XODIM","MASHINA","B.MASLA","QOLDIQ","YOQILG'I","HISOB","HOLAT","AMAL"]
-                    .map((lbl, i) => (
-                    <th key={lbl}
-                      className="px-1.5 py-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight leading-tight select-none overflow-hidden"
-                      style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
-                      {lbl}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.map((sub, i) => {
-                  const s      = sub as any;
-                  const time   = fmtTime(s.timestamp);
-                  const amount = getAmount(s);
-                  const qoldiq = Number(s.qoldiq ?? 0);
-                  const masla  = Number(s.dizMasla ?? 0);
-                  const hisob  = qoldiq + amount;
-                  const rowNum = (page-1)*PAGE_SIZE + i + 1;
-                  const rowBg  = i%2===0 ? "#111c11" : "#0f190f";
-                  const tafsilot =
-                    s.category==="lokomotiv" ? (s.rusumi ?? "—") :
-                    s.category==="korxona"   ? (s.korxonaNomi ?? "—") :
-                    s.category==="qurulish"  ? (s.obyekt ?? "—") :
-                    (s.seriya ?? "—");
-                  const raqami  = s.lokomotivNumber ?? s.raqami ?? "—";
-                  const harakat = HARAKAT_LABEL[s.harakatTuri] ?? s.harakatTuri ?? s.tamirlashTuri ?? s.category ?? "—";
-                  const poyezdN = s.poyezdNumber ?? "—";
-                  const indexVal = s.harakatTuri === "manyovr" ? (s.stansiya ?? "—") : (s.ruxsatIndeksi ?? "—");
+          <div className="w-full overflow-x-auto">
 
-                  const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
-                    <td className="px-1.5 py-2 align-middle overflow-hidden"
-                      style={{ borderLeft:idx>0?"1px solid rgba(255,255,255,0.07)":undefined, textAlign:align }}>
-                      {content}
-                    </td>
-                  );
-
-                  return (
-                    <tr key={sub.id} style={{ background:rowBg }} className="hover:brightness-125 transition-all">
-                      {td(<span className="text-gray-500 font-bold text-[10px]">{rowNum}</span>,"center")}
-                      {td(<span className="text-yellow-400 font-black text-[10px] tabular-nums">{time}</span>,"left",1)}
-                      {td(
-                        <span className={`inline-block text-[8px] font-black uppercase px-1 py-0.5 rounded-full truncate max-w-full ${CAT_COLOR[s.category] ?? ""}`}>
-                          {CAT_LABEL[s.category] ?? s.category}
-                        </span>,"left",2
-                      )}
-                      {td(<span className="text-cyan-400 font-black text-[10px] block truncate">{tafsilot}</span>,"left",3)}
-                      {td(<span className="text-white font-bold text-[10px] block truncate">{raqami}</span>,"left",4)}
-                      {td(<span className="text-gray-300 font-bold text-[10px] capitalize block truncate">{harakat}</span>,"left",5)}
-                      {td(<span className="text-gray-400 font-bold text-[10px] tabular-nums block truncate">{poyezdN}</span>,"left",6)}
-                      {td(<span className="text-purple-300 font-bold text-[10px] block truncate">{indexVal}</span>,"left",7)}
-                      {td(
-                        <div className="min-w-0">
-                          <p className="text-emerald-300 font-black text-[10px] leading-tight truncate">
+            {/* ── KORXONA ── */}
+            {category === "korxona" && (
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col style={{ width: "3%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "27%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "19%" }} />
+                  <col style={{ width: "4%" }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: "#eab308" }}>
+                    {["№","VAQT","KORXONA NOMI","QANCHA","SUTKA","LIMIT","MASHINA","MAS'UL","AMAL"].map((lbl, i) => (
+                      <th key={lbl}
+                        className="px-1.5 py-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight leading-tight select-none overflow-hidden"
+                        style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
+                        {lbl}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map((sub, i) => {
+                    const s = sub as any;
+                    const rowNum = (page-1)*PAGE_SIZE + i + 1;
+                    const rowBg = i%2===0 ? "#111c11" : "#0f190f";
+                    const amount = Number(s.qancha ?? 0);
+                    const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
+                      <td className="px-1.5 py-2 align-middle overflow-hidden"
+                        style={{ borderLeft:idx>0?"1px solid rgba(255,255,255,0.07)":undefined, textAlign:align }}>
+                        {content}
+                      </td>
+                    );
+                    return (
+                      <tr key={sub.id} style={{ background:rowBg }} className="hover:brightness-125 transition-all">
+                        {td(<span className="text-gray-500 font-bold text-[10px]">{rowNum}</span>,"center")}
+                        {td(<span className="text-yellow-400 font-black text-[10px] tabular-nums">{fmtTime(s.timestamp)}</span>,"left",1)}
+                        {td(<span className="text-cyan-400 font-black text-[10px] block truncate">{s.korxonaNomi ?? "—"}</span>,"left",2)}
+                        {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,"right",3)}
+                        {td(<span className="text-gray-300 font-bold text-[10px]">{s.nechaSutkalik ?? "—"}</span>,"center",4)}
+                        {td(<span className="text-amber-200 font-bold text-[10px] tabular-nums">{s.limit ? String(s.limit) : "—"}</span>,"right",5)}
+                        {td(
+                          s.mashinadaYetkazildi
+                            ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
+                            : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
+                          "left",6
+                        )}
+                        {td(
+                          <span className="text-emerald-300 font-black text-[10px] block truncate">
                             {staffMap.get(String(s.staffCode ?? "").trim()) ?? s.staffName ?? "—"}
-                          </p>
-                          <p className="text-gray-600 text-[9px] tabular-nums truncate">{s.staffCode ?? ""}</p>
-                        </div>,"left",8
-                      )}
-                      {td(
-                        s.mashinadaYetkazildi
-                          ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
-                          : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
-                        "left",9
-                      )}
-                      {td(masla>0?<span className="text-orange-400 font-black text-[10px] tabular-nums">{masla}</span>:<span className="text-gray-600 text-[10px]">—</span>,"right",10)}
-                      {td(
-                        qoldiq>0
-                          ? <span className="text-amber-200 font-black text-[10px] tabular-nums" style={{textShadow:"0 0 8px rgba(251,191,36,0.25)"}}>{qoldiq.toLocaleString("uz-UZ")}</span>
-                          : <span className="text-gray-600 text-[10px]">—</span>,
-                        "right",11
-                      )}
-                      {td(
-                        <span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,
-                        "right",12
-                      )}
-                      {td(
-                        <span className="text-cyan-200 font-black text-[11px] tabular-nums" style={{textShadow:"0 0 10px rgba(34,211,238,0.28)"}}>{hisob.toLocaleString("uz-UZ")}</span>,
-                        "right",13
-                      )}
-                      {td(
-                        s.isEdited
-                          ? <span className="text-amber-400 text-[9px] font-black uppercase">Tahrirlangan</span>
-                          : <span className="text-emerald-400 text-[9px] font-black uppercase">Saqlangan</span>,
-                        "left",14
-                      )}
-                      {td(
-                        <button type="button"
-                          onClick={() => { setEditSub(sub); setEditOpen(true); }}
-                          className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
-                          style={{ background:"rgba(99,102,241,0.12)" }}
-                          aria-label="Tahrirlash">
-                          <Pencil className="w-3.5 h-3.5 text-primary" />
-                        </button>,
-                        "center",15
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          </span>,"left",7
+                        )}
+                        {td(
+                          <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
+                            className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
+                            style={{ background:"rgba(99,102,241,0.12)" }} aria-label="Tahrirlash">
+                            <Pencil className="w-3.5 h-3.5 text-primary" />
+                          </button>,"center",8
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+
+            {/* ── QURULISH ── */}
+            {category === "qurulish" && (
+              <table className="w-full border-collapse" style={{ minWidth: 960 }}>
+                <thead>
+                  <tr style={{ background: "#eab308" }}>
+                    {["№","VAQT","KORXONA","OBYEKT","TEXNIKA","LAVOZIM","QANCHA","LIMIT","DOP.LIMIT","HOLAT","MASHINA","MAS'UL","AMAL"].map((lbl, i) => (
+                      <th key={lbl}
+                        className="px-1.5 py-2 text-[8px] font-black uppercase tracking-tight leading-tight select-none whitespace-nowrap"
+                        style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
+                        {lbl}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map((sub, i) => {
+                    const s = sub as any;
+                    const rowNum = (page-1)*PAGE_SIZE + i + 1;
+                    const rowBg = i%2===0 ? "#111c11" : "#0f190f";
+                    const amount = Number(s.qanchaOlindi ?? 0);
+                    const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
+                      <td className="px-1.5 py-2 align-middle overflow-hidden"
+                        style={{ borderLeft:idx>0?"1px solid rgba(255,255,255,0.07)":undefined, textAlign:align }}>
+                        {content}
+                      </td>
+                    );
+                    return (
+                      <tr key={sub.id} style={{ background:rowBg }} className="hover:brightness-125 transition-all">
+                        {td(<span className="text-gray-500 font-bold text-[10px]">{rowNum}</span>,"center")}
+                        {td(<span className="text-yellow-400 font-black text-[10px] tabular-nums">{fmtTime(s.timestamp)}</span>,"left",1)}
+                        {td(<span className="text-cyan-400 font-black text-[10px] block truncate" style={{maxWidth:120}}>{s.korxonaNomi ?? "—"}</span>,"left",2)}
+                        {td(<span className="text-white font-bold text-[10px] block truncate" style={{maxWidth:100}}>{s.obyekt ?? "—"}</span>,"left",3)}
+                        {td(<span className="text-gray-300 font-bold text-[10px] tabular-nums">{s.texnikaSoni ?? "—"}</span>,"center",4)}
+                        {td(<span className="text-purple-300 font-bold text-[10px] block truncate" style={{maxWidth:80}}>{s.lavozim ?? "—"}</span>,"left",5)}
+                        {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,"right",6)}
+                        {td(<span className="text-amber-200 font-bold text-[10px] tabular-nums">{s.limit ? String(s.limit) : "—"}</span>,"right",7)}
+                        {td(<span className="text-orange-300 font-bold text-[10px] tabular-nums">{s.dopLimit != null ? String(s.dopLimit) : "—"}</span>,"right",8)}
+                        {td(
+                          s.isOverLimit
+                            ? <span className="text-red-400 font-black text-[9px] uppercase">+{s.oshiqMiqdor ?? 0} kg</span>
+                            : <span className="text-emerald-400 font-black text-[9px] uppercase">Norma</span>,
+                          "left",9
+                        )}
+                        {td(
+                          s.mashinadaYetkazildi
+                            ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
+                            : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
+                          "left",10
+                        )}
+                        {td(<span className="text-emerald-300 font-black text-[10px] block truncate" style={{maxWidth:90}}>{s.masulShaxs ?? "—"}</span>,"left",11)}
+                        {td(
+                          <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
+                            className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
+                            style={{ background:"rgba(99,102,241,0.12)" }} aria-label="Tahrirlash">
+                            <Pencil className="w-3.5 h-3.5 text-primary" />
+                          </button>,"center",12
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+
+            {/* ── TAMIRLASH ── */}
+            {category === "tamirlash" && (
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col style={{ width: "3%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "24%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "8%" }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: "#eab308" }}>
+                    {["№","VAQT","SERIYA","RAQAMI","TA'MIR TURI","QANCHA","DIZ.MASLA","MAS'UL","MASHINA","AMAL"].map((lbl, i) => (
+                      <th key={lbl}
+                        className="px-1.5 py-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight leading-tight select-none overflow-hidden"
+                        style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
+                        {lbl}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map((sub, i) => {
+                    const s = sub as any;
+                    const rowNum = (page-1)*PAGE_SIZE + i + 1;
+                    const rowBg = i%2===0 ? "#111c11" : "#0f190f";
+                    const amount = Number(s.qanchaBerildi ?? 0);
+                    const masla = Number(s.dizMasla ?? 0);
+                    const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
+                      <td className="px-1.5 py-2 align-middle overflow-hidden"
+                        style={{ borderLeft:idx>0?"1px solid rgba(255,255,255,0.07)":undefined, textAlign:align }}>
+                        {content}
+                      </td>
+                    );
+                    return (
+                      <tr key={sub.id} style={{ background:rowBg }} className="hover:brightness-125 transition-all">
+                        {td(<span className="text-gray-500 font-bold text-[10px]">{rowNum}</span>,"center")}
+                        {td(<span className="text-yellow-400 font-black text-[10px] tabular-nums">{fmtTime(s.timestamp)}</span>,"left",1)}
+                        {td(<span className="text-cyan-400 font-black text-[10px] block truncate">{s.seriya ?? "—"}</span>,"left",2)}
+                        {td(<span className="text-white font-bold text-[10px] block truncate">{s.raqami ?? "—"}</span>,"left",3)}
+                        {td(<span className="text-purple-300 font-bold text-[10px] block truncate">{TAMIR_LABEL[s.tamirlashTuri] ?? s.tamirlashTuri ?? "—"}</span>,"left",4)}
+                        {td(<span className="text-lime-300 font-black text-[11px] tabular-nums">{amount ? amount.toLocaleString("uz-UZ") : "—"}</span>,"right",5)}
+                        {td(masla>0?<span className="text-orange-400 font-black text-[10px] tabular-nums">{masla}</span>:<span className="text-gray-600 text-[10px]">—</span>,"right",6)}
+                        {td(<span className="text-emerald-300 font-black text-[10px] block truncate">{s.masulShaxs ?? "—"}</span>,"left",7)}
+                        {td(
+                          s.mashinadaYetkazildi
+                            ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
+                            : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
+                          "left",8
+                        )}
+                        {td(
+                          <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
+                            className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
+                            style={{ background:"rgba(99,102,241,0.12)" }} aria-label="Tahrirlash">
+                            <Pencil className="w-3.5 h-3.5 text-primary" />
+                          </button>,"center",9
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+
+            {/* ── BARCHASI / LOKOMOTIV ── */}
+            {(category === "all" || category === "lokomotiv") && (
+              <table className="w-full table-fixed border-collapse">
+                <colgroup>
+                  <col style={{ width: "3%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "4%" }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ background: "#eab308" }}>
+                    {["№","VAQT","KAT","TEPLOVOZ","RAQAMI","HARAKAT","P.RAQ","INDEKS","XODIM","MASHINA","B.MASLA","QOLDIQ","YOQILG'I","HISOB","HOLAT","AMAL"]
+                      .map((lbl, i) => (
+                      <th key={lbl}
+                        className="px-1.5 py-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight leading-tight select-none overflow-hidden"
+                        style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
+                        {lbl}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map((sub, i) => {
+                    const s      = sub as any;
+                    const time   = fmtTime(s.timestamp);
+                    const amount = getAmount(s);
+                    const qoldiq = Number(s.qoldiq ?? 0);
+                    const masla  = Number(s.dizMasla ?? 0);
+                    const hisob  = qoldiq + amount;
+                    const rowNum = (page-1)*PAGE_SIZE + i + 1;
+                    const rowBg  = i%2===0 ? "#111c11" : "#0f190f";
+                    const tafsilot =
+                      s.category==="lokomotiv" ? (s.rusumi ?? "—") :
+                      s.category==="korxona"   ? (s.korxonaNomi ?? "—") :
+                      s.category==="qurulish"  ? (s.obyekt ?? "—") :
+                      (s.seriya ?? "—");
+                    const raqami  = s.lokomotivNumber ?? s.raqami ?? "—";
+                    const harakat = HARAKAT_LABEL[s.harakatTuri] ?? s.harakatTuri ?? s.tamirlashTuri ?? s.category ?? "—";
+                    const poyezdN = s.poyezdNumber ?? "—";
+                    const indexVal = s.harakatTuri === "manyovr" ? (s.stansiya ?? "—") : (s.ruxsatIndeksi ?? "—");
+
+                    const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
+                      <td className="px-1.5 py-2 align-middle overflow-hidden"
+                        style={{ borderLeft:idx>0?"1px solid rgba(255,255,255,0.07)":undefined, textAlign:align }}>
+                        {content}
+                      </td>
+                    );
+
+                    return (
+                      <tr key={sub.id} style={{ background:rowBg }} className="hover:brightness-125 transition-all">
+                        {td(<span className="text-gray-500 font-bold text-[10px]">{rowNum}</span>,"center")}
+                        {td(<span className="text-yellow-400 font-black text-[10px] tabular-nums">{time}</span>,"left",1)}
+                        {td(
+                          <span className={`inline-block text-[8px] font-black uppercase px-1 py-0.5 rounded-full truncate max-w-full ${CAT_COLOR[s.category] ?? ""}`}>
+                            {CAT_LABEL[s.category] ?? s.category}
+                          </span>,"left",2
+                        )}
+                        {td(<span className="text-cyan-400 font-black text-[10px] block truncate">{tafsilot}</span>,"left",3)}
+                        {td(<span className="text-white font-bold text-[10px] block truncate">{raqami}</span>,"left",4)}
+                        {td(<span className="text-gray-300 font-bold text-[10px] capitalize block truncate">{harakat}</span>,"left",5)}
+                        {td(<span className="text-gray-400 font-bold text-[10px] tabular-nums block truncate">{poyezdN}</span>,"left",6)}
+                        {td(<span className="text-purple-300 font-bold text-[10px] block truncate">{indexVal}</span>,"left",7)}
+                        {td(
+                          <div className="min-w-0">
+                            <p className="text-emerald-300 font-black text-[10px] leading-tight truncate">
+                              {staffMap.get(String(s.staffCode ?? "").trim()) ?? s.staffName ?? "—"}
+                            </p>
+                            <p className="text-gray-600 text-[9px] tabular-nums truncate">{s.staffCode ?? ""}</p>
+                          </div>,"left",8
+                        )}
+                        {td(
+                          s.mashinadaYetkazildi
+                            ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
+                            : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
+                          "left",9
+                        )}
+                        {td(masla>0?<span className="text-orange-400 font-black text-[10px] tabular-nums">{masla}</span>:<span className="text-gray-600 text-[10px]">—</span>,"right",10)}
+                        {td(
+                          qoldiq>0
+                            ? <span className="text-amber-200 font-black text-[10px] tabular-nums" style={{textShadow:"0 0 8px rgba(251,191,36,0.25)"}}>{qoldiq.toLocaleString("uz-UZ")}</span>
+                            : <span className="text-gray-600 text-[10px]">—</span>,
+                          "right",11
+                        )}
+                        {td(
+                          <span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,
+                          "right",12
+                        )}
+                        {td(
+                          <span className="text-cyan-200 font-black text-[11px] tabular-nums" style={{textShadow:"0 0 10px rgba(34,211,238,0.28)"}}>{hisob.toLocaleString("uz-UZ")}</span>,
+                          "right",13
+                        )}
+                        {td(
+                          s.isEdited
+                            ? <span className="text-amber-400 text-[9px] font-black uppercase">Tahrirlangan</span>
+                            : <span className="text-emerald-400 text-[9px] font-black uppercase">Saqlangan</span>,
+                          "left",14
+                        )}
+                        {td(
+                          <button type="button"
+                            onClick={() => { setEditSub(sub); setEditOpen(true); }}
+                            className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
+                            style={{ background:"rgba(99,102,241,0.12)" }}
+                            aria-label="Tahrirlash">
+                            <Pencil className="w-3.5 h-3.5 text-primary" />
+                          </button>,
+                          "center",15
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+
           </div>
         )}
 

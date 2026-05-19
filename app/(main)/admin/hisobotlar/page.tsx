@@ -307,6 +307,160 @@ function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: stri
   doc.save(`tamirlash_${fileSlug}.pdf`);
 }
 
+function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const W   = doc.internal.pageSize.width;
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+  const lines = doc.splitTextToSize(reportTitleLine, W - 28);
+  let yTitle = 10;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, yTitle, { align: 'center' }); yTitle += 5; });
+  doc.setFont('helvetica', 'normal');
+
+  const getRowDateKey = (row: any): string => {
+    const ts = row.timestamp;
+    if (!ts) return '0000-00-00';
+    const d = typeof ts?.toDate === 'function' ? ts.toDate() : new Date(Number(ts));
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  };
+  const dateGroups = new Map<string, any[]>();
+  for (const row of rows) {
+    const dk = getRowDateKey(row);
+    if (!dateGroups.has(dk)) dateGroups.set(dk, []);
+    dateGroups.get(dk)!.push(row);
+  }
+  const sortedDates = [...dateGroups.keys()].sort();
+
+  const head = [["Vaqt", "Korxona nomi", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
+  const body: any[] = [];
+  const dateBg: [number,number,number] = [10,40,10];
+  const dateFg: [number,number,number] = [255,220,50];
+  const zapBg:  [number,number,number] = [210,230,210];
+  const zapFg:  [number,number,number] = [20,70,20];
+  const hdrPad = { top: 1.4, bottom: 1.4, left: 3, right: 2.5 };
+
+  for (const dateKey of sortedDates) {
+    const dateRows = dateGroups.get(dateKey)!;
+    if (showDateGroups) {
+      const [y, m, dd] = dateKey.split('-');
+      body.push([{ content: `${dd}.${m}.${y}`, colSpan: 7, styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: dateBg, textColor: dateFg, cellPadding: { top:2,bottom:2,left:3,right:3 } } }]);
+    }
+    const zapGroups = new Map<string, any[]>();
+    for (const row of dateRows) {
+      const sid = row.stationId ?? 'other';
+      if (!zapGroups.has(sid)) zapGroups.set(sid, []);
+      zapGroups.get(sid)!.push(row);
+    }
+    for (const [stationId, stRows] of zapGroups) {
+      const stBase = ZAPRAVKALAR.find(z => z.id === stationId)?.name ?? stationId;
+      let stName = stBase;
+      if (staffMap) {
+        const uniqueNames = [...new Set(stRows.map((r:any)=>r.staffCode?.trim()).filter(Boolean).map((c:string)=>staffMap.get(c)).filter(Boolean))] as string[];
+        if (uniqueNames.length > 0) stName = `${stBase}  —  ${uniqueNames.join(', ')}`;
+      }
+      const zapTotal = stRows.reduce((acc,r) => acc + Number(r.qancha ?? 0), 0);
+      body.push([
+        { content: stName,          colSpan: 4, styles: { halign:'left'  as const, fontStyle:'bold'   as const, fontSize:8, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
+        { content: `jami: ${zapTotal.toLocaleString('uz-UZ')} kg`, colSpan: 3, styles: { halign:'right' as const, fontStyle:'italic' as const, fontSize:7, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
+      ]);
+      for (const s of stRows) {
+        const { time } = fmtDate(s.timestamp);
+        const mashinaStr = s.mashinadaYetkazildi ? (s.mashinaRaqami ? `Ha · ${s.mashinaRaqami}` : 'Ha') : "Yo'q";
+        body.push([time, String(s.korxonaNomi ?? '—'), String(s.qancha ?? 0), String(s.nechaSutkalik ?? '—'), s.limit ? String(s.limit) : '—', mashinaStr, s.staffName ?? '—']);
+      }
+    }
+  }
+
+  autoTable(doc, {
+    head, body, startY: yTitle + 4, theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2, valign: 'middle', lineColor: [0,0,0], lineWidth: 0.2 },
+    headStyles: { fillColor: [20,80,20], textColor: [255,255,255], fontStyle: 'bold', fontSize: 8, lineColor: [0,0,0], lineWidth: 0.3, cellPadding: 1 },
+    alternateRowStyles: { fillColor: [245,252,245] },
+    columnStyles: { 0:{cellWidth:20}, 1:{cellWidth:72}, 2:{cellWidth:32,halign:'right'as const}, 3:{cellWidth:32}, 4:{cellWidth:30,halign:'right'as const}, 5:{cellWidth:38}, 6:{cellWidth:52} },
+  });
+  const total = rows.reduce((s,r) => s + Number(r.qancha ?? 0), 0);
+  const fY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(8); doc.setFont('helvetica','bold');
+  doc.text(`Jami berildi: ${total.toLocaleString('uz-UZ')} kg`, 14, fY + 8);
+  doc.save(`korxona_${fileSlug}.pdf`);
+}
+
+function exportQurulishPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const W   = doc.internal.pageSize.width;
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+  const lines = doc.splitTextToSize(reportTitleLine, W - 28);
+  let yTitle = 10;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, yTitle, { align: 'center' }); yTitle += 5; });
+  doc.setFont('helvetica', 'normal');
+
+  const getRowDateKey = (row: any): string => {
+    const ts = row.timestamp;
+    if (!ts) return '0000-00-00';
+    const d = typeof ts?.toDate === 'function' ? ts.toDate() : new Date(Number(ts));
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  };
+  const dateGroups = new Map<string, any[]>();
+  for (const row of rows) {
+    const dk = getRowDateKey(row);
+    if (!dateGroups.has(dk)) dateGroups.set(dk, []);
+    dateGroups.get(dk)!.push(row);
+  }
+  const sortedDates = [...dateGroups.keys()].sort();
+
+  const head = [["Vaqt", "Korxona nomi", "Obyekt", "Texnika soni", "Lavozimi", "Qancha (kg)", "Limit (kg)", "Dop limit (kg)", "Holat", "Mashinada", "Mas'ul shaxs"]];
+  const body: any[] = [];
+  const dateBg: [number,number,number] = [50,20,10];
+  const dateFg: [number,number,number] = [255,220,50];
+  const zapBg:  [number,number,number] = [240,220,200];
+  const zapFg:  [number,number,number] = [80,40,10];
+  const hdrPad = { top: 1.4, bottom: 1.4, left: 3, right: 2.5 };
+
+  for (const dateKey of sortedDates) {
+    const dateRows = dateGroups.get(dateKey)!;
+    if (showDateGroups) {
+      const [y, m, dd] = dateKey.split('-');
+      body.push([{ content: `${dd}.${m}.${y}`, colSpan: 11, styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: dateBg, textColor: dateFg, cellPadding: { top:2,bottom:2,left:3,right:3 } } }]);
+    }
+    const zapGroups = new Map<string, any[]>();
+    for (const row of dateRows) {
+      const sid = row.stationId ?? 'other';
+      if (!zapGroups.has(sid)) zapGroups.set(sid, []);
+      zapGroups.get(sid)!.push(row);
+    }
+    for (const [stationId, stRows] of zapGroups) {
+      const stBase = ZAPRAVKALAR.find(z => z.id === stationId)?.name ?? stationId;
+      let stName = stBase;
+      if (staffMap) {
+        const uniqueNames = [...new Set(stRows.map((r:any)=>r.staffCode?.trim()).filter(Boolean).map((c:string)=>staffMap.get(c)).filter(Boolean))] as string[];
+        if (uniqueNames.length > 0) stName = `${stBase}  —  ${uniqueNames.join(', ')}`;
+      }
+      const zapTotal = stRows.reduce((acc,r) => acc + Number(r.qanchaOlindi ?? 0), 0);
+      body.push([
+        { content: stName,          colSpan: 6, styles: { halign:'left'  as const, fontStyle:'bold'   as const, fontSize:8, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
+        { content: `jami: ${zapTotal.toLocaleString('uz-UZ')} kg`, colSpan: 5, styles: { halign:'right' as const, fontStyle:'italic' as const, fontSize:7, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
+      ]);
+      for (const s of stRows) {
+        const { time } = fmtDate(s.timestamp);
+        const mashinaStr = s.mashinadaYetkazildi ? (s.mashinaRaqami ? `Ha · ${s.mashinaRaqami}` : 'Ha') : "Yo'q";
+        body.push([time, String(s.korxonaNomi??'—'), String(s.obyekt??'—'), String(s.texnikaSoni??'—'), String(s.lavozim??'—'), String(s.qanchaOlindi??0), s.limit?String(s.limit):'—', s.dopLimit!=null?String(s.dopLimit):'—', s.isOverLimit?`Oshgan (+${s.oshiqMiqdor??0} kg)`:'Norma', mashinaStr, String(s.masulShaxs??'—')]);
+      }
+    }
+  }
+
+  autoTable(doc, {
+    head, body, startY: yTitle + 4, theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 1.8, valign: 'middle', lineColor: [0,0,0], lineWidth: 0.2 },
+    headStyles: { fillColor: [180,80,20], textColor: [255,255,255], fontStyle: 'bold', fontSize: 7.5, lineColor: [0,0,0], lineWidth: 0.3, cellPadding: 1 },
+    alternateRowStyles: { fillColor: [252,248,244] },
+    columnStyles: { 0:{cellWidth:15}, 1:{cellWidth:38}, 2:{cellWidth:34}, 3:{cellWidth:18}, 4:{cellWidth:24}, 5:{cellWidth:22,halign:'right'as const}, 6:{cellWidth:20,halign:'right'as const}, 7:{cellWidth:22,halign:'right'as const}, 8:{cellWidth:24}, 9:{cellWidth:22}, 10:{cellWidth:34} },
+  });
+  const total = rows.reduce((s,r) => s + Number(r.qanchaOlindi ?? 0), 0);
+  const fY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(8); doc.setFont('helvetica','bold');
+  doc.text(`Jami berildi: ${total.toLocaleString('uz-UZ')} kg`, 14, fY + 8);
+  doc.save(`qurulish_${fileSlug}.pdf`);
+}
+
 function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
   const doc  = new jsPDF('landscape', 'mm', 'a4');
   const W    = doc.internal.pageSize.width;
@@ -640,6 +794,10 @@ export default function HisobotlarPage() {
           : `bugun_${toIsoDateLocal(s)}`;
         if (globalCategory === 'tamirlash') {
           exportTamirlashPDF(globalFiltered, fileSlug, titleLine, staffMap);
+        } else if (globalCategory === 'korxona') {
+          exportKorxonaPDF(globalFiltered, fileSlug, titleLine, staffMap);
+        } else if (globalCategory === 'qurulish') {
+          exportQurulishPDF(globalFiltered, fileSlug, titleLine, staffMap);
         } else {
           exportPDF(globalFiltered, fileSlug, titleLine, staffMap);
         }
@@ -671,6 +829,10 @@ export default function HisobotlarPage() {
       const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
       if (globalCategory === 'tamirlash') {
         exportTamirlashPDF(rows, fileSlug, titleLine, staffMap, true);
+      } else if (globalCategory === 'korxona') {
+        exportKorxonaPDF(rows, fileSlug, titleLine, staffMap, true);
+      } else if (globalCategory === 'qurulish') {
+        exportQurulishPDF(rows, fileSlug, titleLine, staffMap, true);
       } else {
         exportPDF(rows, fileSlug, titleLine, staffMap, true);
       }
