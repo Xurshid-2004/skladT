@@ -1,0 +1,301 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Drawer } from 'vaul';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
+import type { Submission } from '@/lib/types';
+import { Loader2, X, Save, FileEdit } from 'lucide-react';
+
+const RUSUMI_LIST = ['TEM2', 'CHME-3', '2TE10M', '3TE10M', '4TE10M', 'TEP70', 'UZTE16M2', 'UZTE16M3', 'UZTE16M4'];
+const HARAKAT_LIST = ['yuk', 'yolovchi', 'manyovr', 'xojalik', 'ijara'];
+const TAMIRLASH_TURI_LIST = ['katta', 'kichik', 'profilaktika'];
+
+const CAT_LABEL: Record<string, string> = {
+  lokomotiv: 'Lokomotiv',
+  korxona: 'Korxona',
+  qurulish: 'Qurulish',
+  tamirlash: "Ta'mirlash",
+};
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  submission: Submission | null;
+  onSaved: (updated: Submission) => void;
+}
+
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls =
+  'w-full bg-[#0d160d] border border-[#2a3a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors';
+const selectCls =
+  'w-full bg-[#0d160d] border border-[#2a3a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors';
+
+export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Props) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (submission) setForm({ ...(submission as any) });
+  }, [submission?.id]);
+
+  function set(key: string, value: any) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    if (!submission) return;
+    setSaving(true);
+    try {
+      const {
+        id: _id, category: _cat, staffCode: _sc, staffName: _sn,
+        stationId: _sid, nodeId: _nid, timestamp: _ts, createdAt: _ca,
+        ...editable
+      } = form as any;
+      const changes = { ...editable, isEdited: true, editedAt: Date.now() };
+      await updateDoc(doc(db, 'submissions', submission.id), changes);
+      onSaved({ ...submission, ...changes } as Submission);
+      onClose();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const cat = submission?.category;
+  const f = form as any;
+
+  function renderCategoryFields() {
+    if (!submission) return null;
+
+    if (cat === 'lokomotiv') return (
+      <>
+        <FieldRow label="Harakat turi">
+          <select className={selectCls} value={f.harakatTuri ?? ''} onChange={(e) => set('harakatTuri', e.target.value)}>
+            {HARAKAT_LIST.map((h) => (
+              <option key={h} value={h}>{h.charAt(0).toUpperCase() + h.slice(1)}</option>
+            ))}
+          </select>
+        </FieldRow>
+        <FieldRow label="Rusumi">
+          <select className={selectCls} value={f.rusumi ?? ''} onChange={(e) => set('rusumi', e.target.value)}>
+            {RUSUMI_LIST.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </FieldRow>
+        <FieldRow label="Lokomotiv raqami">
+          <input className={inputCls} value={f.lokomotivNumber ?? ''} onChange={(e) => set('lokomotivNumber', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Poyezd raqami">
+          <input className={inputCls} value={f.poyezdNumber ?? ''} onChange={(e) => set('poyezdNumber', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Ruxsat indeksi">
+          <input className={inputCls} value={f.ruxsatIndeksi ?? ''} onChange={(e) => set('ruxsatIndeksi', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Poyezd vazni">
+          <input className={inputCls} type="number" value={f.poyezdVazni ?? ''} onChange={(e) => set('poyezdVazni', Number(e.target.value))} />
+        </FieldRow>
+        {f.harakatTuri === 'manyovr' && (
+          <FieldRow label="Stansiya">
+            <input className={inputCls} value={f.stansiya ?? ''} onChange={(e) => set('stansiya', e.target.value)} />
+          </FieldRow>
+        )}
+        {f.harakatTuri === 'xojalik' && (
+          <FieldRow label="Tashkilot">
+            <input className={inputCls} value={f.tashkilot ?? ''} onChange={(e) => set('tashkilot', e.target.value)} />
+          </FieldRow>
+        )}
+        {f.harakatTuri === 'ijara' && (
+          <FieldRow label="Ijarachi">
+            <input className={inputCls} value={f.ijarachi ?? ''} onChange={(e) => set('ijarachi', e.target.value)} />
+          </FieldRow>
+        )}
+        <FieldRow label="Qoldiq (kg)">
+          <input className={inputCls} type="number" value={f.qoldiq ?? ''} onChange={(e) => set('qoldiq', Number(e.target.value))} />
+        </FieldRow>
+        <FieldRow label="Berilgan yoqilg'i (kg)">
+          <input className={inputCls} type="number" value={f.qanchaBerildi ?? ''} onChange={(e) => set('qanchaBerildi', Number(e.target.value))} />
+        </FieldRow>
+        <FieldRow label="Diz. masla (kg)">
+          <input className={inputCls} type="number" value={f.dizMasla ?? ''} onChange={(e) => set('dizMasla', Number(e.target.value))} />
+        </FieldRow>
+      </>
+    );
+
+    if (cat === 'korxona') return (
+      <>
+        <FieldRow label="Korxona nomi">
+          <input className={inputCls} value={f.korxonaNomi ?? ''} onChange={(e) => set('korxonaNomi', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Berilgan yoqilg'i (kg)">
+          <input className={inputCls} type="number" value={f.qancha ?? ''} onChange={(e) => set('qancha', Number(e.target.value))} />
+        </FieldRow>
+        <FieldRow label="Necha sutkalik">
+          <input className={inputCls} type="number" value={f.nechaSutkalik ?? ''} onChange={(e) => set('nechaSutkalik', Number(e.target.value))} />
+        </FieldRow>
+      </>
+    );
+
+    if (cat === 'qurulish') return (
+      <>
+        <FieldRow label="Korxona nomi">
+          <input className={inputCls} value={f.korxonaNomi ?? ''} onChange={(e) => set('korxonaNomi', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Texnika soni">
+          <input className={inputCls} type="number" value={f.texnikaSoni ?? ''} onChange={(e) => set('texnikaSoni', Number(e.target.value))} />
+        </FieldRow>
+        <FieldRow label="Obyekt">
+          <input className={inputCls} value={f.obyekt ?? ''} onChange={(e) => set('obyekt', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Mas'ul shaxs">
+          <input className={inputCls} value={f.masulShaxs ?? ''} onChange={(e) => set('masulShaxs', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Lavozim">
+          <input className={inputCls} value={f.lavozim ?? ''} onChange={(e) => set('lavozim', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Olingan yoqilg'i (kg)">
+          <input className={inputCls} type="number" value={f.qanchaOlindi ?? ''} onChange={(e) => set('qanchaOlindi', Number(e.target.value))} />
+        </FieldRow>
+      </>
+    );
+
+    if (cat === 'tamirlash') return (
+      <>
+        <FieldRow label="Seriya">
+          <input className={inputCls} value={f.seriya ?? ''} onChange={(e) => set('seriya', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Raqami">
+          <input className={inputCls} value={f.raqami ?? ''} onChange={(e) => set('raqami', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Ta'mirlash turi">
+          <select className={selectCls} value={f.tamirlashTuri ?? ''} onChange={(e) => set('tamirlashTuri', e.target.value)}>
+            {TAMIRLASH_TURI_LIST.map((t) => (
+              <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+            ))}
+          </select>
+        </FieldRow>
+        <FieldRow label="Berilgan yoqilg'i (kg)">
+          <input className={inputCls} type="number" value={f.qanchaBerildi ?? ''} onChange={(e) => set('qanchaBerildi', Number(e.target.value))} />
+        </FieldRow>
+        <FieldRow label="Diz. masla (kg)">
+          <input className={inputCls} type="number" value={f.dizMasla ?? ''} onChange={(e) => set('dizMasla', Number(e.target.value))} />
+        </FieldRow>
+        <FieldRow label="Mas'ul shaxs">
+          <input className={inputCls} value={f.masulShaxs ?? ''} onChange={(e) => set('masulShaxs', e.target.value)} />
+        </FieldRow>
+      </>
+    );
+
+    return null;
+  }
+
+  return (
+    <Drawer.Root open={open} onOpenChange={(v) => { if (!v) onClose(); }} direction="right">
+      <Drawer.Portal>
+        <Drawer.Overlay className="fixed inset-0 bg-black/50 z-40" />
+        <Drawer.Content
+          className="right-2 top-2 bottom-2 fixed z-50 outline-none w-[340px] flex"
+          style={{ '--initial-transform': 'calc(100% + 8px)' } as React.CSSProperties}
+        >
+          <div
+            className="flex flex-col h-full w-full rounded-[16px] overflow-hidden"
+            style={{ background: '#111c11', border: '1.5px solid #2a3a2a' }}
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between px-5 py-4 shrink-0"
+              style={{ background: '#0d160d', borderBottom: '1px solid #2a3a2a' }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-primary/20 rounded-xl flex items-center justify-center">
+                  <FileEdit className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <Drawer.Title className="text-white font-black text-sm leading-tight">
+                    {CAT_LABEL[cat ?? ''] ?? 'Tahrirlash'}
+                  </Drawer.Title>
+                  <Drawer.Description className="text-gray-500 text-[10px]">
+                    ID: ...{submission?.id.slice(-6)}
+                  </Drawer.Description>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body — scrollable */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {renderCategoryFields()}
+
+              {/* Common: olib borish */}
+              <div className="pt-3 border-t border-[#2a3a2a] space-y-4">
+                <FieldRow label="Olib borish usuli">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => set('mashinadaYetkazildi', true)}
+                      className={`px-4 py-3 rounded-2xl font-black uppercase text-sm transition-all ${
+                        f.mashinadaYetkazildi === true
+                          ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                          : 'bg-white/10 text-gray-300 border border-white/10 hover:bg-white/15'
+                      }`}
+                    >
+                      HA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => set('mashinadaYetkazildi', false)}
+                      className={`px-4 py-3 rounded-2xl font-black uppercase text-sm transition-all ${
+                        f.mashinadaYetkazildi === false
+                          ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                          : 'bg-white/10 text-gray-300 border border-white/10 hover:bg-white/15'
+                      }`}
+                    >
+                      YO'Q
+                    </button>
+                  </div>
+                </FieldRow>
+                {f.mashinadaYetkazildi && (
+                  <FieldRow label="Mashina raqami">
+                    <input
+                      className={inputCls}
+                      value={f.mashinaRaqami ?? ''}
+                      onChange={(e) => set('mashinaRaqami', e.target.value)}
+                    />
+                  </FieldRow>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div
+              className="px-5 py-4 shrink-0"
+              style={{ background: '#0d160d', borderTop: '1px solid #2a3a2a' }}
+            >
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary/90 active:scale-95 text-white rounded-xl font-black uppercase text-sm transition-all disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+              </button>
+            </div>
+          </div>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
+  );
+}

@@ -1,0 +1,159 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Yordamchi funksiyalar
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserCode() {
+      return get(/databases/$(database)/documents/active_sessions/$(request.auth.uid)).data.code;
+    }
+    
+    function getUserRole() {
+      let code = getUserCode();
+      return get(/databases/$(database)/documents/access_codes/$(code)).data.role;
+    }
+    
+    function isAdmin() {
+      let role = getUserRole();
+      return role == 'admin' || role == 'developer';
+    }
+    
+    function isDeveloper() {
+      return getUserRole() == 'developer';
+    }
+    
+    function getUserStation() {
+      let code = getUserCode();
+      return get(/databases/$(database)/documents/access_codes/$(code)).data.stationId;
+    }
+    
+    // ACCESS CODES
+    match /access_codes/{code} {
+      allow read: if true;
+      allow write: if isDeveloper();
+    }
+    
+    // SUBMISSIONS
+    match /submissions/{subId} {
+      // O'qish: ishchi - faqat o'z zapravkasi, admin/developer - hammasi
+      allow read: if isAdmin() || resource.data.stationId == getUserStation();
+      // Yozish: ishchi - faqat o'z zapravkasi, admin/developer - har qanday
+      allow create: if isAuthenticated() && (
+        isAdmin() || request.resource.data.stationId == getUserStation()
+      );
+      allow update: if isAdmin() || (resource.data.stationId == getUserStation() &&
+        request.time.toMillis() - resource.data.timestamp < 24 * 60 * 60 * 1000);
+      allow delete: if isDeveloper();
+    }
+    
+    // MESSAGES (chat)
+    match /messages/{msgId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.senderCode == getUserCode() || isAdmin());
+      allow delete: if false; // O'chirilmaydi, isDeleted: true qilinadi
+    }
+    
+    // APPROVALS
+    match /approvals/{appId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update, delete: if isDeveloper();
+    }
+    
+    // LIMITS
+    match /limits/{limitId} {
+      allow read: if isAuthenticated();
+      allow write: if isDeveloper();
+    }
+    
+    // SETTINGS
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isDeveloper();
+    }
+    
+    // QUESTIONS
+    match /questions/{qId} {
+      allow read: if isAuthenticated();
+      allow write: if isDeveloper();
+    }
+    
+    // VARIANTS
+    match /variants/{vId} {
+      allow read: if isAuthenticated();
+      allow write: if isDeveloper();
+    }
+    
+    // SECURITY EVENTS
+    match /security_events/{eventId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow write: if isDeveloper();
+    }
+    
+    // DEVICE LOCKS
+    match /device_locks/{deviceId} {
+      allow read, write: if true; // Hozircha ochiq, optimallashtirish keyin
+    }
+    
+    // AUDIT LOGS
+    match /audit_logs/{logId} {
+      allow read: if isDeveloper();
+      allow create: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // FUEL RECORDS (ERJU / Y.PDF) — yozuv lokomotiv va boshqa kategoriyalardan keladi
+    match /fuelRecords/{docId} {
+      allow read: if isAdmin() || resource.data.locCode == getUserStation();
+      allow create: if isAuthenticated() && (
+        isAdmin() || request.resource.data.locCode == getUserStation()
+      );
+      allow update: if isAdmin();
+      allow delete: if isDeveloper();
+    }
+
+    // Yopilgan kunlar (hisobotlar taqvimi uchun)
+    match /closedDays/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin() || isDeveloper();
+    }
+
+    // BLOKLANGAN kirish kodlari (login tekshiruvi — get ochiq)
+    match /blocked_codes/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, delete, update: if isAdmin();
+    }
+
+    // XODIMLAR VAULT (admin bloklanganlar sahifasidagi modal)
+    match /staff/{staffId} {
+      allow read: if isAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/active_sessions/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/active_sessions/$(request.auth.uid)).data.code ==
+          resource.data.tabelNumber
+      );
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Faol Firebase sessiya (presence + dashboard «kim onlayn»)
+    match /active_sessions/{sessionId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == sessionId || isAdmin()
+      );
+      allow create: if isAuthenticated() && request.auth.uid == sessionId;
+      allow update: if isAuthenticated() && request.auth.uid == sessionId &&
+        request.resource.data.code == resource.data.code &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.stationId == resource.data.stationId &&
+        request.resource.data.nodeId == resource.data.nodeId &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAuthenticated() && request.auth.uid == sessionId;
+    }
+  }
+}

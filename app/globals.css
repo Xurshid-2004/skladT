@@ -1,0 +1,594 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-secondary: var(--secondary);
+}
+
+:root {
+  --background: #f7f8fb;
+  --foreground: #111827;
+  --muted: #eef1f6;
+  --muted-foreground: #586174;
+  --surface: #ffffff;
+  --surface-strong: #f3f5fa;
+  --border-soft: rgba(79, 70, 229, 0.16);
+  --input-bg: #ffffff;
+  --input-border: #c6ccda;
+  --input-hover: #fbfcff;
+  --input-filled: #f7f7ff;
+  --input-error-bg: #fff5f5;
+  --input-success-bg: #f2fff8;
+  --primary: #4f46e5;
+  --primary-rgb: 79, 70, 229;
+  --secondary: #22c55e;
+  --accent: #f59e0b;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f97316;
+}
+
+.dark {
+  --background: #121212;
+  --foreground: #e0e0e0;
+  --muted: #202020;
+  --muted-foreground: #a0a0a0;
+  --surface: #1a1a1a;
+  --surface-strong: #222222;
+  --border-soft: #2a2a2a;
+  --input-bg: #1a1a1a;
+  --input-border: #2a2a2a;
+  --input-hover: #202020;
+  --input-filled: #201f2f;
+  --input-error-bg: #2a1b1d;
+  --input-success-bg: #14251e;
+  --primary: #4f46e5;
+  --primary-rgb: 79, 70, 229;
+  --secondary: #22c55e;
+  --accent: #f59e0b;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+}
+
+body {
+  background:
+    linear-gradient(180deg, rgba(var(--primary-rgb), 0.08), transparent 320px),
+    linear-gradient(135deg, rgba(34, 197, 94, 0.05), transparent 440px),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==== Umumiy ko'rinish: shaffof panellarni aniq, o'qilishi oson yuzalarga aylantirish ==== */
+[class*="bg-background/"] {
+  background-color: color-mix(in srgb, var(--surface) 97%, var(--background)) !important;
+}
+
+.dark [class*="bg-background/"] {
+  background-color: color-mix(in srgb, var(--surface) 96%, var(--background)) !important;
+}
+
+[class*="bg-muted/"] {
+  background-color: color-mix(in srgb, var(--muted) 88%, var(--surface)) !important;
+}
+
+.dark [class*="bg-muted/"] {
+  background-color: color-mix(in srgb, var(--muted) 82%, #020617) !important;
+}
+
+[class*="border-primary/5"],
+[class*="border-primary/10"],
+[class*="border-primary/15"],
+[class*="border-primary/20"] {
+  border-color: var(--border-soft) !important;
+}
+
+[class*="rounded-[40px]"] {
+  border-radius: 20px !important;
+}
+
+[class*="rounded-3xl"] {
+  border-radius: 18px !important;
+}
+
+[class*="rounded-2xl"] {
+  border-radius: 12px !important;
+}
+
+[class*="rounded-xl"] {
+  border-radius: 10px !important;
+}
+
+[class*="shadow-2xl"],
+[class*="shadow-xl"],
+[class*="shadow-lg"] {
+  box-shadow:
+    0 18px 45px rgba(17, 24, 39, 0.10),
+    0 4px 14px rgba(17, 24, 39, 0.06);
+}
+
+.dark [class*="shadow-2xl"],
+.dark [class*="shadow-xl"],
+.dark [class*="shadow-lg"] {
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.32),
+    0 4px 14px rgba(0, 0, 0, 0.20);
+}
+
+.container {
+  width: min(100% - 2rem, 1180px);
+}
+
+main {
+  scroll-margin-top: 5rem;
+}
+
+section,
+form,
+[class*="space-y-6"],
+[class*="space-y-8"],
+[class*="space-y-10"] {
+  scrollbar-gutter: stable;
+}
+
+[class*="bg-background"][class*="border"],
+[class*="bg-background/"][class*="border"],
+[class*="bg-muted"][class*="border"] {
+  border-color: color-mix(in srgb, var(--border-soft) 85%, transparent) !important;
+}
+
+[class*="bg-background"][class*="rounded"],
+[class*="bg-background/"][class*="rounded"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 14px 36px rgba(17, 24, 39, 0.06);
+}
+
+.dark [class*="bg-background"][class*="rounded"],
+.dark [class*="bg-background/"][class*="rounded"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+a[class*="rounded"]:hover,
+button[class*="rounded"]:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+/* ==== Inputs: number spinner'larni butunlay olib tashlash ==== */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ==== Inputs umumiy ko'rinishi ==== */
+input,
+textarea,
+select {
+  color: var(--foreground);
+  background-color: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  border-width: 2px;
+  font-weight: 800;
+  letter-spacing: 0;
+  border-radius: 12px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color 0.24s ease,
+    box-shadow 0.24s ease,
+    background-color 0.24s ease,
+    transform 0.24s ease,
+    color 0.24s ease;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  color: #e0e0e0;
+  background-color: #1a1a1a !important;
+  border-color: #2a2a2a !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select {
+  min-height: 3rem;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):hover,
+textarea:hover,
+select:hover {
+  background-color: var(--input-hover) !important;
+  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--input-border)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 8px 22px rgba(var(--primary-rgb), 0.08);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not(:placeholder-shown),
+textarea:not(:placeholder-shown) {
+  background-color: var(--input-filled) !important;
+  border-color: color-mix(in srgb, var(--color-primary) 32%, var(--input-border)) !important;
+}
+
+select,
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"] {
+  color-scheme: light;
+}
+
+select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-primary) 50%),
+    linear-gradient(135deg, var(--color-primary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 50%,
+    calc(100% - 14px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2.75rem !important;
+}
+
+.dark select,
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark input[type="month"],
+.dark input[type="time"] {
+  color-scheme: light;
+}
+
+option {
+  color: var(--foreground);
+  background: var(--input-bg);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.88;
+  font-weight: 700;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  opacity: 0.72;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-primary) !important;
+  background-color: color-mix(in srgb, var(--input-bg) 86%, var(--color-primary)) !important;
+  box-shadow:
+    0 0 0 4px rgba(var(--primary-rgb), 0.16),
+    0 12px 28px rgba(var(--primary-rgb), 0.12);
+}
+
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"],
+input.border-danger,
+textarea.border-danger,
+select.border-danger,
+input[class*="border-danger"],
+textarea[class*="border-danger"],
+select[class*="border-danger"] {
+  background-color: var(--input-error-bg) !important;
+  border-color: var(--color-danger) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-danger) 16%, transparent);
+}
+
+input[aria-invalid="false"],
+textarea[aria-invalid="false"],
+select[aria-invalid="false"] {
+  background-color: var(--input-success-bg) !important;
+  border-color: var(--color-success) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-success) 13%, transparent);
+}
+
+/* ==== Form labels — yorqinroq ko'rinish ==== */
+label {
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--color-primary) 88%, var(--foreground));
+  transition: color 0.22s ease, transform 0.22s ease, opacity 0.22s ease;
+}
+
+label:has(+ input:focus),
+label:has(+ textarea:focus),
+label:has(+ select:focus),
+div:has(> input:focus) > label,
+div:has(> textarea:focus) > label,
+div:has(> select:focus) > label {
+  color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  min-height: 0;
+  padding: 0;
+  display: inline-grid;
+  place-content: center;
+  vertical-align: middle;
+  background: var(--input-bg) !important;
+  border: 2px solid var(--input-border) !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  border-radius: 6px !important;
+}
+
+input[type="radio"] {
+  border-radius: 999px !important;
+}
+
+input[type="checkbox"]::before,
+input[type="radio"]::before {
+  content: "";
+  width: 0.56rem;
+  height: 0.56rem;
+  transform: scale(0);
+  transition: transform 0.18s ease;
+}
+
+input[type="checkbox"]::before {
+  clip-path: polygon(14% 44%, 0 58%, 38% 96%, 100% 20%, 84% 6%, 36% 66%);
+  background: white;
+}
+
+input[type="radio"]::before {
+  border-radius: 999px;
+  background: white;
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 72%, var(--color-accent))) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow:
+    0 0 0 4px rgba(var(--primary-rgb), 0.14),
+    0 8px 18px rgba(var(--primary-rgb), 0.18);
+}
+
+input[type="checkbox"]:checked::before,
+input[type="radio"]:checked::before {
+  transform: scale(1);
+}
+
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 3px solid rgba(var(--primary-rgb), 0.28);
+  outline-offset: 3px;
+}
+
+input.hidden,
+input[type="checkbox"].hidden,
+input[type="radio"].hidden {
+  display: none !important;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 0.22s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.22s ease,
+    opacity 0.22s ease;
+}
+
+button:not(:disabled):active,
+a:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(var(--primary-rgb), 0.38);
+  outline-offset: 3px;
+}
+
+button[class~="bg-primary"],
+a[class~="bg-primary"],
+button[class~="bg-accent"],
+a[class~="bg-accent"],
+button[class~="bg-danger"],
+a[class~="bg-danger"],
+button[class~="bg-success"],
+a[class~="bg-success"] {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff !important;
+  box-shadow:
+    0 12px 28px rgba(var(--primary-rgb), 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+button[class~="bg-primary"],
+a[class~="bg-primary"] {
+  background: #4f46e5 !important;
+}
+
+button[class~="bg-accent"],
+a[class~="bg-accent"] {
+  background: #f59e0b !important;
+}
+
+button[class~="bg-danger"],
+a[class~="bg-danger"] {
+  background: #ef4444 !important;
+}
+
+button[class~="bg-success"],
+a[class~="bg-success"] {
+  background: #22c55e !important;
+}
+
+button[class~="bg-primary"] *,
+a[class~="bg-primary"] *,
+button[class~="bg-accent"] *,
+a[class~="bg-accent"] *,
+button[class~="bg-danger"] *,
+a[class~="bg-danger"] *,
+button[class~="bg-success"] *,
+a[class~="bg-success"] * {
+  color: #ffffff !important;
+}
+
+button[class~="bg-primary"]:not(:disabled):hover,
+a[class~="bg-primary"]:hover,
+button[class~="bg-accent"]:not(:disabled):hover,
+a[class~="bg-accent"]:hover,
+button[class~="bg-danger"]:not(:disabled):hover,
+a[class~="bg-danger"]:hover,
+button[class~="bg-success"]:not(:disabled):hover,
+a[class~="bg-success"]:hover {
+  box-shadow:
+    0 16px 34px rgba(var(--primary-rgb), 0.24),
+    0 0 0 4px rgba(var(--primary-rgb), 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20);
+  filter: saturate(1.04) brightness(1.02);
+}
+
+button[class*="from-primary"],
+a[class*="from-primary"] {
+  background-image: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+  color: #ffffff !important;
+}
+
+button[class*="from-danger"],
+a[class*="from-danger"] {
+  background-image: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: #ffffff !important;
+}
+
+button[class*="from-primary"] *,
+a[class*="from-primary"] *,
+button[class*="from-danger"] *,
+a[class*="from-danger"] * {
+  color: #ffffff !important;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.08);
+  box-shadow: none !important;
+}
+
+table {
+  color: var(--foreground);
+}
+
+thead tr {
+  background-color: var(--surface-strong) !important;
+}
+
+tbody tr {
+  background-color: var(--surface);
+}
+
+td,
+th {
+  border-color: var(--border-soft) !important;
+}
+
+/* ==== Card-like elementlar uchun light/dark farqi ==== */
+.dark .bg-background\/50,
+.dark .bg-background\/60,
+.dark .bg-background\/80 {
+  background-color: var(--surface);
+}
+
+/* ==== Animatsiyalar ==== */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(30, 58, 138, 0.15); }
+  50% { box-shadow: 0 0 35px rgba(30, 58, 138, 0.35); }
+}
+
+.animate-glow {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==== Skroll bar nozikroq ==== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+/* ==== Selection ==== */
+::selection {
+  background: rgba(var(--primary-rgb), 0.28);
+  color: var(--foreground);
+}
