@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useTransition, useCallback } from 'react';
 import { useMidnightReset } from '@/lib/hooks/use-midnight-reset';
 import { useStaffMap } from '@/lib/hooks/use-staff-map';
-import { Header } from '@/components/layout/header';
 import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Loader2, FileText, Calendar,
@@ -865,9 +864,7 @@ export default function HisobotlarPage() {
 
   // ── render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-muted/20 pb-24">
-      <Header />
-      <main className="w-full min-w-0 max-w-[100vw] box-border px-3 sm:px-4 md:px-5 py-10 space-y-5 xl:max-w-[min(100vw-1.5rem,92rem)] xl:mx-auto">
+      <div className="w-full min-w-0 max-w-[100vw] box-border space-y-5 xl:max-w-[min(100vw-1.5rem,92rem)]">
 
         {/* Page title */}
         <div className="flex items-center gap-5">
@@ -1319,8 +1316,6 @@ export default function HisobotlarPage() {
             </div>
           )}
         </div>
-
-      </main>
 
       <SubmissionEditDrawer
         open={editOpen}

@@ -23,6 +23,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
 
+  /** trailingSlash: true — /admin/ va /admin ni bir xil hisoblash */
+  const normalizePath = (p: string) =>
+    p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p;
+  const currentPath = normalizePath(pathname ?? "");
+
   useEffect(() => {
     const s = getSession();
     if (!s || (s.role !== 'admin' && s.role !== 'developer')) {
@@ -83,7 +88,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             item.type === 'divider' ? (
               <div key={idx} className="h-px bg-primary/5 my-4 mx-4" />
             ) : (
-              <Link key={item.href} href={item.href!} className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${pathname === item.href ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}>
+              <Link key={item.href} href={item.href!} className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${currentPath === normalizePath(item.href!) ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}>
                 {item.icon && <item.icon className="w-5 h-5" />}
                 {isSidebarOpen && <span>{item.title}</span>}
               </Link>
@@ -155,7 +160,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 item.type === 'divider' ? (
                   <div key={idx} className="h-px bg-primary/5 my-4 mx-4" />
                 ) : (
-                  <Link key={item.href} href={item.href!} onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${pathname === item.href ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}>
+                  <Link key={item.href} href={item.href!} onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${currentPath === normalizePath(item.href!) ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}>
                     {item.icon && <item.icon className="w-5 h-5" />}
                     <span>{item.title}</span>
                   </Link>

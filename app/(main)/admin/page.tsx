@@ -1,6 +1,5 @@
 "use client";
 
-import AdminLayout from "@/components/admin/admin-layout";
 import { useEffect, useState } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
@@ -133,7 +132,6 @@ export default function AdminDashboard() {
         ];
 
   return (
-    <AdminLayout>
       <div className="space-y-10 max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -366,6 +364,5 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-    </AdminLayout>
   );
 }

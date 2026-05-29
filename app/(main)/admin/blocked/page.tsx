@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import AdminLayout from "@/components/admin/admin-layout";
 import StaffVaultModal from "@/components/admin/staff-vault-modal";
 import { ShieldOff, Trash2, Plus, Loader2, Users } from "lucide-react";
 import {
@@ -96,7 +95,6 @@ export default function AdminBlockedPage() {
   }
 
   return (
-    <AdminLayout>
       <div className="max-w-3xl space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -191,6 +189,5 @@ export default function AdminBlockedPage() {
           </div>
         </div>
       </div>
-    </AdminLayout>
   );
 }

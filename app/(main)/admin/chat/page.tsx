@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import AdminLayout from "@/components/admin/admin-layout";
 import RequestCard from "@/components/chat/request-card";
 import {
   subscribeAdminMessageFeed,
@@ -103,7 +102,6 @@ export default function AdminChatPage() {
     session?.role === "admin" || session?.role === "developer";
 
   return (
-    <AdminLayout>
       <div className="max-w-4xl mx-auto space-y-8 pb-16">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -276,7 +274,6 @@ export default function AdminChatPage() {
           )}
         </div>
       </div>
-    </AdminLayout>
   );
 }
 
