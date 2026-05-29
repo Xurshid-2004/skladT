@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CodeInput } from "@/components/auth/code-input";
+import { LoginHeroPanel } from "@/components/auth/login-hero-panel";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { saveSession } from "@/lib/utils/session";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
@@ -152,120 +153,89 @@ export default function LoginPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleVerify]);
 
+  const canSubmit = !code.some((c) => !c);
+
   return (
-    <div 
-      className="relative h-screen overflow-hidden flex items-center justify-center"
-      style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #0ea5e9 50%, #06b6d4 75%, #0f172a 100%)",
-        backgroundSize: "400% 400%",
-        animation: "gradient 15s ease infinite",
-      }}
-    >
-      {/* Animated accent elements */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          background: "radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 50%)",
-        }}
-      />
-      
-      {/* Center accent circle */}
-      <div
-        className="absolute w-96 h-96 rounded-full opacity-10"
-        style={{
-          background: "radial-gradient(circle, rgba(52, 211, 153, 0.5) 0%, transparent 70%)",
-          filter: "blur(40px)",
-        }}
-      />
+    <div className="flex min-h-screen w-full bg-sky-50 dark:bg-slate-950">
+      <LoginHeroPanel />
 
-      {/* Theme toggle */}
-      <div className="absolute top-4 right-4 z-20 opacity-60 hover:opacity-100 transition-opacity">
-        <ThemeToggle />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-md px-4">
-        {/* Badge */}
-        <div className="flex justify-center mb-5">
-          <div
-            className="flex items-center gap-2 px-5 py-2 rounded-full"
-            style={{
-              background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              backdropFilter: "blur(12px)",
-            }}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_2px_rgba(52,211,153,0.5)] animate-pulse" />
-            <span className="text-white/80 font-black text-[10px] uppercase tracking-[0.22em]">
-              Tizimga kirish
-            </span>
-          </div>
+      <div className="relative flex flex-1 flex-col lg:w-1/2 min-h-screen overflow-hidden bg-gradient-to-br from-sky-100 via-blue-50 to-cyan-100 dark:from-slate-950 dark:via-blue-950 dark:to-sky-950">
+        {/* Ko'k rangli ambient blob'lar */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+          <div className="absolute -top-[15%] -left-[10%] w-[65%] h-[65%] rounded-full bg-blue-400/30 dark:bg-blue-500/20 blur-[120px] animate-pulse" style={{ animationDuration: "13s" }} />
+          <div className="absolute top-[10%] -right-[10%] w-[60%] h-[60%] rounded-full bg-sky-400/35 dark:bg-sky-500/20 blur-[130px] animate-pulse" style={{ animationDuration: "17s", animationDelay: "2s" }} />
+          <div className="absolute top-[45%] -left-[8%] w-[55%] h-[55%] rounded-full bg-cyan-400/30 dark:bg-cyan-500/15 blur-[120px] animate-pulse" style={{ animationDuration: "15s", animationDelay: "1s" }} />
+          <div className="absolute -bottom-[10%] right-[5%] w-[55%] h-[55%] rounded-full bg-indigo-400/25 dark:bg-indigo-500/15 blur-[110px] animate-pulse" style={{ animationDuration: "14s", animationDelay: "3s" }} />
         </div>
 
-        {/* Main card */}
-        <div
-          className="px-12 py-14 rounded-[30px]"
-          style={{
-            background: "rgba(5, 10, 20, 0.78)",
-            backdropFilter: "blur(30px) saturate(1.6)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow:
-              "0 30px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.06)",
-          }}
-        >
-          {/* Brand */}
-          <div className="text-center mb-10">
-            <h1 className="text-4xl font-black tracking-tight text-white leading-tight">
-              UZ TEMIRYO&apos;L
-            </h1>
-            <p className="font-black text-[13px] tracking-[0.22em] uppercase mt-2 text-emerald-400">
-              Yoqilg&apos;i Ta&apos;minot
-            </p>
-            <div
-              className="w-16 h-px mx-auto mt-5"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)" }}
-            />
-            <p className="text-white/50 text-[15px] font-semibold mt-5">
-              Maxsus kodni kiriting
-            </p>
-          </div>
+        <header className="flex items-center justify-end px-5 pt-5 sm:px-8 z-10">
+          <ThemeToggle />
+        </header>
 
-          {/* Form */}
-          <div className="space-y-6">
-            <CodeInput code={code} onChange={setCode} error={!!error} />
+        <main className="flex flex-1 flex-col items-center justify-center px-5 pb-8 sm:px-10">
+          <div className="w-full max-w-[400px]">
+            <div className="flex items-center gap-3 mb-10">
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white font-black text-sm shadow-md"
+                style={{
+                  background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                }}
+                aria-hidden
+              >
+                UZ
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-foreground leading-tight">
+                  UZ Temiryo&apos;l
+                </h1>
+                <p className="text-[13px] font-semibold text-[var(--muted-foreground)]">
+                  Yoqilg&apos;i ta&apos;minot
+                </p>
+              </div>
+            </div>
 
-            {error && (
-              <p className="text-center text-red-400 font-bold text-sm animate-pulse leading-snug">
-                {error}
+            <div className="mb-8">
+              <h2 className="text-lg font-bold text-foreground">Tizimga kirish</h2>
+              <p className="mt-1.5 text-sm text-[var(--muted-foreground)]">
+                Maxsus 4 xonali kodni kiriting
               </p>
-            )}
+            </div>
 
-            <button
-              onClick={handleVerify}
-              disabled={code.some((c) => !c)}
-              className="w-full py-5 font-black text-lg rounded-2xl text-white transition-transform duration-100 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed"
-              style={{
-                background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
-                boxShadow: "0 8px 28px rgba(22,163,74,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
-              }}
-            >
-              TASDIQLASH
-            </button>
+            <div className="space-y-6">
+              <CodeInput code={code} onChange={setCode} error={!!error} />
+
+              {error ? (
+                <p
+                  className="text-center text-danger font-semibold text-sm leading-snug"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={handleVerify}
+                disabled={!canSubmit}
+                className="w-full py-4 font-bold text-base rounded-2xl text-white transition-all duration-150 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #22c55e 0%, #16a34a 50%, #15803d 100%)",
+                  color: "#fff",
+                  opacity: canSubmit ? 1 : 0.55,
+                  boxShadow: canSubmit
+                    ? "0 8px 22px rgba(22, 163, 74, 0.45)"
+                    : "0 4px 12px rgba(22, 163, 74, 0.25)",
+                }}
+              >
+                Tasdiqlash
+              </button>
+            </div>
           </div>
-        </div>
+        </main>
 
-        <p className="text-center text-white/25 text-xs font-bold mt-5 tracking-wide">
-          &copy; 2026 UZ Temiryo&apos;l Yoqilg&apos;i Ta&apos;minot
-        </p>
+
       </div>
-
-      <style>{`
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
     </div>
   );
 }

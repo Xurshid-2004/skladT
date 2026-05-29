@@ -35,23 +35,30 @@ export function CodeInput({ code, onChange, error }: CodeInputProps) {
   };
 
   return (
-    <div className="flex gap-4 justify-center">
-      {code.map((digit, i) => (
-        <input
-          key={i}
-          ref={(el) => { inputs.current[i] = el; }}
-          type="text"
-          inputMode="numeric"
-          pattern="\d*"
-          maxLength={1}
-          value={digit}
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          className={`w-16 h-20 text-center text-3xl font-black border-2 rounded-2xl bg-background shadow-md focus:ring-4 focus:ring-primary/20 focus:scale-105 transition-all ${
-            error ? "border-danger text-danger animate-shake" : "border-primary/25 focus:border-primary text-foreground"
-          }`}
-        />
-      ))}
+    <div className="flex gap-3 sm:gap-4 justify-center">
+      {code.map((digit, i) => {
+        const filled = !!digit;
+        return (
+          <input
+            key={i}
+            ref={(el) => { inputs.current[i] = el; }}
+            type="text"
+            inputMode="numeric"
+            pattern="\d*"
+            maxLength={1}
+            value={digit}
+            onChange={(e) => handleChange(i, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(i, e)}
+            className={`w-14 h-16 sm:w-16 sm:h-[4.5rem] text-center text-2xl sm:text-3xl font-black rounded-2xl border-2 shadow-sm transition-all duration-150 outline-none focus:scale-[1.04] ${
+              error
+                ? "border-danger bg-[var(--input-error-bg)] text-danger animate-shake"
+                : filled
+                  ? "border-[#16a34a] bg-[#ecfdf5] dark:bg-[#0f2a1d] text-[#15803d] dark:text-emerald-300 shadow-[0_4px_12px_rgba(22,163,74,0.18)]"
+                  : "border-[#c7d2fe] bg-white dark:bg-[var(--muted)] text-foreground"
+            } focus:border-[#16a34a] focus:ring-4 focus:ring-[rgba(22,163,74,0.18)]`}
+          />
+        );
+      })}
     </div>
   );
 }
