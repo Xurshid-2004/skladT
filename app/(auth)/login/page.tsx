@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { CodeInput } from "@/components/auth/code-input";
 import { LoginHeroPanel } from "@/components/auth/login-hero-panel";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { saveSession } from "@/lib/utils/session";
+import { beginLoginAuth, saveSession } from "@/lib/utils/session";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase/config";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 import { ADMIN_CODES } from "@/lib/data/kodlar";
 import { Session } from "@/lib/types";
@@ -98,37 +100,43 @@ export default function LoginPage() {
     const fullCode = code.join("");
     if (fullCode.length < 4) return;
 
-    let session: Session | null = buildLocalSession(fullCode);
-
-    if (!session) {
-      session = await buildStaffSession(fullCode);
-    }
-
-    if (!session) {
-      setError("Kod xato terildi. Qaytadan urinib ko'ring");
-      setCode(["", "", "", ""]);
-      return;
-    }
-
     try {
+      await beginLoginAuth();
+
+      const session =
+        buildLocalSession(fullCode) ?? (await buildStaffSession(fullCode));
+
+      if (!session) {
+        await signOut(auth);
+        setError("Kod xato terildi. Qaytadan urinib ko'ring");
+        setCode(["", "", "", ""]);
+        return;
+      }
+
       if (await isCodeBlocked(fullCode)) {
+        await signOut(auth);
         setError("Bu kirish kodi bloklangan. Administratorga murojaat qiling.");
         setCode(["", "", "", ""]);
         return;
       }
+
+      await saveSession(session);
+
+      if (session.role === "worker" && session.stationId) {
+        router.push(`/zapravka/${session.stationId}/lokomotiv`);
+      } else if (session.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/uzellar");
+      }
     } catch {
+      try {
+        await signOut(auth);
+      } catch {
+        /* ignore */
+      }
       setError("Tekshiruvda xato. Internet aloqasini tekshiring.");
-      return;
-    }
-
-    await saveSession(session);
-
-    if (session.role === "worker" && session.stationId) {
-      router.push(`/zapravka/${session.stationId}/lokomotiv`);
-    } else if (session.role === "admin") {
-      router.push("/admin");
-    } else {
-      router.push("/uzellar");
+      setCode(["", "", "", ""]);
     }
   }, [code, router, buildStaffSession]);
 

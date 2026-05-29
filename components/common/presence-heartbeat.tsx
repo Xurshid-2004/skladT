@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { auth, db } from "@/lib/firebase/config";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 const INTERVAL_MS = 20_000;
 
@@ -18,11 +18,10 @@ export default function PresenceHeartbeat() {
       const u = auth.currentUser;
       if (!u) return;
       try {
-        await setDoc(
-          doc(db, "active_sessions", u.uid),
-          { lastSeen: Date.now() },
-          { merge: true },
-        );
+        const ref = doc(db, "active_sessions", u.uid);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
+        await updateDoc(ref, { lastSeen: Date.now() });
       } catch (err) {
         console.warn("presence heartbeat:", err);
       }

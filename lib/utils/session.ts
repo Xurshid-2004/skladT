@@ -6,6 +6,13 @@ import { getStaffFullNameByTabel } from "../firebase/staff-service";
 
 const SESSION_KEY = "uz_temiryo_session";
 
+/** Login sahifasida: avvalgi foydalanuvchini tozalab, yangi anonim UID */
+export async function beginLoginAuth(): Promise<void> {
+  if (typeof window === "undefined") return;
+  await clearSession();
+  await signInAnonymously(auth);
+}
+
 /** Firebase Auth + active_sessions — presence uchun majburiy */
 export async function ensureActiveSession(
   session: Session,
@@ -22,21 +29,29 @@ export async function ensureActiveSession(
     const ref = doc(db, "active_sessions", user.uid);
     const now = Date.now();
     const snap = await getDoc(ref);
+    const prev = snap.exists() ? snap.data() : null;
+    const createdAt =
+      typeof prev?.createdAt === "number" ? prev.createdAt : now;
 
-    if (!snap.exists()) {
-      await setDoc(ref, {
+    await setDoc(
+      ref,
+      {
         code: session.code,
         role: session.role,
         stationId: session.stationId ?? null,
         nodeId: session.nodeId ?? null,
         displayName: session.displayName ?? null,
-        staffVaultFullName: null,
-        createdAt: now,
+        staffVaultFullName:
+          typeof prev?.staffVaultFullName === "string"
+            ? prev.staffVaultFullName
+            : prev?.staffVaultFullName === null
+              ? null
+              : null,
+        createdAt,
         lastSeen: now,
-      });
-    } else {
-      await updateDoc(ref, { lastSeen: now });
-    }
+      },
+      { merge: true },
+    );
 
     try {
       const data = (await getDoc(ref)).data();
@@ -74,7 +89,12 @@ export async function ensureActiveSession(
 export async function saveSession(session: Session): Promise<void> {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  await ensureActiveSession(session);
+  const ok = await ensureActiveSession(session);
+  if (!ok) {
+    console.warn(
+      "Sessiya saqlandi, lekin onlayn jadval (active_sessions) yozilmadi — Anonymous Auth yoki Firestore qoidalarini tekshiring.",
+    );
+  }
 }
 
 export function getSession(): Session | null {
@@ -85,7 +105,7 @@ export function getSession(): Session | null {
   try {
     const session = JSON.parse(data) as Session;
     if (Date.now() > session.expiresAt) {
-      clearSession();
+      void clearSession();
       return null;
     }
     return session;
