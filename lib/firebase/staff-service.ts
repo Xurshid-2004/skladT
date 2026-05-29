@@ -29,13 +29,20 @@ export function sortStaffByTabel<T extends { tabelNumber: string }>(
 
 export function subscribeStaff(callback: (staff: StaffVaultRecord[]) => void) {
   const q = query(collection(db, COLLECTION));
-  return onSnapshot(q, (snap) => {
-    const data = snap.docs.map((d) => ({
-      id: d.id,
-      ...(d.data() as Omit<StaffVaultRecord, "id">),
-    }));
-    callback(sortStaffByTabel(data));
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const data = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<StaffVaultRecord, "id">),
+      }));
+      callback(sortStaffByTabel(data));
+    },
+    (err) => {
+      console.warn("subscribeStaff:", err);
+      callback([]);
+    },
+  );
 }
 
 export async function addStaffDoc(

@@ -1,13 +1,12 @@
-"use client"; 
- 
-import { useState, useEffect } from 'react'; 
+﻿"use client";
+
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, MessageSquare, ShieldCheck,
-  AlertTriangle, Lock, Users, Factory, FormInput,
-  Layers, Wallet, FileCode, History, Database, Menu, X,
-  LogOut, Sun, Moon, ChevronLeft, ChevronRight, Bell, Home
+  AlertTriangle, Users, Menu, X,
+  LogOut, ChevronLeft, ChevronRight, Bell, Home
 } from 'lucide-react';
-import Link from 'next/link'; 
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getSession, clearSession } from '@/lib/utils/session';
 import { Session } from '@/lib/types';
@@ -16,6 +15,22 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
+type MenuColor = {
+  bg: string;
+  bgHover: string;
+  grad: string;
+  glow: string;
+};
+
+type MenuItem = {
+  title?: string;
+  icon?: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  href?: string;
+  roles: string[];
+  type?: 'divider' | 'logout';
+  color?: MenuColor;
+};
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -23,14 +38,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  /** trailingSlash: true — /admin/ va /admin ni bir xil hisoblash */
   const normalizePath = (p: string) =>
-    p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p;
-  const currentPath = normalizePath(pathname ?? "");
+    p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p;
+  const currentPath = normalizePath(pathname ?? '');
 
   useEffect(() => {
     const s = getSession();
-    if (!s || (s.role !== 'admin' && s.role !== 'developer')) {
+    if (!s || s.role !== 'admin') {
       router.push('/login');
     } else {
       setSession(s);
@@ -39,27 +53,56 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   if (!session) return null;
 
-  const isAdmin = session.role === 'admin' || session.role === 'developer';
-  const isDeveloper = session.role === 'developer';
-
-  const menuItems = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/admin", roles: ['admin', 'developer'] },
-    { title: "Hisobotlar", icon: FileText, href: "/admin/hisobotlar", roles: ['admin', 'developer'] },
-    { title: "Chat & So'rovlar", icon: MessageSquare, href: "/admin/chat", roles: ['admin', 'developer'] },
-    { title: "Ruxsatnomalar", icon: ShieldCheck, href: "/admin/ruxsatnomalar", roles: ['admin', 'developer'] },
-    { title: "Limitdan oshganlar", icon: AlertTriangle, href: "/admin/overlimit", roles: ['admin', 'developer'] },
-    { title: "Bloklanganlar", icon: Lock, href: "/admin/blocked", roles: ['admin', 'developer'] },
-    
-    // Developer only items
-    { type: 'divider', roles: ['developer'] },
-    { title: "Kodlar boshqaruvi", icon: Users, href: "/dasturchi/kodlar", roles: ['developer'] },
-    { title: "Zapravkalar", icon: Factory, href: "/dasturchi/zapravkalar", roles: ['developer'] },
-    { title: "So'rovnomalar", icon: FormInput, href: "/dasturchi/sorovnomalar", roles: ['developer'] },
-    { title: "Variantlar", icon: Layers, href: "/dasturchi/variantlar", roles: ['developer'] },
-    { title: "Limitlar", icon: Wallet, href: "/dasturchi/limitlar", roles: ['developer'] },
-    { title: "Hujjat shabloni", icon: FileCode, href: "/dasturchi/shablon", roles: ['developer'] },
-    { title: "Audit Log", icon: History, href: "/dasturchi/audit", roles: ['developer'] },
-    { title: "Backup", icon: Database, href: "/dasturchi/backup", roles: ['developer'] },
+  const menuItems: MenuItem[] = [
+    {
+      title: 'Statistics',
+      icon: LayoutDashboard,
+      href: '/admin',
+      roles: ['admin'],
+      color: { bg: 'bg-blue-500', bgHover: 'hover:bg-blue-600', grad: 'from-blue-600 to-indigo-600', glow: 'shadow-blue-600/50' },
+    },
+    {
+      title: 'Hisobotlar',
+      icon: FileText,
+      href: '/admin/hisobotlar/',
+      roles: ['admin'],
+      color: { bg: 'bg-green-500', bgHover: 'hover:bg-green-600', grad: 'from-green-600 to-emerald-600', glow: 'shadow-green-600/50' },
+    },
+    {
+      title: "Xodim qo'shish",
+      icon: Users,
+      href: '/admin/blocked',
+      roles: ['admin'],
+      color: { bg: 'bg-blue-600', bgHover: 'hover:bg-blue-700', grad: 'from-blue-600 to-indigo-700', glow: 'shadow-blue-600/50' },
+    },
+    {
+      title: 'Ruxsatnomalar',
+      icon: ShieldCheck,
+      href: '/admin/ruxsatnomalar',
+      roles: ['admin'],
+      color: { bg: 'bg-sky-500', bgHover: 'hover:bg-sky-600', grad: 'from-sky-600 to-cyan-600', glow: 'shadow-sky-600/50' },
+    },
+    {
+      title: 'Limitdan oshganlar',
+      icon: AlertTriangle,
+      href: '/admin/overlimit',
+      roles: ['admin'],
+      color: { bg: 'bg-red-500', bgHover: 'hover:bg-red-600', grad: 'from-red-600 to-rose-600', glow: 'shadow-red-600/50' },
+    },
+    {
+      title: "Chat & So'rovlar",
+      icon: MessageSquare,
+      href: '/admin/chat',
+      roles: ['admin'],
+      color: { bg: 'bg-amber-500', bgHover: 'hover:bg-amber-600', grad: 'from-amber-600 to-yellow-600', glow: 'shadow-amber-600/50' },
+    },
+    {
+      type: 'logout',
+      title: 'Chiqish',
+      icon: LogOut,
+      roles: ['admin'],
+      color: { bg: 'bg-red-500', bgHover: 'hover:bg-red-600', grad: 'from-red-600 to-rose-600', glow: 'shadow-red-600/50' },
+    },
   ];
 
   const handleLogout = () => {
@@ -67,112 +110,199 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     router.push('/login');
   };
 
+  const linkBase =
+    'group relative flex h-full min-h-0 w-full flex-1 items-center gap-3 overflow-hidden rounded-2xl border-2 border-white/10 px-4 text-sm font-black uppercase tracking-wide text-white shadow-md drop-shadow-sm transition-all duration-200 ease-out select-none hover:brightness-110';
+
+  const SidebarLink = ({
+    item,
+    onClick,
+    collapsed,
+  }: {
+    item: MenuItem;
+    onClick?: () => void;
+    collapsed?: boolean;
+  }) => {
+    if (item.type === 'divider') return null;
+
+    const c = item.color!;
+    const Icon = item.icon!;
+    const stateClass = (active: boolean) =>
+      active
+        ? `bg-gradient-to-r ${c.grad} shadow-xl ${c.glow} ring-2 ring-white/60 brightness-110`
+        : `${c.bg} ${c.bgHover}`;
+
+    if (item.type === 'logout') {
+      return (
+        <button
+          type="button"
+          onClick={handleLogout}
+          title={collapsed ? item.title : undefined}
+          className={[linkBase, stateClass(false), collapsed ? 'justify-center px-3' : ''].join(' ')}
+        >
+          <Icon className="h-5 w-5 shrink-0 text-white" />
+          {!collapsed && <span className="truncate leading-snug">{item.title}</span>}
+        </button>
+      );
+    }
+
+    const active = currentPath === normalizePath(item.href!);
+
+    return (
+      <Link
+        href={item.href!}
+        onClick={onClick}
+        title={collapsed ? item.title : undefined}
+        className={[linkBase, stateClass(active), collapsed ? 'justify-center px-3' : ''].join(' ')}
+      >
+        <Icon className="h-5 w-5 shrink-0 text-white" />
+
+        {!collapsed && <span className="truncate leading-snug">{item.title}</span>}
+
+        {active && !collapsed && (
+          <span
+            className="absolute right-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-white ring-2 ring-white/70"
+            aria-hidden
+          />
+        )}
+
+        {active && (
+          <span className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-white/20 to-transparent" />
+        )}
+      </Link>
+    );
+  };
+
+  const SidebarContent = ({ collapsed, onLinkClick }: { collapsed?: boolean; onLinkClick?: () => void }) => (
+    <nav className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden px-3 py-2.5">
+      {menuItems
+        .filter(item => item.roles.includes(session.role))
+        .map((item, idx) =>
+          item.type === 'divider' ? (
+            <div
+              key={idx}
+              className="mx-2 h-px shrink-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            />
+          ) : (
+            <div key={item.href ?? `${item.type}-${idx}`} className="flex min-h-0 flex-1 flex-col">
+              <SidebarLink item={item} onClick={onLinkClick} collapsed={collapsed} />
+            </div>
+          )
+        )}
+    </nav>
+  );
+
   return (
-    <div className="min-h-screen bg-muted flex">
-      {/* Sidebar - Desktop */}
-      <aside className={`hidden md:flex flex-col bg-background border-r-2 border-primary/10 shadow-sm transition-all duration-300 ${isSidebarOpen ? 'w-72' : 'w-20'}`}>
-        <div className="p-6 flex items-center justify-between">
+    <div className="admin-shell relative flex min-h-screen w-full items-start text-foreground">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-48 -left-32 h-[28rem] w-[28rem] rounded-full bg-blue-500/18 blur-[90px] dark:bg-blue-600/10" />
+        <div className="absolute top-20 right-12 h-[32rem] w-[32rem] rounded-full bg-violet-500/14 blur-[100px] dark:bg-violet-600/9" />
+        <div className="absolute -bottom-48 left-1/3 h-[30rem] w-[30rem] rounded-full bg-fuchsia-400/12 blur-[90px] dark:bg-fuchsia-500/7" />
+      </div>
+
+      <aside
+        className={[
+          'sticky top-0 z-20 hidden h-screen min-h-screen shrink-0 flex-col md:flex',
+          'border-r border-white/10',
+          'bg-black',
+          'shadow-[1px_0_0_0_rgba(255,255,255,0.06),8px_0_32px_rgba(0,0,0,0.45)]',
+          'transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isSidebarOpen ? 'w-[17.5rem]' : 'w-[4.75rem]',
+        ].join(' ')}
+      >
+        <div className={['flex h-16 shrink-0 items-center border-b border-white/10 px-4 gap-3', isSidebarOpen ? 'justify-between' : 'justify-center'].join(' ')}>
           {isSidebarOpen && (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-black">UT</div>
-              <h1 className="font-black tracking-tighter text-primary">ADMIN PANEL</h1>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] bg-gradient-to-br from-blue-500 via-violet-500 to-fuchsia-500 text-white text-xs font-black shadow-lg shadow-violet-500/30">
+                UT
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[11px] font-black tracking-tighter text-white">ADMIN PANEL</p>
+                <p className="truncate text-[9px] font-bold tracking-[0.18em] text-slate-400 uppercase">Yoqilg'i ta'minot</p>
+              </div>
             </div>
           )}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-primary/5 rounded-xl transition-colors">
-            {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-400 shadow-sm transition-all hover:bg-primary/10 hover:border-primary/40 hover:text-primary dark:border-white/15 dark:bg-white/6 dark:hover:bg-white/12"
+            aria-label="Sidebar toggle"
+          >
+            {isSidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-          {menuItems.filter(item => item.roles.includes(session.role)).map((item, idx) => (
-            item.type === 'divider' ? (
-              <div key={idx} className="h-px bg-primary/5 my-4 mx-4" />
-            ) : (
-              <Link key={item.href} href={item.href!} className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${currentPath === normalizePath(item.href!) ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}>
-                {item.icon && <item.icon className="w-5 h-5" />}
-                {isSidebarOpen && <span>{item.title}</span>}
-              </Link>
-            )
-          ))}
-        </nav>
+        <SidebarContent collapsed={!isSidebarOpen} />
 
-        <div className="p-4 border-t-2 border-primary/5">
-          <button onClick={handleLogout} className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-danger hover:bg-danger/5 transition-all`}>
-            <LogOut className="w-5 h-5" />
-            {isSidebarOpen && <span>Chiqish</span>}
-          </button>
-        </div>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Top Header */}
-        <header className="h-20 bg-background border-b-2 border-primary/10 px-6 flex items-center justify-between z-10 shadow-sm">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 hover:bg-primary/5 rounded-xl">
-              <Menu className="w-6 h-6" />
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <header className={[
+          'flex h-16 flex-shrink-0 items-center justify-between gap-4 px-4 sm:px-6',
+          'border-b border-white/60 dark:border-white/8',
+          'bg-white/80 dark:bg-slate-950/76',
+          'shadow-[0_1px_0_rgba(255,255,255,0.6),0_4px_16px_rgba(15,23,42,0.05)]',
+          'backdrop-blur-2xl z-10',
+        ].join(' ')}>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden grid h-9 w-9 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-500 shadow-sm hover:bg-primary/10 hover:border-primary/40 hover:text-primary dark:border-white/15 dark:bg-white/6"
+            >
+              <Menu className="h-4.5 w-4.5" style={{ width: '1.1rem', height: '1.1rem' }} />
             </button>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase opacity-40 leading-none">Xush kelibsiz</span>
-              <span className="font-black text-primary uppercase">{session.displayName}</span>
+
+            <div>
+              <p className="text-[9.5px] font-black uppercase tracking-[0.22em] text-slate-400 leading-none">Xush kelibsiz</p>
+              <p className="mt-0.5 font-black tracking-tight text-slate-900 dark:text-white leading-tight">{session.displayName}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Link
               href="/uzellar"
-              className="flex items-center gap-2 px-4 py-3 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+              className="flex items-center gap-2 rounded-[13px] bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-violet-500/22 transition-all hover:scale-[1.03] hover:shadow-violet-500/32"
             >
-              <Home className="w-4 h-4" />
+              <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Bosh sahifa</span>
             </Link>
-            <button className="p-3 bg-muted rounded-2xl hover:bg-primary/10 transition-colors border border-primary/10">
-              <Bell className="w-5 h-5 text-primary" />
+
+            <button className="relative grid h-9 w-9 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-400 shadow-sm transition-all hover:bg-amber-50 hover:border-amber-300 hover:text-amber-500 dark:border-white/15 dark:bg-white/6">
+              <Bell className="h-4 w-4" />
+              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-400 ring-1 ring-white dark:ring-slate-950" />
             </button>
-            <div className="w-10 h-10 bg-accent rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-accent/20">
+
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-[13px] font-black text-white shadow-lg shadow-orange-500/22">
               {session.displayName.charAt(0)}
             </div>
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-10">
+        <main className="admin-content w-full p-4 pb-16 sm:p-6 sm:pb-20 md:p-8 md:pb-24">
           {children}
         </main>
       </div>
 
-      {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[200] md:hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-80 bg-background shadow-2xl flex flex-col animate-in slide-in-from-left duration-300">
-            <div className="p-6 flex items-center justify-between">
+        <div className="fixed inset-0 z-[300] md:hidden">
+          <div
+            className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <aside className="absolute inset-y-0 left-0 flex w-[17rem] flex-col bg-black shadow-2xl animate-in slide-in-from-left duration-250">
+            <div className="flex h-[72px] items-center justify-between border-b border-white/10 px-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-black">UT</div>
-                <h1 className="font-black tracking-tighter text-primary">ADMIN PANEL</h1>
+                <div className="grid h-9 w-9 place-items-center rounded-[12px] bg-gradient-to-br from-blue-500 via-violet-500 to-fuchsia-500 text-[11px] font-black text-white shadow-lg shadow-violet-500/28">UT</div>
+                <p className="text-[11px] font-black tracking-tighter text-white">ADMIN PANEL</p>
               </div>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-primary/5 rounded-xl">
-                <X className="w-6 h-6" />
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-400 dark:border-white/15 dark:bg-white/6"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-              {menuItems.filter(item => item.roles.includes(session.role)).map((item, idx) => (
-                item.type === 'divider' ? (
-                  <div key={idx} className="h-px bg-primary/5 my-4 mx-4" />
-                ) : (
-                  <Link key={item.href} href={item.href!} onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${currentPath === normalizePath(item.href!) ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}>
-                    {item.icon && <item.icon className="w-5 h-5" />}
-                    <span>{item.title}</span>
-                  </Link>
-                )
-              ))}
-            </nav>
-            <div className="p-6 border-t-2 border-primary/5">
-              <button onClick={handleLogout} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest text-danger hover:bg-danger/5 transition-all">
-                <LogOut className="w-5 h-5" />
-                <span>Chiqish</span>
-              </button>
-            </div>
+
+            <SidebarContent onLinkClick={() => setIsMobileMenuOpen(false)} />
           </aside>
         </div>
       )}

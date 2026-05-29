@@ -111,7 +111,7 @@ export default function ChatWidget() {
     }
   };
 
-  const isAdmin = session.role === 'admin' || session.role === 'developer';
+  const isAdmin = session.role === 'admin';
 
   return (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">

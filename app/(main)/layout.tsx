@@ -2,7 +2,7 @@
 
 import ChatWidget from "@/components/chat/chat-widget";
 import PresenceHeartbeat from "@/components/common/presence-heartbeat";
-import { getSession, isSessionValid } from "@/lib/utils/session";
+import { ensureActiveSession, getSession, isSessionValid } from "@/lib/utils/session";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -13,29 +13,36 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    if (!isSessionValid()) {
-      router.replace("/login");
-      return;
-    }
-    const s = getSession();
-    if (!s) {
-      router.replace("/login");
-      return;
+    let cancelled = false;
+
+    async function boot() {
+      if (!isSessionValid()) {
+        router.replace("/login");
+        return;
+      }
+      const s = getSession();
+      if (!s) {
+        router.replace("/login");
+        return;
+      }
+
+      if (pathname.startsWith("/admin") && s.role !== "admin") {
+        router.replace("/uzellar");
+        return;
+      }
+
+      await ensureActiveSession(s);
+      if (cancelled) return;
+
+      setShowChat(true);
+      setAllowed(true);
     }
 
-    // Developer-only zone
-    if (pathname.startsWith("/dasturchi") && s.role !== "developer") {
-      router.replace("/uzellar");
-      return;
-    }
-    // Admin/Developer-only zone
-    if (pathname.startsWith("/admin") && s.role !== "admin" && s.role !== "developer") {
-      router.replace("/uzellar");
-      return;
-    }
+    void boot();
 
-    setShowChat(true);
-    setAllowed(true);
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, router]);
 
   if (!allowed) return null;

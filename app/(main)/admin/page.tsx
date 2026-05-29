@@ -1,5 +1,6 @@
 "use client";
 
+import AdminLayout from "@/components/admin/admin-layout";
 import { useEffect, useState } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
@@ -10,8 +11,11 @@ import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 import {
   subscribePresenceSessions,
   isPresenceOnline,
+  isPresenceTableVisible,
   type PresenceSessionDoc,
 } from "@/lib/firebase/presence-service";
+
+const PRESENCE_UI_TICK_MS = 5_000;
 import {
   PieChart,
   Pie,
@@ -59,10 +63,17 @@ function rolLabel(role: string): string {
   return role;
 }
 
-function sortPresenceRows(rows: PresenceSessionDoc[]): PresenceSessionDoc[] {
+function roleBadgeClass(role: string): string {
+  if (role === "admin") return "bg-red-500 text-white shadow-md shadow-red-900/30";
+  if (role === "developer") return "bg-teal-600 text-white shadow-md shadow-teal-900/30";
+  if (role === "worker") return "bg-orange-500 text-white shadow-md shadow-orange-900/30";
+  return "bg-slate-600 text-white";
+}
+
+function sortPresenceRows(rows: PresenceSessionDoc[], now: number): PresenceSessionDoc[] {
   return [...rows].sort((a, b) => {
-    const ao = isPresenceOnline(a.lastSeen) ? 1 : 0;
-    const bo = isPresenceOnline(b.lastSeen) ? 1 : 0;
+    const ao = isPresenceOnline(a.lastSeen, now) ? 1 : 0;
+    const bo = isPresenceOnline(b.lastSeen, now) ? 1 : 0;
     if (bo !== ao) return bo - ao;
     return (b.lastSeen ?? 0) - (a.lastSeen ?? 0);
   });
@@ -72,6 +83,13 @@ export default function AdminDashboard() {
   const [todayKg, setTodayKg] = useState(0);
   const [yesterdayKg, setYesterdayKg] = useState(0);
   const [presence, setPresence] = useState<PresenceSessionDoc[]>([]);
+  const [presenceError, setPresenceError] = useState<string | null>(null);
+  const [presenceNow, setPresenceNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const tick = setInterval(() => setPresenceNow(Date.now()), PRESENCE_UI_TICK_MS);
+    return () => clearInterval(tick);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +123,13 @@ export default function AdminDashboard() {
 
     load();
 
-    const unsubPresence = subscribePresenceSessions(setPresence);
+    const unsubPresence = subscribePresenceSessions(
+      (rows) => {
+        setPresence(rows);
+        setPresenceError(null);
+      },
+      (msg) => setPresenceError(msg),
+    );
 
     return () => {
       cancelled = true;
@@ -113,8 +137,11 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  const sortedPresence = sortPresenceRows(presence);
-  const onlinePresence = sortedPresence.filter((p) => isPresenceOnline(p.lastSeen));
+  const sortedPresence = sortPresenceRows(presence, presenceNow);
+  const tablePresence = sortedPresence.filter((p) =>
+    isPresenceTableVisible(p.lastSeen, presenceNow, p.createdAt),
+  );
+  const onlinePresence = tablePresence.filter((p) => isPresenceOnline(p.lastSeen, presenceNow));
   const onlineWorkers = onlinePresence.filter((p) => p.role === "worker").length;
 
   const todayR = Math.round(todayKg / 1000) * 1000;
@@ -132,26 +159,123 @@ export default function AdminDashboard() {
         ];
 
   return (
+    <AdminLayout>
       <div className="space-y-10 max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-primary tracking-tighter uppercase">
-              Dashboard
-            </h1>
-            <p className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest mt-1">
-              Bugun vs kecha — barcha ERJ bo&apos;yicha yig&apos;ma sarflanma
-            </p>
-            <p className="text-[11px] font-bold text-muted-foreground/90 mt-2">
-              Ishchilar vaultdagi tabel = kirish kodi bo&apos;lsa, onlayn ro&apos;yxatda F.I.Sh
-              chiqadi; signal 2 daqiqa ichida yangilanmasa &quot;oflayn&quot; deb belgilanadi.
-            </p>
+        <div>
+          <p className="text-red-500 font-bold uppercase text-[10px] tracking-widest">
+            Bugun vs kecha — barcha ERJ bo&apos;yicha yig&apos;ma sarflanma
+          </p>
+          <p className="text-[11px] font-bold text-red-500 mt-2">
+            Ishchilar vaultdagi tabel = kirish kodi bo&apos;lsa, F.I.Sh chiqadi. Login real-time;
+            saytdan chiqqan ishchi bugun ishlagan bo&apos;lsa &quot;Oflayn&quot; holatida soat 00:00 gacha
+            jadvalda qoladi.
+          </p>
+        </div>
+
+        {/* Ulangan foydalanuvchilar — premium jadval */}
+        <div className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-xl shadow-slate-300/40">
+          <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <h2 className="flex items-center gap-3 text-base font-black uppercase tracking-tight text-slate-900 sm:text-lg">
+              <Users className="h-6 w-6 text-indigo-600" />
+              Ulangan foydalanuvchilar
+            </h2>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-emerald-700 shadow-sm">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.9)]" aria-hidden />
+                Onlayn ishchilar: {onlineWorkers}
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-wide text-slate-600">
+                Jami onlayn: {onlinePresence.length}
+              </span>
+              <Link
+                href="/admin/hisobotlar/"
+                className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-[10px] font-black uppercase tracking-wider text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-700"
+              >
+                Hisobotlar
+              </Link>
+            </div>
           </div>
-          <Link
-            href="/admin/hisobotlar"
-            className="inline-flex items-center justify-center px-6 py-3 bg-primary text-white rounded-2xl text-[10px] font-black uppercase shadow-lg shadow-primary/20 hover:opacity-95 transition-opacity"
-          >
-            Hisobotlar
-          </Link>
+
+          <div className="overflow-x-auto bg-gradient-to-br from-emerald-600 via-green-600 to-emerald-700">
+            <table className="presence-table w-full min-w-[720px] text-left">
+              <thead>
+                <tr className="bg-emerald-900/35 text-[10px] font-black uppercase tracking-[0.14em]">
+                  <th className="px-5 py-3.5 text-white sm:px-7">Holat</th>
+                  <th className="px-5 py-3.5 text-white sm:px-7">F.I.Sh / nom</th>
+                  <th className="px-5 py-3.5 text-white sm:px-7">Kirilgan kod</th>
+                  <th className="px-5 py-3.5 text-white sm:px-7">Zapravka</th>
+                  <th className="px-5 py-3.5 text-white sm:px-7">Rol</th>
+                  <th className="px-5 py-3.5 text-white sm:px-7">Oxirgi signal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/15">
+                {tablePresence.map((p) => {
+                  const on = isPresenceOnline(p.lastSeen, presenceNow);
+                  const ls = p.lastSeen;
+                  return (
+                    <tr
+                      key={p.uid}
+                      className="transition-colors hover:bg-white/10"
+                    >
+                      <td className="px-5 py-4 sm:px-7">
+                        <span
+                          className={[
+                            "inline-flex min-w-[5.5rem] items-center justify-center rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider",
+                            on
+                              ? "bg-emerald-300 text-emerald-950 shadow-[0_0_14px_rgba(134,239,172,0.85)] ring-1 ring-emerald-100/80"
+                              : "bg-red-500 text-white shadow-[0_0_14px_rgba(239,68,68,0.75)] ring-1 ring-red-300/60",
+                          ].join(" ")}
+                        >
+                          {on ? "Onlayn" : "Oflayn"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 sm:px-7">
+                        <p className="text-sm font-black text-white drop-shadow-sm">
+                          {displayFullName(p)}
+                        </p>
+                        {p.staffVaultFullName && p.displayName && (
+                          <p className="mt-0.5 text-[10px] font-bold text-emerald-100/90">
+                            Sessiya: {p.displayName}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 font-mono text-sm font-black text-white sm:px-7">
+                        {p.code || "—"}
+                      </td>
+                      <td className="px-5 py-4 text-sm font-bold text-white sm:px-7">
+                        {zapravkaNom(p.stationId)}
+                      </td>
+                      <td className="px-5 py-4 sm:px-7">
+                        <span
+                          className={[
+                            "inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide",
+                            roleBadgeClass(p.role),
+                          ].join(" ")}
+                        >
+                          {rolLabel(p.role)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-xs font-bold tabular-nums text-emerald-50 sm:px-7">
+                        {ls ? format(new Date(ls), "HH:mm, dd.MM.yyyy") : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {presenceError && (
+              <p className="border-t border-red-300/40 bg-red-950/40 px-6 py-4 text-center text-sm font-bold text-red-100">
+                {presenceError}. Admin sifatida qayta kiring; ishchi tomonda Anonymous Auth
+                yoqilganini tekshiring.
+              </p>
+            )}
+            {!tablePresence.length && !presenceError && (
+              <p className="py-14 text-center text-sm font-bold text-white/90">
+                Hozircha faol sessiyalar yo&apos;q. Ishchi kirganda Firebase Anonymous Auth
+                yoqilgan bo&apos;lishi kerak.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Taqqoslash blok — qatorlar qo‘shilgani sari balandlik avtomatik */}
@@ -290,79 +414,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         </section>
-
-        {/* Kimlar onlayn (active_sessions + vault F.I.Sh) */}
-        <div className="bg-background rounded-[32px] border-2 border-primary/5 shadow-sm overflow-hidden">
-          <div className="p-6 sm:p-8 border-b border-primary/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h2 className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
-              <Users className="w-6 h-6 text-primary" /> Ulangan foydalanuvchilar
-            </h2>
-            <div className="flex items-center gap-2 text-[11px] font-black uppercase text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-3 py-1 text-success">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-current" aria-hidden />
-                Onlayn ishchilar: {onlineWorkers}
-              </span>
-              <span>Jami onlayn: {onlinePresence.length}</span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left min-w-[640px]">
-              <thead>
-                <tr className="bg-muted/40 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  <th className="px-6 sm:px-8 py-3">Holat</th>
-                  <th className="px-6 sm:px-8 py-3">F.I.Sh / nom</th>
-                  <th className="px-6 sm:px-8 py-3">Kirilgan kod</th>
-                  <th className="px-6 sm:px-8 py-3">Zapravka</th>
-                  <th className="px-6 sm:px-8 py-3">Rol</th>
-                  <th className="px-6 sm:px-8 py-3">Oxirgi signal</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-primary/5">
-                {onlinePresence.map((p) => {
-                  const on = isPresenceOnline(p.lastSeen);
-                  const ls = p.lastSeen;
-                  return (
-                    <tr key={p.uid} className="hover:bg-primary/[0.04] transition-colors">
-                      <td className="px-6 sm:px-8 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
-                            on ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          <span
-                            className={`h-2 w-2 shrink-0 rounded-full ${on ? "bg-success" : "bg-muted-foreground/70"}`}
-                            aria-hidden
-                          />
-                          {on ? "Onlayn" : "Oflayn"}
-                        </span>
-                      </td>
-                      <td className="px-6 sm:px-8 py-4">
-                        <p className="font-black text-sm text-primary">{displayFullName(p)}</p>
-                        {p.staffVaultFullName && p.displayName && (
-                          <p className="text-[10px] font-bold text-muted-foreground mt-0.5">
-                            Sessiya: {p.displayName}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-6 sm:px-8 py-4 font-mono text-sm font-bold">{p.code || "—"}</td>
-                      <td className="px-6 sm:px-8 py-4 text-sm font-bold">{zapravkaNom(p.stationId)}</td>
-                      <td className="px-6 sm:px-8 py-4 text-[11px] font-black uppercase">{rolLabel(p.role)}</td>
-                      <td className="px-6 sm:px-8 py-4 text-xs font-bold text-muted-foreground tabular-nums">
-                        {ls ? format(new Date(ls), "dd.MM.yyyy HH:mm:ss") : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {!onlinePresence.length && (
-              <p className="py-14 text-center text-muted-foreground font-bold text-sm">
-                Hozircha onlayn foydalanuvchilar yo&apos;q.
-              </p>
-            )}
-          </div>
-        </div>
       </div>
+    </AdminLayout>
   );
 }

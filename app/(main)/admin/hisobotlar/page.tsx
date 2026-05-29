@@ -1,23 +1,122 @@
 "use client";
 
 import { useState, useEffect, useMemo, useTransition, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useMidnightReset } from '@/lib/hooks/use-midnight-reset';
 import { useStaffMap } from '@/lib/hooks/use-staff-map';
+import { ThemeToggle } from '@/components/layout/theme-toggle';
 import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Loader2, FileText, Calendar,
-  X, AlertTriangle, Download, Car, Pencil, Trash2
+  X, AlertTriangle, Download, Car, Pencil, Trash2,
+  ArrowLeft, Home, LogOut, User
 } from 'lucide-react';
 import { ZAPRAVKALAR } from '@/lib/data/uzellar';
-import { Submission, Category } from '@/lib/types';
+import { Submission, Category, Session } from '@/lib/types';
 import { collection, query, where, orderBy, getDocs, onSnapshot, limit, startAfter, deleteDoc, doc as firestoreDoc, Timestamp } from 'firebase/firestore';
 import { downloadErjuYpdf } from '@/lib/pdf/erju-malumotnoma-html';
 import type { FuelRecord } from '@/lib/pdf/erju-html-pdf';
 import { db } from '@/lib/firebase/config';
 import RentCalendar from '@/app/calendar';
 import { SubmissionEditDrawer } from '@/components/admin/submission-edit-drawer';
+import { clearSession, getSession } from '@/lib/utils/session';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+function HisobotlarNavbar() {
+  const router = useRouter();
+  const [session, setSession] = useState<Session | null>(null);
+  const [time, setTime] = useState('');
+
+  useEffect(() => {
+    setSession(getSession());
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      setTime(new Date().toLocaleTimeString('uz-UZ', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }));
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const handleHome = () => {
+    if (!session) return;
+    if (session.role === 'worker' && session.stationId) {
+      router.push(`/zapravka/${session.stationId}/lokomotiv`);
+    } else if (session.role === 'admin') {
+      router.push('/admin');
+    }
+  };
+
+  const handleLogout = () => {
+    void clearSession();
+    router.push('/login');
+  };
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/70 bg-white/82 backdrop-blur-2xl shadow-sm dark:border-white/10 dark:bg-slate-950/78">
+      <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex h-10 shrink-0 items-center gap-2.5 rounded-2xl bg-gradient-to-br from-blue-600 via-violet-600 to-fuchsia-600 px-6 text-white shadow-lg shadow-violet-500/25 transition-transform active:scale-95"
+            title="Орқага"
+          >
+            <ArrowLeft className="h-5 w-5 shrink-0" />
+            <span className="text-sm font-black uppercase tracking-wide">Орқага</span>
+          </button>
+          <div className="hidden h-10 w-10 shrink-0 place-items-center rounded-2xl border border-primary/10 bg-primary/10 text-primary shadow-sm sm:grid">
+            <FileText className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-sm sm:text-base font-black tracking-tight text-foreground">
+              6 ta ERJ bo'yicha barcha hisobotlar
+            </h1>
+            <p className="hidden sm:block text-[9px] font-black uppercase tracking-[0.28em] text-primary/70">
+              Real vaqt · Bugungi kun
+            </p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 rounded-2xl border border-primary/10 bg-white/70 px-3 py-2 text-xs font-bold text-muted-foreground shadow-sm dark:bg-white/5">
+            <User className="h-4 w-4 text-primary" />
+            <span className="max-w-[90px] truncate">{session?.displayName || 'Admin'}</span>
+          </div>
+          {time ? (
+            <div className="hidden md:flex rounded-2xl border border-primary/10 bg-white/70 px-3 py-2 text-xs font-black tabular-nums tracking-widest text-primary shadow-sm dark:bg-white/5">
+              {time}
+            </div>
+          ) : null}
+          <ThemeToggle />
+          <button
+            type="button"
+            onClick={handleHome}
+            className="grid h-10 w-10 place-items-center rounded-2xl border border-primary/10 bg-white/70 text-muted-foreground shadow-sm transition-colors hover:bg-primary/10 hover:text-primary dark:bg-white/5"
+            title="Bosh sahifa"
+          >
+            <Home className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="grid h-10 w-10 place-items-center rounded-2xl border border-danger/10 bg-white/70 text-muted-foreground shadow-sm transition-colors hover:bg-danger/10 hover:text-danger dark:bg-white/5"
+            title="Chiqish"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -43,10 +142,49 @@ const CAT_COLOR: Record<string, string> = {
   tamirlash: 'text-slate-500 bg-slate-100 dark:bg-slate-800',
 };
 
+/** Hisobotlar navbar — kirill (o‘zbekcha) */
+const CAT_TAB_LABEL: Record<string, string> = {
+  all: 'БАРЧАСИ',
+  lokomotiv: 'ЛОКОМОТИВ',
+  korxona: 'КОРХОНА',
+  qurulish: 'ҚУРУЛИШ',
+  tamirlash: 'ТАЪМИРЛАШ',
+};
+
+const CAT_TAB_STYLE: Record<string, { base: string; active: string }> = {
+  all: {
+    base: 'bg-blue-500 border-blue-400/90 hover:bg-blue-400',
+    active: 'ring-2 ring-white border-white shadow-[0_0_12px_rgba(255,255,255,0.45)]',
+  },
+  lokomotiv: {
+    base: 'bg-violet-500 border-violet-400/90 hover:bg-violet-400',
+    active: 'ring-2 ring-white border-white shadow-[0_0_12px_rgba(255,255,255,0.45)]',
+  },
+  korxona: {
+    base: 'bg-emerald-500 border-emerald-400/90 hover:bg-emerald-400',
+    active: 'ring-2 ring-white border-white shadow-[0_0_12px_rgba(255,255,255,0.45)]',
+  },
+  qurulish: {
+    base: 'bg-amber-500 border-amber-400/90 hover:bg-amber-400',
+    active: 'ring-2 ring-white border-white shadow-[0_0_12px_rgba(255,255,255,0.45)]',
+  },
+  tamirlash: {
+    base: 'bg-rose-500 border-rose-400/90 hover:bg-rose-400',
+    active: 'ring-2 ring-white border-white shadow-[0_0_12px_rgba(255,255,255,0.45)]',
+  },
+};
+
 const PAGE_SIZE = 20;
 
 /** Jadval qatorlari uchun foizlar (yig’indi 100) — 16-ustun: AMAL tugmalari */
-const HISOBOTLAR_COL_PCT = [3, 5, 6, 8, 6, 7, 7, 7, 5, 8, 7, 5, 7, 7, 8, 4];
+const HISOBOTLAR_COL_PCT = [3, 5, 6, 8, 6, 7, 7, 7, 5, 7, 7, 5, 7, 6, 7, 7];
+const HISOBOTLAR_EDIT_BTN =
+  'grid place-items-center h-8 w-8 shrink-0 rounded-lg border-2 border-emerald-300 bg-emerald-500 text-white shadow-[0_0_14px_rgba(34,197,94,0.75)] transition-all hover:bg-emerald-400 hover:shadow-[0_0_18px_rgba(34,197,94,0.9)]';
+const HISOBOTLAR_DELETE_BTN =
+  'grid place-items-center h-8 w-8 shrink-0 rounded-lg border-2 border-red-300 bg-red-500 text-white shadow-[0_0_14px_rgba(239,68,68,0.7)] transition-all hover:bg-red-400 hover:shadow-[0_0_18px_rgba(239,68,68,0.9)] disabled:opacity-40';
+const KORXONA_COL_PCT = [4, 6, 8, 12, 16, 12, 10, 10, 14];
+const QURULISH_COL_PCT = [3, 5, 7, 9, 10, 10, 6, 7, 10, 8, 7, 8, 10];
+const TAMIRLASH_COL_PCT = [4, 6, 8, 12, 12, 12, 12, 10, 8, 8, 8];
 
 /** Ingichka vertikal ajratuvchi — chap chegara shu indeksdagi ustunda (0-based) */
 const HISOBOTLAR_COL_DIVIDER_LEFT = new Set([3, 4, 6, 7, 8, 10, 11, 12, 13, 14, 15]);
@@ -864,56 +1002,73 @@ export default function HisobotlarPage() {
 
   // ── render ────────────────────────────────────────────────────────────────────
   return (
-      <div className="w-full min-w-0 max-w-[100vw] box-border space-y-5 xl:max-w-[min(100vw-1.5rem,92rem)]">
-
-        {/* Page title */}
-        <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/70 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-primary/30 shrink-0">
-            <FileText className="w-8 h-8" />
+    <div className="min-h-screen bg-muted/20 pb-24">
+      <HisobotlarNavbar />
+      <main className="w-full min-w-0 max-w-[100vw] box-border px-3 sm:px-4 md:px-5 pt-3 pb-10 sm:pt-4 space-y-5 xl:max-w-[min(100vw-1.5rem,92rem)] xl:mx-auto">
+        {/* Filter row — qora fon, rangli kategoriyalar */}
+        <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-white/10 bg-black px-3 py-2.5 shadow-lg shadow-black/40">
+          <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+            {(['all', 'lokomotiv', 'korxona', 'qurulish', 'tamirlash'] as const).map(cat => {
+              const tab = CAT_TAB_STYLE[cat];
+              const isActive = globalCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    startTransition(() => {
+                      setGlobalCategory(cat);
+                      setGlobalPage(1);
+                    });
+                  }}
+                  className={[
+                    'inline-flex h-10 items-center justify-center gap-2 rounded-xl border-2 px-4 transition-all whitespace-nowrap',
+                    tab.base,
+                    isActive ? tab.active : 'opacity-90',
+                  ].join(' ')}
+                >
+                  <span
+                    className={[
+                      'h-2.5 w-2.5 shrink-0 rounded-full',
+                      isActive
+                        ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.95)]'
+                        : 'bg-transparent',
+                    ].join(' ')}
+                    aria-hidden
+                  />
+                  <span className="text-xs font-black uppercase tracking-wide text-white drop-shadow-sm">
+                    {CAT_TAB_LABEL[cat]}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <div>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-2xl font-black text-primary tracking-tight">6 ta ERJ</span>
-              <span className="text-2xl font-black text-foreground/80 tracking-tight">bo'yicha</span>
-            </div>
-            <h1 className="text-3xl font-black tracking-tight leading-none">
-              barcha hisobotlar
-            </h1>
-            <p className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest mt-1.5">
-              Real vaqt · Bugungi kun
-            </p>
-          </div>
-        </div>
-
-        {/* Filter row */}
-        <div className="bg-background rounded-[20px] border-2 border-primary/5 p-4 flex flex-wrap gap-3 items-center">
-          <div className="flex gap-1 bg-muted p-1 rounded-xl flex-wrap">
-            {(['all', 'lokomotiv', 'korxona', 'qurulish', 'tamirlash'] as const).map(cat => (
-              <button key={cat}
-                onClick={() => { startTransition(() => { setGlobalCategory(cat); setGlobalPage(1); }); }}
-                className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all whitespace-nowrap ${globalCategory === cat ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-primary'}`}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {globalDateRange && (
+              <button
+                type="button"
+                onClick={() => {
+                  setGlobalDateRange(null);
+                  setGlobalPage(1);
+                }}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-400/50 bg-red-500 text-white shadow-md shadow-red-500/30 transition-all hover:bg-red-600 active:scale-95"
               >
-                {cat === 'all' ? 'Barchasi' : CAT_LABEL[cat]}
+                <X className="h-4 w-4" />
               </button>
-            ))}
-          </div>
-          <button onClick={() => setShowGlobalCal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all whitespace-nowrap"
-          >
-            <Calendar className="w-4 h-4" />
-            Calendar
-          </button>
-          {globalDateRange && (
-            <button onClick={() => { setGlobalDateRange(null); setGlobalPage(1); }}
-              className="p-2.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-xl transition-all shadow-md shadow-red-900/30"
+            )}
+            <button
+              type="button"
+              onClick={() => setShowGlobalCal(true)}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border-2 border-sky-300/80 bg-sky-500 px-4 text-xs font-black uppercase tracking-wide text-white drop-shadow-sm shadow-md shadow-sky-500/30 transition-all hover:bg-sky-400 active:scale-95 whitespace-nowrap"
             >
-              <X className="w-4 h-4" />
+              <Calendar className="h-[1.125rem] w-[1.125rem] shrink-0" />
+              КАЛЕНДАР
             </button>
-          )}
+          </div>
         </div>
 
         {/* Dark table — chap tomonda bo‘sh joyda kengashmaslik uchun min-w-0 */}
-        <div className="rounded-[20px] overflow-hidden shadow-2xl border border-[#2a3a2a] min-w-0 max-w-full" style={{ background: '#111c11' }}>
+        <div className="mt-2 w-full rounded-[20px] overflow-hidden shadow-2xl border border-[#2a3a2a] min-w-0 max-w-full sm:mt-3" style={{ background: '#111c11' }}>
 
           {/* Topbar */}
           <div className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap" style={{ background: '#0d160d' }}>
@@ -967,11 +1122,11 @@ export default function HisobotlarPage() {
 
           {/* Tables — category-specific rendering */}
           {!globalLoading && globalFiltered.length > 0 && (
-            <div className="w-full min-w-0 px-2 sm:px-4 pb-3 overflow-x-auto">
+            <div className="w-full max-w-full min-w-0 overflow-x-hidden overflow-y-visible px-1 pb-3 sm:px-2">
 
               {/* All / Lokomotiv: original 16-column table */}
               {(globalCategory === 'all' || globalCategory === 'lokomotiv') && (
-                <table className="w-full mx-auto table-fixed border-collapse text-left">
+                <table className="hisobotlar-data-table w-full table-fixed border-collapse text-left">
                   <colgroup>
                     {HISOBOTLAR_COL_PCT.map((pct, idx) => (
                       <col key={idx} style={{ width: `${pct}%` }} />
@@ -1081,15 +1236,31 @@ export default function HisobotlarPage() {
                           <td className={`px-1.5 sm:px-2 py-2 align-top text-right border-solid ${hisobotlarDividerLeftClass(14, 'body')}`}>
                             <span className="text-cyan-200 font-black text-[11px] sm:text-sm tabular-nums leading-tight break-all [text-shadow:0_0_10px_rgba(34,211,238,0.28)]">{hisob.toLocaleString('uz-UZ')}</span>
                           </td>
-                          <td className={`px-1.5 sm:px-2 py-2 align-top border-solid ${hisobotlarDividerLeftClass(15, 'body')}`}>
-                            <div className="flex items-center justify-end gap-2">
-                              <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
-                                className="grid place-items-center w-10 h-10 rounded-lg bg-primary/10 hover:bg-primary/25 text-primary transition-colors" title="Tahrirlash">
-                                <Pencil className="w-4 h-4" />
+                          <td className={`overflow-visible px-1 py-2 align-top border-solid ${hisobotlarDividerLeftClass(15, 'body')}`}>
+                            <div className="flex flex-nowrap items-center justify-center gap-1 leading-none">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditSub(sub);
+                                  setEditOpen(true);
+                                }}
+                                className={HISOBOTLAR_EDIT_BTN}
+                                title="Tahrirlash"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
                               </button>
-                              <button type="button" onClick={() => handleDelete(sub)} disabled={deletingId === sub.id}
-                                className="grid place-items-center w-10 h-10 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 transition-colors disabled:opacity-40" title="O'chirish">
-                                {deletingId === sub.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(sub)}
+                                disabled={deletingId === sub.id}
+                                className={HISOBOTLAR_DELETE_BTN}
+                                title="O'chirish"
+                              >
+                                {deletingId === sub.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
                               </button>
                             </div>
                           </td>
@@ -1102,11 +1273,16 @@ export default function HisobotlarPage() {
 
               {/* Korxona table: 9 columns */}
               {globalCategory === 'korxona' && (
-                <table className="w-full border-collapse text-left" style={{ minWidth: 680 }}>
+                <table className="hisobotlar-data-table w-full table-fixed border-collapse text-left">
+                  <colgroup>
+                    {KORXONA_COL_PCT.map((pct, idx) => (
+                      <col key={idx} style={{ width: `${pct}%` }} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr style={{ background: '#eab308' }}>
                       {['№', 'VAQT', 'ZAPRAVKA', 'XODIM', 'KORXONA NOMI', 'QANCHA (kg)', 'SUTKALIK', 'MASHINA', 'AMAL'].map((label) => (
-                        <th key={label} className="px-2 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-tight whitespace-nowrap" style={{ color: '#b91c1c' }}>
+                        <th key={label} className="px-1.5 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-tight whitespace-normal" style={{ color: '#b91c1c' }}>
                           {label}
                         </th>
                       ))}
@@ -1123,7 +1299,7 @@ export default function HisobotlarPage() {
                         <tr key={sub.id} style={{ background: rowBg }} className="hover:brightness-125 transition-all">
                           <td className="px-2 py-2 text-center align-top"><span className="text-gray-400 font-bold text-[10px]">{rowNum}</span></td>
                           <td className="px-2 py-2 align-top"><span className="text-yellow-400 font-black text-[10px] tabular-nums">{time}</span></td>
-                          <td className="px-2 py-2 align-top"><span className="text-gray-300 font-bold text-[10px] block max-w-[110px] truncate">{zap?.name ?? s.stationId ?? '—'}</span></td>
+                          <td className="px-1.5 py-2 align-top"><span className="text-gray-300 font-bold text-[10px] block max-w-full truncate">{zap?.name ?? s.stationId ?? '—'}</span></td>
                           <td className="px-2 py-2 align-top">
                             <p className="text-emerald-400 font-black text-[10px] break-all">{s.staffCode ? (staffMap.get(s.staffCode.trim()) ?? s.staffName ?? s.staffCode) : '—'}</p>
                           </td>
@@ -1137,15 +1313,31 @@ export default function HisobotlarPage() {
                               ? <span className="text-blue-400 font-bold text-[10px]">{s.mashinaRaqami ?? 'Ha'}</span>
                               : <span className="text-gray-500 text-[10px]">Yo'q</span>}
                           </td>
-                          <td className="px-2 py-2 align-top">
-                            <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
-                                className="grid place-items-center w-8 h-8 rounded-lg bg-primary/10 hover:bg-primary/25 text-primary transition-colors" title="Tahrirlash">
-                                <Pencil className="w-3.5 h-3.5" />
+                          <td className="overflow-visible px-1 py-2 align-top">
+                            <div className="flex flex-nowrap items-center justify-center gap-1 leading-none">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditSub(sub);
+                                  setEditOpen(true);
+                                }}
+                                className={HISOBOTLAR_EDIT_BTN}
+                                title="Tahrirlash"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
                               </button>
-                              <button type="button" onClick={() => handleDelete(sub)} disabled={deletingId === sub.id}
-                                className="grid place-items-center w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 transition-colors disabled:opacity-40" title="O'chirish">
-                                {deletingId === sub.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(sub)}
+                                disabled={deletingId === sub.id}
+                                className={HISOBOTLAR_DELETE_BTN}
+                                title="O'chirish"
+                              >
+                                {deletingId === sub.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
                               </button>
                             </div>
                           </td>
@@ -1158,11 +1350,16 @@ export default function HisobotlarPage() {
 
               {/* Qurulish table: 13 columns */}
               {globalCategory === 'qurulish' && (
-                <table className="w-full border-collapse text-left" style={{ minWidth: 980 }}>
+                <table className="hisobotlar-data-table w-full table-fixed border-collapse text-left">
+                  <colgroup>
+                    {QURULISH_COL_PCT.map((pct, idx) => (
+                      <col key={idx} style={{ width: `${pct}%` }} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr style={{ background: '#eab308' }}>
                       {['№', 'VAQT', 'ZAPRAVKA', 'XODIM', 'KORXONA', 'OBYEKT', 'TEXNIKA', 'LAVOZIM', 'QANCHA (kg)', 'DOP LIMIT', 'MASHINA', "MAS'UL", 'AMAL'].map((label) => (
-                        <th key={label} className="px-2 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-tight whitespace-nowrap" style={{ color: '#b91c1c' }}>
+                        <th key={label} className="px-1.5 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-tight whitespace-normal" style={{ color: '#b91c1c' }}>
                           {label}
                         </th>
                       ))}
@@ -1179,7 +1376,7 @@ export default function HisobotlarPage() {
                         <tr key={sub.id} style={{ background: rowBg }} className="hover:brightness-125 transition-all">
                           <td className="px-2 py-2 text-center align-top"><span className="text-gray-400 font-bold text-[10px]">{rowNum}</span></td>
                           <td className="px-2 py-2 align-top"><span className="text-yellow-400 font-black text-[10px] tabular-nums">{time}</span></td>
-                          <td className="px-2 py-2 align-top"><span className="text-gray-300 font-bold text-[10px] block max-w-[90px] truncate">{zap?.name ?? s.stationId ?? '—'}</span></td>
+                          <td className="px-1.5 py-2 align-top"><span className="text-gray-300 font-bold text-[10px] block max-w-full truncate">{zap?.name ?? s.stationId ?? '—'}</span></td>
                           <td className="px-2 py-2 align-top">
                             <p className="text-emerald-400 font-black text-[10px] break-all">{s.staffCode ? (staffMap.get(s.staffCode.trim()) ?? s.staffName ?? s.staffCode) : '—'}</p>
                           </td>
@@ -1199,15 +1396,31 @@ export default function HisobotlarPage() {
                               : <span className="text-gray-500 text-[10px]">Yo'q</span>}
                           </td>
                           <td className="px-2 py-2 align-top"><span className="text-gray-300 text-[10px] font-bold break-words">{s.masulShaxs ?? '—'}</span></td>
-                          <td className="px-2 py-2 align-top">
-                            <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
-                                className="grid place-items-center w-8 h-8 rounded-lg bg-primary/10 hover:bg-primary/25 text-primary transition-colors" title="Tahrirlash">
-                                <Pencil className="w-3.5 h-3.5" />
+                          <td className="overflow-visible px-1 py-2 align-top">
+                            <div className="flex flex-nowrap items-center justify-center gap-1 leading-none">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditSub(sub);
+                                  setEditOpen(true);
+                                }}
+                                className={HISOBOTLAR_EDIT_BTN}
+                                title="Tahrirlash"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
                               </button>
-                              <button type="button" onClick={() => handleDelete(sub)} disabled={deletingId === sub.id}
-                                className="grid place-items-center w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 transition-colors disabled:opacity-40" title="O'chirish">
-                                {deletingId === sub.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(sub)}
+                                disabled={deletingId === sub.id}
+                                className={HISOBOTLAR_DELETE_BTN}
+                                title="O'chirish"
+                              >
+                                {deletingId === sub.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
                               </button>
                             </div>
                           </td>
@@ -1220,11 +1433,16 @@ export default function HisobotlarPage() {
 
               {/* Tamirlash table: 11 columns */}
               {globalCategory === 'tamirlash' && (
-                <table className="w-full border-collapse text-left" style={{ minWidth: 820 }}>
+                <table className="hisobotlar-data-table w-full table-fixed border-collapse text-left">
+                  <colgroup>
+                    {TAMIRLASH_COL_PCT.map((pct, idx) => (
+                      <col key={idx} style={{ width: `${pct}%` }} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr style={{ background: '#eab308' }}>
                       {['№', 'VAQT', 'ZAPRAVKA', 'XODIM', 'SERIYA/RAQAM', "TA'MIR TURI", 'QANCHA (kg)', 'DIZ MASLA', 'MASHINA', "MAS'UL", 'AMAL'].map((label) => (
-                        <th key={label} className="px-2 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-tight whitespace-nowrap" style={{ color: '#b91c1c' }}>
+                        <th key={label} className="px-1.5 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-tight whitespace-normal" style={{ color: '#b91c1c' }}>
                           {label}
                         </th>
                       ))}
@@ -1242,7 +1460,7 @@ export default function HisobotlarPage() {
                         <tr key={sub.id} style={{ background: rowBg }} className="hover:brightness-125 transition-all">
                           <td className="px-2 py-2 text-center align-top"><span className="text-gray-400 font-bold text-[10px]">{rowNum}</span></td>
                           <td className="px-2 py-2 align-top"><span className="text-yellow-400 font-black text-[10px] tabular-nums">{time}</span></td>
-                          <td className="px-2 py-2 align-top"><span className="text-gray-300 font-bold text-[10px] block max-w-[100px] truncate">{zap?.name ?? s.stationId ?? '—'}</span></td>
+                          <td className="px-1.5 py-2 align-top"><span className="text-gray-300 font-bold text-[10px] block max-w-full truncate">{zap?.name ?? s.stationId ?? '—'}</span></td>
                           <td className="px-2 py-2 align-top">
                             <p className="text-emerald-400 font-black text-[10px] break-all">{s.staffCode ? (staffMap.get(s.staffCode.trim()) ?? s.staffName ?? s.staffCode) : '—'}</p>
                           </td>
@@ -1260,15 +1478,31 @@ export default function HisobotlarPage() {
                               : <span className="text-gray-500 text-[10px]">Yo'q</span>}
                           </td>
                           <td className="px-2 py-2 align-top"><span className="text-gray-300 text-[10px] font-bold break-words">{s.masulShaxs ?? '—'}</span></td>
-                          <td className="px-2 py-2 align-top">
-                            <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
-                                className="grid place-items-center w-8 h-8 rounded-lg bg-primary/10 hover:bg-primary/25 text-primary transition-colors" title="Tahrirlash">
-                                <Pencil className="w-3.5 h-3.5" />
+                          <td className="overflow-visible px-1 py-2 align-top">
+                            <div className="flex flex-nowrap items-center justify-center gap-1 leading-none">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditSub(sub);
+                                  setEditOpen(true);
+                                }}
+                                className={HISOBOTLAR_EDIT_BTN}
+                                title="Tahrirlash"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
                               </button>
-                              <button type="button" onClick={() => handleDelete(sub)} disabled={deletingId === sub.id}
-                                className="grid place-items-center w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 transition-colors disabled:opacity-40" title="O'chirish">
-                                {deletingId === sub.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(sub)}
+                                disabled={deletingId === sub.id}
+                                className={HISOBOTLAR_DELETE_BTN}
+                                title="O'chirish"
+                              >
+                                {deletingId === sub.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
                               </button>
                             </div>
                           </td>
@@ -1285,9 +1519,12 @@ export default function HisobotlarPage() {
           {/* Bottom bar */}
           {!globalLoading && globalFiltered.length > 0 && (
             <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-4" style={{ background: '#0a1a0a' }}>
-              <span className="text-gray-400 font-bold text-sm">
-                Jami yoqilg'i:{' '}
-                <span className="text-white font-black text-base">{globalTotalFuel.toLocaleString()}</span> kg
+              <span className="text-red-500 font-black text-sm">
+                Жами ёқилғи:{' '}
+                <span className="text-base">
+                  {globalTotalFuel.toLocaleString('uz-UZ')}
+                </span>{' '}
+                кг қуйилган
               </span>
               {globalTotalPages > 1 && (
                 <div className="flex items-center gap-1.5">
@@ -1316,6 +1553,8 @@ export default function HisobotlarPage() {
             </div>
           )}
         </div>
+
+      </main>
 
       <SubmissionEditDrawer
         open={editOpen}

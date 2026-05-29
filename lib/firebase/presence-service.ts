@@ -1,5 +1,6 @@
 import { db } from "./config";
 import { collection, onSnapshot } from "firebase/firestore";
+import { startOfDay } from "date-fns";
 import type { Role } from "@/lib/types";
 
 const COLLECTION = "active_sessions";
@@ -58,16 +59,42 @@ function parseDoc(uid: string, data: Record<string, unknown>): PresenceSessionDo
 
 export function subscribePresenceSessions(
   callback: (rows: PresenceSessionDoc[]) => void,
+  onError?: (message: string) => void,
 ): () => void {
-  return onSnapshot(collection(db, COLLECTION), (snap) => {
-    const rows = snap.docs.map((d) =>
-      parseDoc(d.id, d.data() as Record<string, unknown>),
-    );
-    callback(rows.sort((a, b) => (b.lastSeen ?? 0) - (a.lastSeen ?? 0)));
-  });
+  return onSnapshot(
+    collection(db, COLLECTION),
+    (snap) => {
+      const rows = snap.docs.map((d) =>
+        parseDoc(d.id, d.data() as Record<string, unknown>),
+      );
+      callback(rows.sort((a, b) => (b.lastSeen ?? 0) - (a.lastSeen ?? 0)));
+    },
+    (err) => {
+      console.error("subscribePresenceSessions:", err);
+      onError?.(err.message || "Sessiyalarni o'qib bo'lmadi");
+      callback([]);
+    },
+  );
 }
 
-export function isPresenceOnline(lastSeen?: number): boolean {
+export function isPresenceOnline(lastSeen?: number, now = Date.now()): boolean {
   if (lastSeen == null) return false;
-  return Date.now() - lastSeen < ONLINE_PRESENCE_MS;
+  return now - lastSeen < ONLINE_PRESENCE_MS;
+}
+
+/**
+ * Dashboard jadvalida ko'rsatish:
+ * — onlayn (oxirgi 2 daqiqa signal), yoki
+ * — bugun ishlagan oflayn (soat 00:00 gacha, mahalliy kun bo'yicha).
+ */
+export function isPresenceTableVisible(
+  lastSeen?: number,
+  now = Date.now(),
+  createdAt?: number,
+): boolean {
+  const signal = Math.max(lastSeen ?? 0, createdAt ?? 0);
+  if (signal === 0) return false;
+  if (lastSeen != null && now - lastSeen < ONLINE_PRESENCE_MS) return true;
+  const dayStart = startOfDay(new Date(now)).getTime();
+  return signal >= dayStart;
 }

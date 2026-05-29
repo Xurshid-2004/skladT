@@ -7,7 +7,7 @@ import { LoginHeroPanel } from "@/components/auth/login-hero-panel";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { saveSession } from "@/lib/utils/session";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
-import { ADMIN_CODES, DEVELOPER_CODE } from "@/lib/data/kodlar";
+import { ADMIN_CODES } from "@/lib/data/kodlar";
 import { Session } from "@/lib/types";
 import { isCodeBlocked } from "@/lib/firebase/blocked-codes-service";
 import { collection, query, where, limit, getDocs } from "firebase/firestore";
@@ -25,17 +25,6 @@ export default function LoginPage() {
   }, []);
 
   const buildLocalSession = (fullCode: string): Session | null => {
-    if (fullCode === DEVELOPER_CODE) {
-      return {
-        sessionToken: Math.random().toString(36).substring(7),
-        code: fullCode,
-        role: "developer",
-        nodeId: null,
-        stationId: null,
-        displayName: "Dasturchi",
-        expiresAt: Date.now() + 12 * 60 * 60 * 1000,
-      };
-    }
     if (ADMIN_CODES.includes(fullCode)) {
       return {
         sessionToken: Math.random().toString(36).substring(7),
@@ -138,8 +127,6 @@ export default function LoginPage() {
       router.push(`/zapravka/${session.stationId}/lokomotiv`);
     } else if (session.role === "admin") {
       router.push("/admin");
-    } else if (session.role === "developer") {
-      router.push("/dasturchi");
     } else {
       router.push("/uzellar");
     }

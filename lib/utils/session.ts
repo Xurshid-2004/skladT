@@ -1,66 +1,87 @@
 import { Session } from "../types";
 import { auth, db } from "../firebase/config";
 import { signInAnonymously, signOut } from "firebase/auth";
-import { doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { getStaffFullNameByTabel } from "../firebase/staff-service";
 
 const SESSION_KEY = "uz_temiryo_session";
 
-export async function saveSession(session: Session): Promise<void> {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+/** Firebase Auth + active_sessions — presence uchun majburiy */
+export async function ensureActiveSession(
+  session: Session,
+): Promise<boolean> {
+  if (typeof window === "undefined") return false;
 
-  // Firebase Anonymous Auth — ixtiyoriy. Agar Firebase Console'da
-  // yoqilmagan bo'lsa (auth/configuration-not-found), login baribir
-  // ishlaydi: localStorage sessiyasi yetarli, faqat Firestore yozuvlari
-  // ushbu qurilmadan amalga oshmaydi.
   try {
-    const userCredential = await signInAnonymously(auth);
-    const user = userCredential.user;
+    let user = auth.currentUser;
+    if (!user) {
+      const userCredential = await signInAnonymously(auth);
+      user = userCredential.user;
+    }
 
+    const ref = doc(db, "active_sessions", user.uid);
     const now = Date.now();
-    try {
-      await setDoc(doc(db, "active_sessions", user.uid), {
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) {
+      await setDoc(ref, {
         code: session.code,
         role: session.role,
-        stationId: session.stationId,
-        nodeId: session.nodeId,
-        displayName: session.displayName,
+        stationId: session.stationId ?? null,
+        nodeId: session.nodeId ?? null,
+        displayName: session.displayName ?? null,
         staffVaultFullName: null,
         createdAt: now,
         lastSeen: now,
       });
-      try {
+    } else {
+      await updateDoc(ref, { lastSeen: now });
+    }
+
+    try {
+      const data = (await getDoc(ref)).data();
+      if (!data?.staffVaultFullName) {
         const vaultFullName = await getStaffFullNameByTabel(session.code);
         if (vaultFullName) {
-          await updateDoc(doc(db, "active_sessions", user.uid), {
+          await updateDoc(ref, {
             staffVaultFullName: vaultFullName,
             lastSeen: Date.now(),
           });
         }
-      } catch (vaultErr) {
-        console.warn("staff vault F.I.Sh qo'shilmadi:", vaultErr);
       }
-    } catch (fsError) {
-      console.warn("active_sessions yozuvi o'tkazib yuborildi:", fsError);
+    } catch (vaultErr) {
+      console.warn("staff vault F.I.Sh qo'shilmadi:", vaultErr);
     }
-  } catch (authError: any) {
-    if (authError?.code === "auth/configuration-not-found") {
+
+    return true;
+  } catch (authError: unknown) {
+    const code =
+      authError && typeof authError === "object" && "code" in authError
+        ? String((authError as { code: string }).code)
+        : "";
+    if (code === "auth/configuration-not-found") {
       console.warn(
-        "Firebase Anonymous Auth yoqilmagan — login local sessiya bilan davom etmoqda. " +
-          "To'liq funksiya uchun Firebase Console > Authentication > Sign-in method'da Anonymous'ni yoqing."
+        "Firebase Anonymous Auth yoqilmagan — onlayn jadval ishlamaydi. " +
+          "Firebase Console > Authentication > Anonymous yoqing.",
       );
     } else {
-      console.warn("Firebase auth o'tkazib yuborildi:", authError);
+      console.warn("ensureActiveSession:", authError);
     }
+    return false;
   }
+}
+
+export async function saveSession(session: Session): Promise<void> {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  await ensureActiveSession(session);
 }
 
 export function getSession(): Session | null {
   if (typeof window === "undefined") return null;
   const data = sessionStorage.getItem(SESSION_KEY);
   if (!data) return null;
-  
+
   try {
     const session = JSON.parse(data) as Session;
     if (Date.now() > session.expiresAt) {
@@ -76,7 +97,7 @@ export function getSession(): Session | null {
 export async function clearSession(): Promise<void> {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(SESSION_KEY);
-  
+
   try {
     if (auth.currentUser) {
       await deleteDoc(doc(db, "active_sessions", auth.currentUser.uid));

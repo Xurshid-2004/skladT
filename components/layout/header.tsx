@@ -37,8 +37,6 @@ export function Header() {
       router.push(`/zapravka/${session.stationId}/lokomotiv`);
     } else if (session.role === "admin") {
       router.push("/admin");
-    } else if (session.role === "developer") {
-      router.push("/dasturchi");
     }
   };
 

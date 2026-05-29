@@ -36,7 +36,7 @@ export default function UzellarPage() {
   if (!session) return null;
 
   const isUzelDisabled = (uzelId: string) => {
-    if (session.role === "admin" || session.role === "developer") return false;
+    if (session.role === "admin") return false;
     return session.nodeId !== uzelId;
   };
 
@@ -161,10 +161,10 @@ export default function UzellarPage() {
           </div>
         )}
 
-        {(session.role === "admin" || session.role === "developer") && (
+        {session.role === "admin" && (
           <div className="mt-16 flex justify-center animate-in fade-in duration-1000">
             <Link
-              href={session.role === "admin" ? "/admin" : "/dasturchi"}
+              href="/admin"
               className="px-10 py-5 bg-slate-900 dark:bg-slate-100 text-slate-100 dark:text-slate-900 rounded-2xl font-black text-lg tracking-wider hover:opacity-90 transition-all shadow-xl hover:shadow-primary/20"
             >
               {session.role === "admin" ? "ADMIN PANEL" : "DASTURCHI PANELI"}

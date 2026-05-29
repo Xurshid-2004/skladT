@@ -530,6 +530,255 @@ th {
   border-color: var(--border-soft) !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   ADMIN PANEL — PREMIUM UI SYSTEM
+   Faqat AdminLayout ichida ishlaydi (.admin-shell → .admin-content)
+   Backend, PDF, Y.PDF, jadval strukturasi, logikaga tegmaydi.
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Tokens ─────────────────────────────────────────────────────── */
+.admin-shell {
+  --ap-bg:          #f0f4ff;
+  --ap-sidebar:     rgba(255, 255, 255, 0.88);
+  --ap-card:        rgba(255, 255, 255, 0.86);
+  --ap-card-border: rgba(99, 102, 241, 0.13);
+  --ap-header:      rgba(255, 255, 255, 0.82);
+  --ap-line:        rgba(99, 102, 241, 0.11);
+  --ap-row-alt:     rgba(238, 242, 255, 0.60);
+  --ap-row-hover:   rgba(79, 70, 229, 0.06);
+  --ap-th-bg:       linear-gradient(135deg,rgba(99,102,241,.12),rgba(14,165,233,.09));
+  --ap-shadow-card: 0 4px 6px -1px rgba(15,23,42,.06),0 20px 50px -8px rgba(15,23,42,.09),inset 0 1px 0 rgba(255,255,255,.7);
+  --ap-shadow-sm:   0 1px 2px rgba(15,23,42,.05),0 6px 20px rgba(15,23,42,.05);
+  --ap-radius:      18px;
+}
+
+.dark .admin-shell {
+  --ap-bg:          #07091a;
+  --ap-sidebar:     rgba(10, 14, 30, 0.88);
+  --ap-card:        rgba(14, 18, 38, 0.82);
+  --ap-card-border: rgba(148, 163, 184, 0.10);
+  --ap-header:      rgba(9, 13, 28, 0.84);
+  --ap-line:        rgba(148, 163, 184, 0.10);
+  --ap-row-alt:     rgba(255, 255, 255, 0.025);
+  --ap-row-hover:   rgba(99, 102, 241, 0.08);
+  --ap-th-bg:       linear-gradient(135deg,rgba(99,102,241,.16),rgba(14,165,233,.12));
+  --ap-shadow-card: 0 4px 6px -1px rgba(0,0,0,.20),0 20px 55px -8px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.05);
+  --ap-shadow-sm:   0 1px 3px rgba(0,0,0,.16),0 6px 18px rgba(0,0,0,.18);
+}
+
+/* ── Shell background ───────────────────────────────────────────── */
+.admin-shell {
+  background-color: var(--ap-bg);
+  min-height: 100dvh;
+}
+
+/* ── Content area — cheksiz scroll (sahifa oqimi) ───────────────── */
+.admin-content {
+  isolation: isolate;
+  overflow: visible;
+  height: auto;
+  max-height: none;
+}
+
+/* ── Typography ─────────────────────────────────────────────────── */
+.admin-content h1 {
+  letter-spacing: -0.048em;
+  line-height: 1.06;
+}
+
+.admin-content h2 {
+  letter-spacing: -0.032em;
+}
+
+/* ── Cards / panels ─────────────────────────────────────────────── */
+.admin-content [class*="bg-background"][class*="rounded"],
+.admin-content [class*="bg-muted"][class*="rounded"],
+.admin-content form[class*="rounded"],
+.admin-content section[class*="rounded"],
+.admin-content div[class*="bg-background"][class*="rounded"] {
+  background: var(--ap-card) !important;
+  border-color: var(--ap-card-border) !important;
+  box-shadow: var(--ap-shadow-card) !important;
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.admin-content [class*="bg-background"][class*="rounded"]:hover,
+.admin-content div[class*="bg-background"][class*="rounded"]:hover {
+  box-shadow:
+    0 4px 6px -1px rgba(15,23,42,.07),
+    0 28px 64px -8px rgba(15,23,42,.13),
+    inset 0 1px 0 rgba(255,255,255,.72) !important;
+}
+
+.dark .admin-content [class*="bg-background"][class*="rounded"],
+.dark .admin-content [class*="bg-muted"][class*="rounded"],
+.dark .admin-content form[class*="rounded"],
+.dark .admin-content section[class*="rounded"] {
+  background: var(--ap-card) !important;
+  box-shadow: var(--ap-shadow-card) !important;
+}
+
+/* ── Tables (structure untouched, only visual) ───────────────────── */
+.admin-content table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-content thead tr {
+  background: var(--ap-th-bg) !important;
+}
+
+.admin-content thead th {
+  color: color-mix(in srgb, var(--color-primary) 80%, var(--foreground));
+  font-weight: 900;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--ap-card-border) !important;
+}
+
+.admin-content tbody tr {
+  transition: background-color 0.18s ease;
+}
+
+.admin-content tbody tr:nth-child(even) {
+  background-color: var(--ap-row-alt);
+}
+
+.admin-content tbody tr:hover {
+  background-color: var(--ap-row-hover) !important;
+}
+
+.admin-content td,
+.admin-content th {
+  border-color: var(--ap-line) !important;
+}
+
+/* Dashboard — ulangan foydalanuvchilar (yashil jadval) */
+.admin-content .presence-table thead tr {
+  background: rgba(6, 78, 59, 0.38) !important;
+}
+
+.admin-content .presence-table thead th {
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.admin-content .presence-table tbody tr:nth-child(even) {
+  background-color: transparent !important;
+}
+
+.admin-content .presence-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-content .presence-table td,
+.admin-content .presence-table th {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* ── Scrollbar (admin area) ─────────────────────────────────────── */
+.admin-content ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.admin-content ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-content ::-webkit-scrollbar-thumb {
+  background: rgba(var(--primary-rgb), 0.22);
+  border-radius: 99px;
+}
+
+.admin-content ::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--primary-rgb), 0.38);
+}
+
+/* ── Buttons (micro-interactions) ───────────────────────────────── */
+.admin-content button:not(:disabled),
+.admin-content a[class*="rounded"] {
+  will-change: transform;
+}
+
+.admin-content button:not(:disabled):hover,
+.admin-content a[class*="rounded"]:hover {
+  transform: translateY(-1px);
+}
+
+.admin-content button:not(:disabled):active,
+.admin-content a[class*="rounded"]:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ── Code inline badges ─────────────────────────────────────────── */
+.admin-content code {
+  border-radius: 999px;
+  background: rgba(var(--primary-rgb), 0.10);
+  color: var(--color-primary);
+  padding: 0.1rem 0.45rem;
+  font-size: 0.78em;
+  font-weight: 700;
+}
+
+/* ── Status badge pulse ─────────────────────────────────────────── */
+@keyframes admin-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+.admin-status-online {
+  animation: admin-pulse-dot 2s ease-in-out infinite;
+}
+
+/* ── Page header animation ──────────────────────────────────────── */
+@keyframes admin-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.admin-content > * {
+  animation: admin-fade-up 0.35s ease both;
+}
+
+.admin-content > *:nth-child(1) { animation-delay: 0ms; }
+.admin-content > *:nth-child(2) { animation-delay: 55ms; }
+.admin-content > *:nth-child(3) { animation-delay: 110ms; }
+.admin-content > *:nth-child(4) { animation-delay: 165ms; }
+.admin-content > *:nth-child(5) { animation-delay: 200ms; }
+
+/* ── Empty states ───────────────────────────────────────────────── */
+.admin-content [class*="text-center"][class*="text-muted-foreground"] {
+  letter-spacing: 0.01em;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .admin-content {
+    padding-inline: 0.75rem !important;
+  }
+
+  .admin-content h1 {
+    font-size: 1.65rem;
+    line-height: 1.08;
+  }
+
+  .admin-content h2 {
+    font-size: 1.2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-content > * {
+    animation: none !important;
+  }
+}
+
 /* ==== Card-like elementlar uchun light/dark farqi ==== */
 .dark .bg-background\/50,
 .dark .bg-background\/60,
@@ -566,6 +815,64 @@ th {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ==== Hisobotlar jadval — faqat tbody ma'lumot (thead / PDF / Y.PDF ga tegmasin) ==== */
+.hisobotlar-data-table tbody td {
+  font-size: 11px;
+  line-height: 1.35;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.hisobotlar-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.hisobotlar-data-table tbody td span,
+.hisobotlar-data-table tbody td p {
+  font-size: 1em !important;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .hisobotlar-data-table tbody td {
+    font-size: 11.5px;
+  }
+}
+
+.hisobotlar-data-table tbody td .font-bold {
+  font-weight: 700;
+}
+
+.hisobotlar-data-table tbody td .font-black {
+  font-weight: 800;
+}
+
+.hisobotlar-data-table tbody td button {
+  font-size: 0;
+  vertical-align: middle;
+}
+
+.hisobotlar-data-table tbody td:has(button) {
+  vertical-align: top;
+}
+
+/* Xodim vault — to‘liq ekran (portal, admin-content cheklovidan tashqari) */
+.staff-vault-modal {
+  width: 100vw;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+}
+
+.staff-vault-modal .staff-vault-erju-list {
+  overflow: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.staff-vault-modal .staff-vault-erju-list::-webkit-scrollbar {
+  display: none;
 }
 
 /* ==== Skroll bar nozikroq ==== */

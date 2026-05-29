@@ -2,9 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { auth, db } from "@/lib/firebase/config";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 
-const INTERVAL_MS = 45_000;
+const INTERVAL_MS = 20_000;
 
 /**
  * Ishchi/admin asosiy zonada bo'lganda active_sessions.{uid}.lastSeen ni yangilaydi
@@ -18,11 +18,13 @@ export default function PresenceHeartbeat() {
       const u = auth.currentUser;
       if (!u) return;
       try {
-        await updateDoc(doc(db, "active_sessions", u.uid), {
-          lastSeen: Date.now(),
-        });
-      } catch {
-        // Auth yo'q / qoida / tarmoq
+        await setDoc(
+          doc(db, "active_sessions", u.uid),
+          { lastSeen: Date.now() },
+          { merge: true },
+        );
+      } catch (err) {
+        console.warn("presence heartbeat:", err);
       }
     }
 

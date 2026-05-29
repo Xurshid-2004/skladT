@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { ERJU_STAFF_GROUPS } from "@/lib/data/staff-erju-data";
 import {
   subscribeStaff,
@@ -18,6 +19,44 @@ export type StaffVaultModalProps = {
   /** Tabel raqam = kirish kodi sifatida blocked_codes ga yoziladi */
   onBlockByTabel: (tabel: string, note: string) => Promise<void>;
   onUnblockByTabel: (tabel: string) => Promise<void>;
+};
+
+/** ERJU tugmalari — kirill matn va admin sidebar ranglari */
+const ERJU_REGION_UI: Record<
+  string,
+  { labelCy: string; active: string; idle: string }
+> = {
+  "Toshkent ERJU": {
+    labelCy: "ТОШКЕНТ ЕРЖУ",
+    active: "bg-blue-500 shadow-[0_0_18px_rgba(59,130,246,0.6)] ring-2 ring-white/45",
+    idle: "bg-blue-600/45 border-2 border-blue-400/60",
+  },
+  "Buxoro ERJU": {
+    labelCy: "БУХОРО ЕРЖУ",
+    active: "bg-emerald-500 shadow-[0_0_18px_rgba(34,197,94,0.6)] ring-2 ring-white/45",
+    idle: "bg-emerald-600/45 border-2 border-emerald-400/60",
+  },
+  "Qarshi ERJU": {
+    labelCy: "ҚАРШИ ЕРЖУ",
+    active: "bg-sky-500 shadow-[0_0_18px_rgba(14,165,233,0.6)] ring-2 ring-white/45",
+    idle: "bg-sky-600/45 border-2 border-sky-400/60",
+  },
+  "Qo'qon ERJU": {
+    labelCy: "ҚОҚОН ЕРЖУ",
+    active:
+      "bg-gradient-to-r from-blue-600 to-violet-600 shadow-[0_0_18px_rgba(99,102,241,0.55)] ring-2 ring-white/45",
+    idle: "border-2 border-violet-400/60 bg-gradient-to-r from-blue-700/50 to-violet-700/50",
+  },
+  "Termiz ERJU": {
+    labelCy: "ТЕРМИЗ ЕРЖУ",
+    active: "bg-orange-500 shadow-[0_0_18px_rgba(249,115,22,0.6)] ring-2 ring-white/45",
+    idle: "bg-orange-600/45 border-2 border-orange-400/60",
+  },
+  "Qo'ng'irot ERJU": {
+    labelCy: "ҚУНГИРОТ ЕРЖУ",
+    active: "bg-red-500 shadow-[0_0_18px_rgba(239,68,68,0.6)] ring-2 ring-white/45",
+    idle: "bg-red-600/45 border-2 border-red-400/60",
+  },
 };
 
 export default function StaffVaultModal({
@@ -39,6 +78,11 @@ export default function StaffVaultModal({
     zapravka: "",
   });
   const [busy, setBusy] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -46,9 +90,11 @@ export default function StaffVaultModal({
   }, [open]);
 
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "unset";
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = prev;
     };
   }, [open]);
 
@@ -186,22 +232,19 @@ export default function StaffVaultModal({
     }
   };
 
-  if (!open) return null;
+  if (!open || !portalReady) return null;
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
+  return createPortal(
+    <div className="staff-vault-modal fixed inset-0 z-[500] flex flex-col">
       <button
         type="button"
         aria-label="Yopish"
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
         onClick={closeModal}
       />
 
-      <div
-        className="relative z-[201] flex w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#0d1424] shadow-2xl sm:max-w-5xl sm:rounded-3xl"
-        style={{ maxHeight: "92vh" }}
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0a0f1e]/95 px-5 py-4">
+      <div className="relative z-[501] flex h-full w-full flex-col overflow-hidden bg-[#0d1424]">
+        <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0a0f1e] px-6 py-4">
           <div>
             <h2 className="text-lg font-bold text-white">Xodimlarni boshqarish</h2>
             <p className="mt-0.5 text-xs text-slate-400">
@@ -218,42 +261,45 @@ export default function StaffVaultModal({
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto sm:flex-row sm:overflow-hidden">
-          {/* CHAP: ERJU */}
-          <div className="w-full shrink-0 overflow-y-auto border-white/10 p-3 sm:w-52 sm:border-r">
-            <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              Mintaqalar
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+          {/* CHAP: ERJU — scroll yo‘q, tugmalar balandlikka taqsimlanadi */}
+          <div className="flex w-full shrink-0 flex-col overflow-hidden border-white/10 p-3 md:h-full md:w-[min(18rem,22vw)] md:border-r md:p-4">
+            <p className="shrink-0 px-2 pb-2 text-[11px] font-black uppercase tracking-widest text-slate-300">
+              МИНТАҚАЛАР
             </p>
+            <div className="staff-vault-erju-list flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden md:gap-2">
             {ERJU_STAFF_GROUPS.map((erju) => {
               const cnt = staffList.filter((s) => s.erju === erju.name).length;
               const isActive = selectedErju === erju.name;
+              const ui = ERJU_REGION_UI[erju.name];
               return (
                 <button
                   key={erju.name}
                   type="button"
                   onClick={() => handleErjuSelect(erju.name)}
-                  className={`mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-colors ${
-                    isActive
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-400 hover:bg-white/5"
-                  }`}
+                  className={`flex min-h-0 flex-1 w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-white transition-all md:py-2.5 ${
+                    isActive ? ui?.active ?? "bg-blue-500" : ui?.idle ?? "bg-white/10"
+                  } ${isActive ? "scale-[1.01]" : "opacity-95"}`}
                 >
-                  <div>
-                    <p className="text-xs font-semibold">{erju.name}</p>
-                    <p
-                      className={`mt-0.5 text-[10px] ${isActive ? "opacity-80" : "text-slate-500"}`}
-                    >
-                      {cnt} ta xodim
+                  <div className="min-w-0 pr-2">
+                    <p className="text-sm font-black uppercase leading-tight tracking-tight drop-shadow-sm">
+                      {ui?.labelCy ?? erju.short}
+                    </p>
+                    <p className="mt-1 text-[11px] font-bold text-white/90">
+                      {cnt} ходим
                     </p>
                   </div>
-                  <ChevronRight className="h-4 w-4 opacity-60" />
+                  <ChevronRight
+                    className={`h-5 w-5 shrink-0 ${isActive ? "text-white" : "text-white/70"}`}
+                  />
                 </button>
               );
             })}
+            </div>
           </div>
 
           {/* O'RTA: zapravka + forma */}
-          <div className="w-full shrink-0 space-y-4 overflow-y-auto border-white/10 p-4 sm:w-64 sm:border-r">
+          <div className="w-full shrink-0 space-y-4 overflow-y-auto border-white/10 p-5 md:w-[min(22rem,26vw)] md:border-r">
             {!selectedErju && (
               <p className="pt-6 text-center text-sm text-slate-400">ERJU tanlang</p>
             )}
@@ -333,7 +379,7 @@ export default function StaffVaultModal({
           </div>
 
           {/* O'NG: ro'yxat */}
-          <div className="min-h-[200px] flex-1 overflow-y-auto p-4 sm:min-h-0">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-5 md:min-h-0">
             {!selectedErju && (
               <div className="flex h-full flex-col items-center justify-center gap-2 py-12 opacity-40">
                 <Users className="h-10 w-10 text-slate-500" />
@@ -480,6 +526,7 @@ export default function StaffVaultModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

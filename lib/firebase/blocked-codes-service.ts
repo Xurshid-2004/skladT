@@ -27,11 +27,18 @@ export async function unblockCode(code: string): Promise<void> {
 }
 
 export function subscribeBlockedCodes(cb: (rows: BlockedCodeDoc[]) => void): () => void {
-  return onSnapshot(collection(db, COLLECTION), (snap) => {
-    cb(
-      snap.docs
-        .map((d) => ({ ...(d.data() as BlockedCodeDoc), code: d.id }))
-        .sort((a, b) => (b.blockedAt || 0) - (a.blockedAt || 0)),
-    );
-  });
+  return onSnapshot(
+    collection(db, COLLECTION),
+    (snap) => {
+      cb(
+        snap.docs
+          .map((d) => ({ ...(d.data() as BlockedCodeDoc), code: d.id }))
+          .sort((a, b) => (b.blockedAt || 0) - (a.blockedAt || 0)),
+      );
+    },
+    (err) => {
+      console.warn("subscribeBlockedCodes:", err);
+      cb([]);
+    },
+  );
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { db } from "@/lib/firebase/config";
 import { collection, doc, setDoc, writeBatch, addDoc } from "firebase/firestore";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
-import { ADMIN_CODES, DEVELOPER_CODE } from "@/lib/data/kodlar";
+import { ADMIN_CODES } from "@/lib/data/kodlar";
 import { Header } from "@/components/layout/header";
 
 export default function SeedPage() {
@@ -73,20 +73,6 @@ export default function SeedPage() {
         });
         codeCount++;
       });
-
-      // Developer code
-      const devDoc = doc(collection(db, "access_codes"), DEVELOPER_CODE);
-      batch.set(devDoc, {
-        code: DEVELOPER_CODE,
-        role: "developer",
-        displayName: "Dasturchi",
-        nodeId: null,
-        stationId: null,
-        codeType: "developer",
-        isActive: true,
-        createdAt: Date.now(),
-      });
-      codeCount++;
 
       await batch.commit();
       addLog(`${codeCount} ta kirish kodi yozildi ✅`);

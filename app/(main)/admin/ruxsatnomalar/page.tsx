@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AdminLayout from "@/components/admin/admin-layout";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { Approval } from "@/lib/types";
@@ -48,6 +49,7 @@ export default function RuxsatnomalarPage() {
   });
 
   return (
+    <AdminLayout>
       <div className="max-w-6xl mx-auto space-y-8 pb-16">
         <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-900 p-[1px] shadow-xl">
           <div className="rounded-[31px] bg-background px-6 sm:px-10 py-8 sm:py-10">
@@ -185,6 +187,7 @@ export default function RuxsatnomalarPage() {
           </table>
         </div>
       </div>
+    </AdminLayout>
   );
 }
 
