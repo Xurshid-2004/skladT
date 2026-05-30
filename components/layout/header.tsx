@@ -41,34 +41,32 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b-2 border-primary/10 bg-background shadow-sm">
-      <div className="container flex h-16 items-center justify-between px-4 mx-auto">
-        <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-50 w-full border-b border-primary/10 bg-background/95 shadow-sm backdrop-blur-xl">
+      <div className="container mx-auto flex min-h-16 items-center justify-between gap-3 px-3 py-2 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2">
           <button
             onClick={() => router.back()}
-            className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-colors"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
             title="Orqaga"
+            aria-label="Orqaga"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md shadow-primary/20">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-sm font-black text-white shadow-md shadow-primary/20">
             UZ
           </div>
-          <span className="font-bold hidden md:inline-block tracking-tight text-primary">
-            UZ TEMIRYO'L ENERGIYA TA'MINOT
-          </span>
 
           {/* Telegram murojat */}
-          <div className="hidden sm:flex items-center gap-1.5 ml-2">
-            <span className="text-[9px] font-bold text-red-500 leading-tight hidden lg:block italic">
-              saytdagi yangilik va muammolar uchun murojat :
+          <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
+            <span className="hidden max-w-[220px] truncate text-[10px] font-bold leading-tight text-red-500 lg:block">
+              saytdagi yangilik va muammolar uchun murojaat
             </span>
             <a
               href="https://t.me/xurshid_bio"
               target="_blank"
               rel="noopener noreferrer"
               title="saytdagi yangilik va muammolar uchun murojat: @xurshid_bio"
-              className="flex items-center justify-center w-8 h-8 rounded-xl hover:scale-110 active:scale-95 transition-transform shrink-0"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform hover:scale-105 active:scale-95"
             >
               <svg viewBox="0 0 48 48" className="w-7 h-7" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect width="48" height="48" rx="10" fill="#29A9EB"/>
@@ -79,16 +77,16 @@ export function Header() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-2xl border border-primary/10">
-            <User className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold truncate max-w-[120px]">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 items-center gap-2 rounded-xl border border-primary/10 bg-muted px-2.5 py-2 sm:px-3">
+            <User className="h-4 w-4 shrink-0 text-primary" />
+            <span className="max-w-[92px] truncate text-xs font-semibold sm:max-w-[150px] sm:text-sm">
               {session?.displayName || "Foydalanuvchi"}
             </span>
           </div>
 
           {time && (
-            <div className="hidden sm:flex items-center px-3 py-2 bg-muted rounded-2xl border border-primary/10">
+            <div className="hidden items-center rounded-xl border border-primary/10 bg-muted px-3 py-2 md:flex">
               <span className="text-sm font-black tracking-widest text-primary tabular-nums">{time}</span>
             </div>
           )}
@@ -97,16 +95,18 @@ export function Header() {
 
           <button
             onClick={handleHome}
-            className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-colors"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
             title="Bosh sahifa"
+            aria-label="Bosh sahifa"
           >
             <Home className="w-5 h-5" />
           </button>
 
           <button
             onClick={handleLogout}
-            className="p-2 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-xl transition-colors"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
             title="Chiqish"
+            aria-label="Chiqish"
           >
             <LogOut className="w-5 h-5" />
           </button>

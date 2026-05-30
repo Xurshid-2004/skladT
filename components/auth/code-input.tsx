@@ -35,7 +35,7 @@ export function CodeInput({ code, onChange, error }: CodeInputProps) {
   };
 
   return (
-    <div className="flex gap-3 sm:gap-4 justify-center">
+    <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
       {code.map((digit, i) => {
         const filled = !!digit;
         return (
@@ -49,7 +49,9 @@ export function CodeInput({ code, onChange, error }: CodeInputProps) {
             value={digit}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
-            className={`w-14 h-16 sm:w-16 sm:h-[4.5rem] text-center text-2xl sm:text-3xl font-black rounded-2xl border-2 shadow-sm transition-all duration-150 outline-none focus:scale-[1.04] ${
+            aria-label={`Kod raqami ${i + 1}`}
+            aria-invalid={error ? "true" : "false"}
+            className={`h-16 w-full text-center text-2xl font-black sm:h-[4.5rem] sm:text-3xl rounded-2xl border-2 shadow-sm transition-all duration-150 outline-none focus:scale-[1.03] ${
               error
                 ? "border-danger bg-[var(--input-error-bg)] text-danger animate-shake"
                 : filled

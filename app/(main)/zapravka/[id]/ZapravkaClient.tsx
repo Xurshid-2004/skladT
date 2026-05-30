@@ -106,9 +106,9 @@ export default function ZapravkaClient() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/20">
+    <div className="user-panel min-h-screen bg-muted/20">
       <Header />
-      
+
       <main className="container mx-auto px-4 py-8 max-w-5xl">
         {/* Back and Title */}
         <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">

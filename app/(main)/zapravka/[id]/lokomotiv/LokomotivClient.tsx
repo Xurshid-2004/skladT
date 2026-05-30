@@ -8,8 +8,6 @@ import LokomotivForm from "@/components/forms/lokomotiv-form";
 import LokomotivRecentTable from "@/components/lokomotiv-recent-table";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 import { Zapravka, Session } from "@/lib/types";
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
 import SectionTabs from "@/components/zapravka/section-tabs";
 import PageBackground from "@/components/common/page-background";
 
@@ -39,35 +37,13 @@ export default function LokomotivClient() {
   if (!session || !zapravka) return null;
 
   return (
-    <div className="min-h-screen bg-muted/20 relative">
+    <div className="user-panel min-h-screen bg-muted/20 relative">
       <PageBackground variant="locomotive" />
       <Header />
 
       <main className="w-full">
         {/* Header + Form — cheklangan kenglik */}
-        <div className="container mx-auto px-4 pt-8 max-w-5xl">
-          {/* Header Section */}
-          <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
-            {session.role !== "worker" ? (
-              <Link
-                href={`/zapravka/${zapravka.id}`}
-                className="flex items-center gap-2 px-5 py-3 bg-background border-2 border-primary/10 rounded-2xl font-black text-primary hover:bg-primary/5 transition-all shadow-sm w-fit"
-              >
-                <ChevronLeft className="w-6 h-6" />
-                ORQAGA
-              </Link>
-            ) : <span />}
-
-            <div className="text-left md:text-right">
-              <h1 className="text-4xl md:text-5xl font-black text-primary tracking-tighter uppercase neon-text">
-                {zapravka.name} ZAPRAVKASI
-              </h1>
-              <p className="text-muted-foreground font-black tracking-[0.2em] text-xs mt-2 uppercase">
-                LOKOMOTIV BO'LIMI
-              </p>
-            </div>
-          </div>
-
+        <div className="w-full px-3 pt-5 sm:px-5 sm:pt-6">
           <SectionTabs />
 
           {/* Form */}

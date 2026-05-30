@@ -250,19 +250,22 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in duration-500">
+    <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in duration-500">
       {/* Top Sticky Error Banner — har doim ko'rinadi */}
       {error && (
-        <div className="sticky top-4 z-30 bg-danger text-white p-5 rounded-2xl shadow-2xl shadow-danger/30 flex items-start gap-3 font-bold animate-in slide-in-from-top-4 duration-300 border-2 border-white/20">
-          <AlertCircle className="w-6 h-6 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-black uppercase tracking-wide text-sm mb-1">Xato</p>
-            <p className="text-sm font-medium leading-relaxed">{error}</p>
+        <div className="sticky top-4 z-30 bg-gradient-to-r from-red-600 to-rose-600 text-white p-4 sm:p-5 rounded-2xl shadow-2xl shadow-red-500/30 flex items-start gap-3 font-bold animate-in slide-in-from-top-4 duration-300 ring-1 ring-white/25">
+          <span className="grid place-items-center w-9 h-9 shrink-0 rounded-xl bg-white/15">
+            <AlertCircle className="w-5 h-5" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="font-black uppercase tracking-wide text-xs mb-0.5">Xato</p>
+            <p className="text-sm font-semibold leading-relaxed">{error}</p>
           </div>
           <button
             type="button"
             onClick={() => setError("")}
-            className="shrink-0 hover:bg-white/10 rounded-lg p-1 transition-colors"
+            aria-label="Yopish"
+            className="shrink-0 hover:bg-white/15 rounded-lg p-1.5 transition-colors"
           >
             ✕
           </button>
@@ -270,204 +273,238 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
       )}
 
       {/* Harakat Turi */}
-      <div className="bg-background/70 backdrop-blur-md p-6 rounded-3xl border-2 border-primary/15 shadow-xl">
-        <label className="block text-sm font-black text-primary mb-4 tracking-widest uppercase">
-          1. HARAKAT TURI
-        </label>
-        {hasApproval && (
-          <div className="mb-4 p-4 bg-success/10 border border-success/20 rounded-2xl flex items-center gap-3 text-success animate-bounce">
-            <CheckCircle2 className="w-5 h-5" />
-            <span className="text-xs font-black uppercase">Admin tomonidan ruxsat berilgan (Limit yumshoq)</span>
-          </div>
-        )}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {HARAKAT_TURI_LIST.map((item) => {
-            const active = formData.harakatTuri === item.value;
-            return (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => handleInputChange("harakatTuri", item.value)}
-                className={`group relative p-4 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300 border-2 overflow-hidden ${
-                  active
-                    ? "bg-gradient-to-br from-primary to-primary/80 border-primary text-white shadow-xl shadow-primary/30 scale-105"
-                    : "bg-background/80 backdrop-blur-sm border-primary/15 hover:border-primary/50 hover:bg-primary/5 hover:scale-[1.03] hover:shadow-md"
-                }`}
-              >
-                <span
-                  className={`flex items-center justify-center w-10 h-10 rounded-xl text-xl font-black transition-all ${
+      <div className="bg-white/85 dark:bg-white/[0.06] backdrop-blur-md rounded-3xl border border-black/5 dark:border-white/10 shadow-xl overflow-hidden">
+        <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-indigo-500/10 to-transparent">
+          <span className="grid place-items-center h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-sm font-black shadow-md shadow-indigo-500/30">
+            1
+          </span>
+          <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-wide uppercase">
+            Harakat turi
+          </h3>
+        </div>
+        <div className="p-5 sm:p-6">
+          {hasApproval && (
+            <div className="mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center gap-3 text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span className="text-xs font-black uppercase">Admin tomonidan ruxsat berilgan (Limit yumshoq)</span>
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
+            {HARAKAT_TURI_LIST.map((item) => {
+              const active = formData.harakatTuri === item.value;
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => handleInputChange("harakatTuri", item.value)}
+                  className={`group relative p-3.5 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all duration-300 border overflow-hidden ${
                     active
-                      ? "bg-white/20 text-white"
-                      : "bg-primary/10 text-primary group-hover:bg-primary/20"
+                      ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-blue-700 border-white/20 text-white shadow-xl shadow-indigo-500/30 scale-[1.03]"
+                      : "bg-white dark:bg-white/[0.04] border-black/5 dark:border-white/10 hover:border-indigo-400/60 hover:bg-indigo-500/5 hover:scale-[1.02] hover:shadow-md"
                   }`}
                 >
-                  {item.number}
-                </span>
-                <span className={`text-xs font-bold uppercase tracking-wide ${active ? "text-white" : "text-foreground/80"}`}>
-                  {item.label}
-                </span>
-                {active && (
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white animate-pulse" />
-                )}
-              </button>
-            );
-          })}
+                  <span
+                    className={`flex items-center justify-center w-10 h-10 rounded-xl text-xl font-black transition-all ${
+                      active
+                        ? "bg-white/20 text-white ring-1 ring-white/30"
+                        : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 group-hover:bg-indigo-500/20"
+                    }`}
+                  >
+                    {item.number}
+                  </span>
+                  <span className={`text-xs font-bold uppercase tracking-wide ${active ? "text-white drop-shadow-sm" : "text-slate-700 dark:text-slate-200"}`}>
+                    {item.label}
+                  </span>
+                  {active && (
+                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {formData.harakatTuri && (
         <>
           {/* Rusumi */}
-          <div className="bg-background/70 backdrop-blur-md p-6 rounded-3xl border-2 border-primary/15 shadow-xl animate-in slide-in-from-top-4 duration-300">
-            <label className="block text-sm font-black text-primary mb-4 tracking-widest uppercase">
-              2. RUSUMI
-            </label>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
-              {filteredRusumlar.map((item) => {
-                const active = formData.rusumi === item.value;
+          <div className="bg-white/85 dark:bg-white/[0.06] backdrop-blur-md rounded-3xl border border-black/5 dark:border-white/10 shadow-xl overflow-hidden animate-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-indigo-500/10 to-transparent">
+              <span className="grid place-items-center h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-sm font-black shadow-md shadow-indigo-500/30">
+                2
+              </span>
+              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-wide uppercase">
+                Rusumi
+              </h3>
+            </div>
+            <div className="p-5 sm:p-6">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2 sm:gap-2.5">
+                {filteredRusumlar.map((item) => {
+                  const active = formData.rusumi === item.value;
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => handleInputChange("rusumi", item.value)}
+                      className={`px-2 py-3 rounded-xl text-center transition-all duration-200 border ${
+                        active
+                          ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-blue-700 border-white/20 text-white shadow-lg shadow-indigo-500/25 scale-[1.04]"
+                          : "bg-white dark:bg-white/[0.04] border-black/5 dark:border-white/10 hover:border-indigo-400/60 hover:bg-indigo-500/5 hover:scale-[1.03]"
+                      }`}
+                    >
+                      <span className={`text-xs font-bold ${active ? "text-white drop-shadow-sm" : "text-slate-700 dark:text-slate-200"}`}>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Dynamic Fields — yagona bo'lim ichida guruhlangan */}
+          <div className="w-full bg-white/90 dark:bg-white/[0.06] backdrop-blur-md rounded-3xl border border-black/5 dark:border-white/10 shadow-xl overflow-hidden animate-in slide-in-from-top-8 duration-500">
+            <div className="flex items-center gap-3 px-4 sm:px-5 py-3 border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-emerald-500/10 to-transparent">
+              <span className="grid place-items-center h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 text-white text-sm font-black shadow-md shadow-emerald-500/30">
+                3
+              </span>
+              <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-wide uppercase">
+                Ma&apos;lumotlar
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleFields.map((field, idx) => {
+                const n = idx + 3;
+                let label = "";
+                let placeholder = "";
+                let type = "text";
+                let listId = "";
+
+                switch (field) {
+                  case "lokomotivNumber": label = "Lokomotiv raqami"; placeholder = "1141"; break;
+                  case "poyezdNumber": label = "Poyezd raqami"; placeholder = "3606"; break;
+                  case "ruxsatIndeksi": label = "Ruxsat indeksi"; placeholder = "3001-T"; break;
+                  case "poyezdVazni": label = "Poyezd vazni, tonna"; placeholder = "5000"; type = "number"; break;
+                  case "qoldiq": label = "Qoldiq, kg"; placeholder = "0"; type = "number"; break;
+                  case "qanchaBerildi": label = "Qancha berildi, kg"; placeholder = "0"; type = "number"; break;
+                  case "dizMasla": label = "Dizel masla, kg"; placeholder = "0"; type = "number"; break;
+                  case "stansiya": label = "Stansiya"; placeholder = "Tanlang yoki yozing"; listId = "stansiyalar"; break;
+                  case "tashkilot": label = "Tashkilot"; placeholder = "Tanlang yoki yozing"; listId = "tashkilotlar"; break;
+                  case "ijarachi": label = "Ijarachi"; placeholder = "Tanlang yoki yozing"; listId = "ijarachilar"; break;
+                }
+
+                const filled = !!formData[field as keyof typeof formData];
+
                 return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => handleInputChange("rusumi", item.value)}
-                    className={`p-3 rounded-xl text-center transition-all duration-200 border-2 ${
-                      active
-                        ? "bg-gradient-to-br from-primary to-primary/80 border-primary text-white shadow-lg shadow-primary/20 scale-105"
-                        : "bg-background/80 backdrop-blur-sm border-primary/15 hover:border-primary/50 hover:bg-primary/5 hover:scale-[1.03]"
-                    }`}
-                  >
-                    <span className={`text-xs font-bold ${active ? "text-white" : "text-foreground/80"}`}>{item.label}</span>
-                  </button>
+                  <div key={field} className="flex min-w-0 flex-col">
+                    <label className="mb-1.5 flex items-center gap-2 text-[12px] font-black text-slate-700 dark:text-slate-300 tracking-wide uppercase">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-indigo-600 text-[11px] text-white shadow-sm shadow-indigo-500/20">
+                        {n}
+                      </span>
+                      <span className="truncate">{label}</span>
+                    </label>
+                    <input
+                      type={type}
+                      value={formData[field as keyof typeof formData] as string}
+                      onChange={(e) => handleInputChange(field, e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={placeholder}
+                      list={listId}
+                      className={`h-12 w-full rounded-xl border bg-white px-3.5 py-3 text-base font-black text-slate-900 transition-all placeholder:text-slate-400 placeholder:font-bold focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:bg-white/[0.04] dark:text-slate-100 ${
+                        filled
+                          ? "border-emerald-500/60 bg-emerald-50/60 dark:bg-emerald-500/10"
+                          : "border-black/10 dark:border-white/10 hover:border-indigo-400/40"
+                      }`}
+                    />
+                    {listId && (
+                      <datalist id={listId}>
+                        {options[listId as keyof typeof options].map((opt) => (
+                          <option key={opt} value={opt} />
+                        ))}
+                      </datalist>
+                    )}
+                  </div>
                 );
               })}
-            </div>
-          </div>
 
-          {/* Dynamic Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-8 duration-500">
-            {visibleFields.map((field, idx) => {
-              const n = idx + 3;
-              let label = "";
-              let placeholder = "";
-              let type = "text";
-              let listId = "";
-
-              switch (field) {
-                case "lokomotivNumber": label = `${n}. LOKOMOTIV №`; placeholder = "Masalan: 1141"; break;
-                case "poyezdNumber": label = `${n}. POYEZD №`; placeholder = "Masalan: 3606"; break;
-                case "ruxsatIndeksi": label = `${n}. RUXSAT INDEKSI`; placeholder = "Masalan: 3001-T"; break;
-                case "poyezdVazni": label = `${n}. POYEZD VAZNI (tonna)`; placeholder = "Masalan: 5000"; type = "number"; break;
-                case "qoldiq": label = `${n}. QOLDIQ (kg)`; placeholder = "0"; type = "number"; break;
-                case "qanchaBerildi": label = `${n}. QANCHA BERILDI (kg)`; placeholder = "0"; type = "number"; break;
-                case "dizMasla": label = `${n}. DIZ. MASLA (kg)`; placeholder = "0"; type = "number"; break;
-                case "stansiya": label = `${n}. STANSIYA`; placeholder = "Tanlang yoki yozing"; listId = "stansiyalar"; break;
-                case "tashkilot": label = `${n}. TASHKILOT`; placeholder = "Tanlang yoki yozing"; listId = "tashkilotlar"; break;
-                case "ijarachi": label = `${n}. IJARACHI`; placeholder = "Tanlang yoki yozing"; listId = "ijarachilar"; break;
-              }
-
-              return (
-                <div key={field} className="bg-background/70 backdrop-blur-md p-6 rounded-3xl border-2 border-primary/15 shadow-xl hover:border-primary/30 transition-colors">
-                  <label className="block text-sm font-black text-primary mb-3 tracking-widest uppercase">
-                    {label}
-                  </label>
-                  <input
-                    type={type}
-                    value={formData[field as keyof typeof formData] as string}
-                    onChange={(e) => handleInputChange(field, e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={placeholder}
-                    list={listId}
-                    className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-lg text-foreground transition-all"
-                  />
-                  {listId && (
-                    <datalist id={listId}>
-                      {options[listId as keyof typeof options].map((opt) => (
-                        <option key={opt} value={opt} />
-                      ))}
-                    </datalist>
-                  )}
+              {/* Mashinada yetkazildimi */}
+              <div className="rounded-2xl border border-black/5 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.03] sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                <label className="mb-3 flex items-center gap-2 text-[12px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-300">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-indigo-600 text-[11px] text-white">
+                    {visibleFields.length + 3}
+                  </span>
+                  <span>Mashinada yetkazildimi?</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
+                  <button
+                    type="button"
+                    aria-pressed={formData.mashinadaYetkazildi}
+                    onClick={() => handleInputChange("mashinadaYetkazildi", true)}
+                    className={`py-3.5 rounded-xl font-black text-base tracking-wider transition-all border ${
+                      formData.mashinadaYetkazildi
+                        ? "bg-gradient-to-br from-indigo-500 to-blue-600 border-white/20 text-white shadow-lg shadow-indigo-500/30 scale-[1.02]"
+                        : "bg-white dark:bg-white/[0.04] border-black/10 dark:border-white/10 hover:border-indigo-400/50 text-slate-600 dark:text-slate-300 hover:bg-indigo-500/5"
+                    }`}
+                  >
+                    HA
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={!formData.mashinadaYetkazildi}
+                    onClick={() => handleInputChange("mashinadaYetkazildi", false)}
+                    className={`py-3.5 rounded-xl font-black text-base tracking-wider transition-all border ${
+                      !formData.mashinadaYetkazildi
+                        ? "bg-gradient-to-br from-rose-500 to-red-600 border-white/20 text-white shadow-lg shadow-red-500/30 scale-[1.02]"
+                        : "bg-white dark:bg-white/[0.04] border-black/10 dark:border-white/10 hover:border-red-400/50 text-slate-600 dark:text-slate-300 hover:bg-red-500/5"
+                    }`}
+                  >
+                    YO&apos;Q
+                  </button>
                 </div>
-              );
-            })}
-
-            {/* Mashinada yetkazildimi */}
-            <div className="bg-background/70 backdrop-blur-md p-6 rounded-3xl border-2 border-primary/15 shadow-xl">
-              <label className="block text-sm font-black text-primary mb-4 tracking-widest uppercase">
-                {visibleFields.length + 3}. MASHINADA YETKAZILDIMI?
-              </label>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <button
-                  type="button"
-                  onClick={() => handleInputChange("mashinadaYetkazildi", true)}
-                  className={`py-3.5 rounded-xl font-black text-base tracking-wider transition-all border-2 ${
-                    formData.mashinadaYetkazildi
-                      ? "bg-gradient-to-br from-primary to-primary/80 border-primary text-white shadow-lg shadow-primary/30 scale-[1.02]"
-                      : "bg-background border-primary/20 hover:border-primary/40 text-foreground/80 hover:bg-primary/5"
-                  }`}
-                >
-                  HA
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInputChange("mashinadaYetkazildi", false)}
-                  className={`py-3.5 rounded-xl font-black text-base tracking-wider transition-all border-2 ${
-                    !formData.mashinadaYetkazildi
-                      ? "bg-gradient-to-br from-danger to-danger/80 border-danger text-white shadow-lg shadow-danger/30 scale-[1.02]"
-                      : "bg-background border-primary/20 hover:border-primary/40 text-foreground/80 hover:bg-primary/5"
-                  }`}
-                >
-                  YO'Q
-                </button>
+                {formData.mashinadaYetkazildi && (
+                  <input
+                    type="text"
+                    value={formData.mashinaRaqami}
+                    onChange={(e) => handleInputChange("mashinaRaqami", e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="MASHINA RAQAMI"
+                    className="mt-3 w-full h-[52px] px-4 py-3.5 bg-white dark:bg-white/[0.04] border border-black/10 dark:border-white/10 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 focus:outline-none font-bold text-base text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-all animate-in zoom-in-95 duration-200"
+                  />
+                )}
               </div>
-              {formData.mashinadaYetkazildi && (
-                <input
-                  type="text"
-                  value={formData.mashinaRaqami}
-                  onChange={(e) => handleInputChange("mashinaRaqami", e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="MASHINA RAQAMI"
-                  className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-lg text-foreground transition-all animate-in zoom-in-95 duration-200"
-                />
-              )}
             </div>
           </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-danger/10 border border-danger/20 p-4 rounded-2xl flex items-center gap-3 text-danger font-bold animate-in shake duration-300">
-              <AlertCircle className="w-5 h-5" />
-              {error}
-            </div>
-          )}
 
           {/* Success Toast */}
           {success && (
-            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-success text-white px-8 py-4 rounded-2xl font-black shadow-2xl flex items-center gap-3 z-50 animate-in slide-in-from-bottom-10 duration-500">
+            <div className="fixed bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-500 to-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl shadow-emerald-500/40 flex items-center gap-3 z-[60] animate-in slide-in-from-bottom-10 duration-500">
               <CheckCircle2 className="w-6 h-6" />
               SAQLANDI ✓
             </div>
           )}
 
-          {/* Form Actions */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-6 pb-20 sm:pb-0">
-            <button
-              type="button"
-              onClick={handleReset}
-              className="flex-1 py-5 bg-muted rounded-2xl font-black text-lg tracking-wider hover:bg-muted/80 transition-all uppercase"
-            >
-              Tozalash
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-[2] py-5 bg-accent text-white rounded-2xl font-black text-xl tracking-wider hover:opacity-90 transition-all shadow-xl shadow-accent/20 flex items-center justify-center gap-3 uppercase"
-            >
-              {loading ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
-              ) : (
-                "Saqlash"
-              )}
-            </button>
+          {/* Form Actions — sticky pastki panel */}
+          <div className="sticky bottom-0 z-20 -mx-3 sm:mx-0 px-3 sm:px-0 pt-4 pb-3 sm:pb-0 bg-gradient-to-t from-background via-background/95 to-transparent">
+            <div className="flex flex-col sm:flex-row gap-3 rounded-2xl sm:rounded-none">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="flex-1 py-4 bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-200 border border-black/5 dark:border-white/10 rounded-2xl font-black text-base tracking-wider hover:bg-slate-200 dark:hover:bg-white/10 transition-all uppercase"
+              >
+                Tozalash
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-[2] py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-orange-600 text-white rounded-2xl font-black text-lg tracking-wider hover:brightness-105 active:scale-[0.99] transition-all shadow-xl shadow-orange-500/30 flex items-center justify-center gap-3 uppercase disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  "Saqlash"
+                )}
+              </button>
+            </div>
           </div>
         </>
       )}

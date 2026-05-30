@@ -1,45 +1,37 @@
 "use client";
 
-import { Truck, Building2, HardHat, Wrench } from "lucide-react";
+import { Truck, Building2, HardHat, Wrench, Check } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 
 const SECTIONS = [
   {
     key: "lokomotiv",
-    label: "LOKOMOTIV",
+    label: "ЛОКОМОТИВ",
     icon: Truck,
-    color: "bg-primary",
-    shadow: "shadow-primary/30",
-    iconText: "text-primary",
-    iconSurface: "bg-indigo-500/18 border-indigo-400/35",
+    card: "bg-blue-700 border-blue-800 shadow-blue-900/20",
+    iconBox: "bg-white/18 text-white ring-white/25",
   },
   {
     key: "korxona",
-    label: "KORXONA",
+    label: "КОРХОНА",
     icon: Building2,
-    color: "bg-accent",
-    shadow: "shadow-accent/30",
-    iconText: "text-accent",
-    iconSurface: "bg-amber-500/18 border-amber-400/35",
+    card: "bg-orange-600 border-orange-700 shadow-orange-900/20",
+    iconBox: "bg-white/18 text-white ring-white/25",
   },
   {
     key: "qurulish",
-    label: "QURULISH",
+    label: "КУРИЛИШ",
     icon: HardHat,
-    color: "bg-danger",
-    shadow: "shadow-danger/30",
-    iconText: "text-danger",
-    iconSurface: "bg-red-500/18 border-red-400/35",
+    card: "bg-red-500 border-red-700 shadow-red-900/20",
+    iconBox: "bg-white/18 text-white ring-white/25",
   },
   {
     key: "tamirlash",
-    label: "TA'MIRLASH",
+    label: "ТАЪМИРЛАШ",
     icon: Wrench,
-    color: "bg-success",
-    shadow: "shadow-success/30",
-    iconText: "text-success",
-    iconSurface: "bg-green-500/18 border-green-400/35",
+    card: "bg-emerald-600 border-emerald-700 shadow-emerald-900/20",
+    iconBox: "bg-white/18 text-white ring-white/25",
   },
 ] as const;
 
@@ -52,7 +44,11 @@ export default function SectionTabs() {
   const currentSection = segments[segments.length - 1];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 my-6">
+    <div
+      className="mx-auto my-5 grid w-full max-w-[1780px] grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4"
+      role="tablist"
+      aria-label="Bo'limlar"
+    >
       {SECTIONS.map((section) => {
         const Icon = section.icon;
         const isActive = currentSection === section.key;
@@ -60,34 +56,34 @@ export default function SectionTabs() {
           <Link
             key={section.key}
             href={`/zapravka/${stationId}/${section.key}`}
-            className={`group relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl min-h-[76px] overflow-hidden transition-all duration-300 border-2 ${
-              isActive
-                ? `${section.color} text-white border-transparent shadow-xl ${section.shadow} scale-[1.03]`
-                : "bg-background/80 backdrop-blur-md border-primary/15 hover:border-primary/40 hover:bg-primary/10 hover:scale-[1.02] hover:shadow-lg text-foreground"
+            role="tab"
+            aria-selected={isActive}
+            aria-label={section.label}
+            className={`section-tab-card relative flex min-h-[74px] flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border px-2.5 py-3 text-white shadow-lg transition-none sm:min-h-[78px] ${section.card} ${
+              isActive ? "ring-2 ring-white/70 ring-offset-2 ring-offset-background" : ""
             }`}
           >
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all duration-300 ${
-                isActive
-                  ? "bg-white/20 border-white/30 backdrop-blur-sm"
-                  : `${section.iconSurface} group-hover:bg-background group-hover:border-primary/45`
-              }`}
-            >
-              <Icon
-                className={`w-5 h-5 stroke-[2.8] transition-transform duration-300 group-hover:scale-110 ${
-                  isActive ? "text-white" : section.iconText
-                }`}
-              />
-            </div>
+            {isActive && (
+              <span
+                className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white text-slate-900 shadow-md ring-1 ring-white/70"
+                aria-hidden
+              >
+                <Check className="h-4 w-4 stroke-[3]" />
+              </span>
+            )}
+
             <span
-              className={`text-[11px] font-black tracking-wide uppercase ${
-                isActive ? "text-white" : "text-foreground"
-              }`}
+              className={`relative flex h-9 w-9 items-center justify-center rounded-xl ring-1 sm:h-10 sm:w-10 ${section.iconBox}`}
             >
+              <Icon className="h-5 w-5 stroke-[2.9] text-white" />
+            </span>
+
+            <span className="relative text-center text-[11px] font-black uppercase leading-none tracking-wide text-white sm:text-xs">
               {section.label}
             </span>
+
             {isActive && (
-              <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-white/60" />
+              <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 h-1 w-9 rounded-full bg-white/70" />
             )}
           </Link>
         );
