@@ -44,6 +44,8 @@ function exportKorxonaPdf(rows: KorxonaSubmission[]) {
   const head = [[
     "Vaqt",
     "Korxona nomi",
+    "Poyezd raqami",
+    "Index",
     "Qancha (kg)",
     "Necha sutkalik",
     "Limit (kg)",
@@ -58,6 +60,8 @@ function exportKorxonaPdf(rows: KorxonaSubmission[]) {
     return [
       formatTimestamp(sub.timestamp),
       sub.korxonaNomi,
+      sub.poyezdNumber ?? "—",
+      sub.ruxsatIndeksi ?? "—",
       String(sub.qancha),
       String(sub.nechaSutkalik),
       sub.limit ? String(sub.limit) : "—",
@@ -76,12 +80,14 @@ function exportKorxonaPdf(rows: KorxonaSubmission[]) {
     alternateRowStyles: { fillColor: [245, 252, 245] },
     columnStyles: {
       0: { cellWidth: 20 },
-      1: { cellWidth: 72 },
-      2: { cellWidth: 32, halign: "right" as const },
-      3: { cellWidth: 32 },
+      1: { cellWidth: 50 },
+      2: { cellWidth: 24 },
+      3: { cellWidth: 24 },
       4: { cellWidth: 30, halign: "right" as const },
-      5: { cellWidth: 38 },
-      6: { cellWidth: 52 },
+      5: { cellWidth: 24 },
+      6: { cellWidth: 22, halign: "right" as const },
+      7: { cellWidth: 28 },
+      8: { cellWidth: 40 },
     },
   });
 
@@ -155,17 +161,21 @@ export default function KorxonaRecentTable({ stationId }: KorxonaRecentTableProp
         <div className="hidden md:block bg-background/70 backdrop-blur-md rounded-3xl border-2 border-primary/15 overflow-hidden shadow-lg">
           <table className="w-full table-fixed text-left">
             <colgroup>
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "34%" }} />
-              <col style={{ width: "14%" }} />
               <col style={{ width: "10%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "12%" }} />
+              <col style={{ width: "24%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "11%" }} />
             </colgroup>
             <thead className="bg-primary/5 text-[10px] font-black uppercase tracking-widest text-primary">
               <tr>
                 <th className="px-4 py-3">Vaqt</th>
                 <th className="px-4 py-3">Korxona</th>
+                <th className="px-4 py-3">Poyezd</th>
+                <th className="px-4 py-3">Index</th>
                 <th className="px-4 py-3">Qancha</th>
                 <th className="px-4 py-3">Sutka</th>
                 <th className="px-4 py-3 text-center">Mashina</th>
@@ -177,6 +187,8 @@ export default function KorxonaRecentTable({ stationId }: KorxonaRecentTableProp
                 <tr key={sub.id} className={sub.isOverLimit ? "text-danger" : ""}>
                   <td className="px-4 py-3 font-bold text-sm truncate">{formatTimestamp(sub.timestamp)}</td>
                   <td className="px-4 py-3 font-black truncate">{sub.korxonaNomi}</td>
+                  <td className="px-4 py-3 font-bold truncate">{sub.poyezdNumber ?? "—"}</td>
+                  <td className="px-4 py-3 font-bold truncate">{sub.ruxsatIndeksi ?? "—"}</td>
                   <td className="px-4 py-3 font-black tabular-nums whitespace-nowrap">{sub.qancha} kg</td>
                   <td className="px-4 py-3 text-center whitespace-nowrap">{sub.nechaSutkalik}</td>
                   <td className="px-4 py-3 text-center text-sm">
@@ -213,6 +225,8 @@ export default function KorxonaRecentTable({ stationId }: KorxonaRecentTableProp
               </div>
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div><p className="text-[9px] font-black uppercase opacity-60">Qancha</p><p className="font-bold">{sub.qancha} kg</p></div>
+                <div><p className="text-[9px] font-black uppercase opacity-60">Poyezd</p><p className="font-bold">{sub.poyezdNumber ?? "—"}</p></div>
+                <div><p className="text-[9px] font-black uppercase opacity-60">Index</p><p className="font-bold">{sub.ruxsatIndeksi ?? "—"}</p></div>
                 <div><p className="text-[9px] font-black uppercase opacity-60">Sutka</p><p className="font-bold">{sub.nechaSutkalik}</p></div>
                 <div><p className="text-[9px] font-black uppercase opacity-60">Mashina</p>
                   <p className="font-bold text-xs">

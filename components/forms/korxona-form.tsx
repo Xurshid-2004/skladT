@@ -16,6 +16,13 @@ interface KorxonaFormProps {
   onSaved?: () => void;
 }
 
+function parseDecimalInput(value: string): number {
+  const normalized = value.trim().replace(/\s+/g, "").replace(",", ".");
+  if (!normalized || normalized === "." || normalized === ",") return NaN;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
 export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -25,6 +32,8 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
 
   const [formData, setFormData] = useState({
     korxonaNomi: "",
+    poyezdNumber: "",
+    ruxsatIndeksi: "",
     qancha: "",
     nechaSutkalik: "1",
     buyruqNumber: "",
@@ -33,6 +42,9 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
     mashinadaYetkazildi: false,
     mashinaRaqami: "",
   });
+
+  const qanchaAmount = useMemo(() => parseDecimalInput(formData.qancha), [formData.qancha]);
+  const qanchaForLimit = Number.isFinite(qanchaAmount) ? qanchaAmount : 0;
 
   useEffect(() => {
     const unsubscribeLimits = subscribeToLimits(setLimits);
@@ -46,7 +58,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
   const limitInfo = useMemo(() => {
     const info = checkKorxonaLimit(
       formData.korxonaNomi,
-      Number(formData.qancha),
+      qanchaForLimit,
       Number(formData.nechaSutkalik),
       limits
     );
@@ -63,20 +75,20 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
     }
 
     return info;
-  }, [formData.korxonaNomi, formData.qancha, formData.nechaSutkalik, limits, approvals]);
+  }, [formData.korxonaNomi, qanchaForLimit, formData.nechaSutkalik, limits, approvals]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const isSaveDisabled = useMemo(() => {
-    if (!formData.korxonaNomi || !formData.qancha || !formData.nechaSutkalik) return true;
+    if (!formData.korxonaNomi || !formData.qancha || !Number.isFinite(qanchaAmount) || !formData.nechaSutkalik) return true;
     if (limitInfo.isOverLimit) {
       if (!formData.buyruqNumber || !formData.kimTomonidan || !formData.buyruqVaqti) return true;
     }
     if (formData.mashinadaYetkazildi && !formData.mashinaRaqami) return true;
     return false;
-  }, [formData, limitInfo.isOverLimit]);
+  }, [formData, qanchaAmount, limitInfo.isOverLimit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +102,12 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
       return;
     }
 
+    if (!Number.isFinite(qanchaAmount)) {
+      setError("Qancha (kg) maydoniga to'g'ri son kiriting. Masalan: 12,5");
+      setLoading(false);
+      return;
+    }
+
     try {
       const submissionData = {
         staffCode: session.code,
@@ -98,7 +116,9 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
         stationId: stationId,
         category: 'korxona',
         korxonaNomi: formData.korxonaNomi,
-        qancha: Number(formData.qancha),
+        poyezdNumber: formData.poyezdNumber.trim() || undefined,
+        ruxsatIndeksi: formData.ruxsatIndeksi.trim() || undefined,
+        qancha: qanchaAmount,
         nechaSutkalik: Number(formData.nechaSutkalik),
         buyruqNumber: limitInfo.isOverLimit ? formData.buyruqNumber : undefined,
         kimTomonidan: limitInfo.isOverLimit ? formData.kimTomonidan : undefined,
@@ -113,15 +133,13 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
       if (navigator.onLine) {
         await addSubmission('korxona', submissionData);
         try {
-          let ti = submissionData.korxonaNomi || "";
-          if (submissionData.mashinadaYetkazildi && submissionData.mashinaRaqami)
-            ti = ti ? `${ti} · M:${submissionData.mashinaRaqami}` : `M:${submissionData.mashinaRaqami}`;
           await appendFuelRecordForErjuJu("korxona", {
             stationId,
             staffCode: session.code,
             staffName: session.displayName,
+            locoNumber: submissionData.poyezdNumber,
             fuelAmountKg: submissionData.qancha,
-            trainIndex: ti,
+            trainIndex: submissionData.ruxsatIndeksi,
           });
         } catch (fe) {
           console.warn("fuelRecords (korxona) yozilmadi:", fe);
@@ -132,7 +150,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
             'korxona',
             session.displayName,
             stationId,
-            Number(formData.qancha),
+            qanchaAmount,
             limitInfo.limit || 0
           );
         }
@@ -177,6 +195,8 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
   const handleReset = () => {
     setFormData({
       korxonaNomi: "",
+      poyezdNumber: "",
+      ruxsatIndeksi: "",
       qancha: "",
       nechaSutkalik: "1",
       buyruqNumber: "",
@@ -201,11 +221,11 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
           Korxona uchun yoqilg'i berish
         </h2>
 
-        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:grid-cols-[minmax(15rem,1.6fr)_minmax(8rem,0.7fr)_minmax(8rem,0.7fr)_minmax(12rem,0.9fr)]">
-          {/* Korxona Nomi */}
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:grid-cols-[minmax(15rem,1.35fr)_minmax(9rem,0.72fr)_minmax(9rem,0.72fr)_minmax(8rem,0.62fr)_minmax(8rem,0.62fr)_minmax(12rem,0.9fr)]">
+          {/* Korxona nomi va yo'nalish */}
           <div className="space-y-1 md:col-span-2 lg:col-span-1">
             <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
-              1. Korxona Nomi
+              1. Korxona nomi va yo&apos;nalish
             </label>
             <input
               type="text"
@@ -221,25 +241,57 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
             </datalist>
           </div>
 
+          {/* Poyezd raqami */}
+          <div className="space-y-1">
+            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+              2. Poyezd raqami
+            </label>
+            <input
+              type="text"
+              value={formData.poyezdNumber}
+              onChange={(e) => handleInputChange("poyezdNumber", e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
+              placeholder="3606"
+            />
+          </div>
+
+          {/* Index */}
+          <div className="space-y-1">
+            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+              3. Index
+            </label>
+            <input
+              type="text"
+              value={formData.ruxsatIndeksi}
+              onChange={(e) => handleInputChange("ruxsatIndeksi", e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
+              placeholder="Index"
+            />
+          </div>
+
           {/* Qancha */}
           <div className="space-y-1">
             <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
-              2. Qancha (kg)
+              4. Qancha (kg)
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*[.,]?[0-9]*"
               value={formData.qancha}
-              onChange={(e) => handleInputChange("qancha", e.target.value)}
+              onChange={(e) => handleInputChange("qancha", e.target.value.replace(/[^0-9.,]/g, ""))}
               onKeyDown={handleKeyDown}
               className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
-              placeholder="0"
+              placeholder="0 yoki 12,5"
             />
           </div>
 
           {/* Necha Sutkalik */}
           <div className="space-y-1">
             <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
-              3. Necha Sutkalik
+              5. Necha Sutkalik
             </label>
             <input
               type="text"

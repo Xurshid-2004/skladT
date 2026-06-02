@@ -12,6 +12,7 @@ import { Submission, LokomotivSubmission, Category } from "@/lib/types";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 import { downloadErjuYpdf } from "@/lib/pdf/erju-malumotnoma-html";
 import type { FuelRecord } from "@/lib/pdf/erju-html-pdf";
+import { pdfText } from "@/lib/utils/pdf-text";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -62,6 +63,7 @@ const HARAKAT_LABEL: Record<string, string> = {
   yolovchi: "Yo'lovchi",
   xojalik:  "Xo'jalik",
   ijara:    "Ijara",
+  arenda:   "Ijara",
 };
 
 const PAGE_SIZE = 20;
@@ -96,6 +98,36 @@ function getAmount(s: any): number {
   return Number(s.qanchaBerildi ?? s.qancha ?? s.qanchaOlindi ?? 0);
 }
 
+function cellVal(raw: unknown, fallback = "—"): string {
+  if (raw == null || String(raw) === "") return fallback;
+  return String(raw);
+}
+
+function rowCreatedMs(row: any): number {
+  const ts = row?.timestamp ?? row?.createdAt;
+  if (typeof ts?.toMillis === "function") return ts.toMillis();
+  if (typeof ts?.toDate === "function") return ts.toDate().getTime();
+  if (ts instanceof Date) return ts.getTime();
+
+  const numeric = Number(ts);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+
+  const date = String(row?.dateISO ?? row?.date ?? "").trim();
+  const time = String(row?.time ?? "").trim();
+  const parsed = date && time ? Date.parse(`${date}T${time.length === 5 ? `${time}:00` : time}`) : NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sortRowsOldestFirst<T>(rows: T[]): T[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const diff = rowCreatedMs(a.row) - rowCreatedMs(b.row);
+      return diff || a.index - b.index;
+    })
+    .map(({ row }) => row);
+}
+
 function buildPdfTitle(d: Date): string {
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} sutkasi mobaynida tarqatilgan dizel yoqilg'isi tarqatilishi haqida ma'lumot`;
 }
@@ -107,17 +139,18 @@ function buildErjuTitle(d: Date): string {
 // ── PDF export ─────────────────────────────────────────────────────────────────
 
 function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: Map<string, string>) {
+  const sortedRows = sortRowsOldestFirst(rows);
   const doc = new jsPDF("landscape", "mm", "a4");
   const W   = doc.internal.pageSize.width;
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  const lines = doc.splitTextToSize(titleLine, W - 28);
+  const lines = doc.splitTextToSize(pdfText(titleLine), W - 28);
   let y = 10;
   lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
   doc.setFont("helvetica", "normal");
 
   const groups = new Map<string, any[]>();
-  for (const row of rows) {
+  for (const row of sortedRows) {
     const sid = row.stationId ?? "other";
     if (!groups.has(sid)) groups.set(sid, []);
     groups.get(sid)!.push(row);
@@ -157,23 +190,26 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
     const headerLabel = staffNames.length > 0 ? `${nm}  —  ${staffNames.join(", ")}` : nm;
 
     body.push([
-      { content: headerLabel, colSpan: 5, styles: { halign:"left" as const, fontStyle:"bold" as const, fontSize:8, fillColor:hBg, textColor:hFg, cellPadding:hp } },
+      { content: pdfText(headerLabel), colSpan: 5, styles: { halign:"left" as const, fontStyle:"bold" as const, fontSize:8, fillColor:hBg, textColor:hFg, cellPadding:hp } },
       { content: `jami: ${tot.toLocaleString("uz-UZ")} kg`, colSpan: 5, styles: { halign:"right" as const, fontStyle:"italic" as const, fontSize:7, fillColor:hBg, textColor:hFg, cellPadding:hp } },
     ]);
     for (const s of stRows) {
       const amount = getAmount(s);
       const qoldiq = Number(s.qoldiq ?? 0);
       const hisob  = qoldiq + amount;
-      const pn = String(s.poyezdNumber ?? "—");
-      const indexVal = s.harakatTuri === "manyovr"
+      const pn = s.harakatTuri === "manyovr"
         ? String(s.stansiya ?? "—")
-        : String(s.ruxsatIndeksi ?? "—");
+        : s.harakatTuri === "xojalik"
+          ? String(s.tashkilot ?? "—")
+          : String(s.poyezdNumber ?? "—");
+      const indexVal = String(s.ruxsatIndeksi ?? "—");
       body.push([
         fmtTime(s.timestamp),
-        String(s.rusumi ?? s.seriya ?? "—"),
-        String(s.lokomotivNumber ?? s.raqami ?? "—"),
-        String(HARAKAT_LABEL[s.harakatTuri] ?? s.harakatTuri ?? s.tamirlashTuri ?? s.category ?? "—"),
-        pn, indexVal,
+        pdfText(s.rusumi ?? s.seriya),
+        pdfText(s.lokomotivNumber ?? s.raqami),
+        pdfText(HARAKAT_LABEL[s.harakatTuri] ?? s.harakatTuri ?? s.tamirlashTuri ?? s.category),
+        pdfText(pn),
+        pdfText(indexVal),
         s.poyezdVazni != null && String(s.poyezdVazni) !== "" ? String(s.poyezdVazni) : "—",
         qoldiq ? qoldiq.toLocaleString("uz-UZ") : "—",
         amount ? amount.toLocaleString("uz-UZ") : "—",
@@ -196,7 +232,7 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
     },
   });
 
-  const grand = rows.reduce((s:number,r:any)=>s+getAmount(r),0);
+  const grand = sortedRows.reduce((s:number,r:any)=>s+getAmount(r),0);
   const mg=14, fY=(doc as any).lastAutoTable?.finalY??100, pH=doc.internal.pageSize.height;
   let gY=fY+10; if(gY>pH-mg){doc.addPage();gY=mg;}
   doc.setFontSize(8); doc.setFont("helvetica","bold");
@@ -207,6 +243,7 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
 // ── Korxona PDF ────────────────────────────────────────────────────────────────
 
 function exportKorxonaCatPdf(rows: any[]) {
+  const sortedRows = sortRowsOldestFirst(rows);
   const now = new Date();
   const dateStr = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()}`;
   const doc = new jsPDF("landscape", "mm", "a4");
@@ -219,15 +256,17 @@ function exportKorxonaCatPdf(rows: any[]) {
   let y = 10;
   lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
 
-  const head = [["Vaqt", "Korxona nomi", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
+  const head = [["Vaqt", "Korxona nomi", "Poyezd raqami", "Index", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
 
-  const body = rows.map((sub) => {
+  const body = sortedRows.map((sub) => {
     const mashinaStr = sub.mashinadaYetkazildi
       ? (sub.mashinaRaqami ? `Ha · ${sub.mashinaRaqami}` : "Ha")
       : "Yo'q";
     return [
       fmtTime(sub.timestamp),
       sub.korxonaNomi,
+      sub.poyezdNumber ?? "—",
+      sub.ruxsatIndeksi ?? "—",
       String(sub.qancha ?? 0),
       String(sub.nechaSutkalik ?? "—"),
       sub.limit ? String(sub.limit) : "—",
@@ -242,13 +281,13 @@ function exportKorxonaCatPdf(rows: any[]) {
     headStyles: { fillColor: [20, 80, 20], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 8 },
     alternateRowStyles: { fillColor: [245, 252, 245] },
     columnStyles: {
-      0: { cellWidth: 20 }, 1: { cellWidth: 72 },
-      2: { cellWidth: 32, halign: "right" as const }, 3: { cellWidth: 32 },
-      4: { cellWidth: 30, halign: "right" as const }, 5: { cellWidth: 38 }, 6: { cellWidth: 52 },
+      0: { cellWidth: 20 }, 1: { cellWidth: 50 }, 2: { cellWidth: 24 }, 3: { cellWidth: 24 },
+      4: { cellWidth: 30, halign: "right" as const }, 5: { cellWidth: 24 },
+      6: { cellWidth: 22, halign: "right" as const }, 7: { cellWidth: 28 }, 8: { cellWidth: 40 },
     },
   });
 
-  const total = rows.reduce((s, r) => s + Number(r.qancha ?? 0), 0);
+  const total = sortedRows.reduce((s, r) => s + Number(r.qancha ?? 0), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont("helvetica", "bold");
   doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
@@ -258,6 +297,7 @@ function exportKorxonaCatPdf(rows: any[]) {
 // ── Qurulish PDF ───────────────────────────────────────────────────────────────
 
 function exportQurulishCatPdf(rows: any[]) {
+  const sortedRows = sortRowsOldestFirst(rows);
   const now = new Date();
   const dateStr = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()}`;
   const doc = new jsPDF("landscape", "mm", "a4");
@@ -270,42 +310,57 @@ function exportQurulishCatPdf(rows: any[]) {
   let y = 10;
   lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
 
-  const head = [["Vaqt", "Korxona nomi", "Obyekt", "Texnika soni", "Lavozimi", "Qancha (kg)", "Limit (kg)", "Dop limit (kg)", "Holat", "Mashinada", "Mas'ul shaxs"]];
+  const head = [
+    [
+      { content: "Vaqt\n1", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
+      { content: "Teplovozlar bo'yicha ma'lumot", colSpan: 2, styles: { halign: "center" as const } },
+      { content: "Poyezdlar va tashkilotlar bo'yicha ma'lumot", colSpan: 4, styles: { halign: "center" as const } },
+      { content: "Diz.Yoqilg'i berishdan\noldingi bakdagi\nqoldiq\n8", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
+      { content: "Berilgan diz\nyoqilg'i miqdori\n9", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
+      { content: "Umumiy miqdor, kg\n10", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
+    ],
+    [
+      { content: "Seriya\n2", styles: { halign: "center" as const } },
+      { content: "Raqami\n3", styles: { halign: "center" as const } },
+      { content: "Yo'nalish\n4", styles: { halign: "center" as const } },
+      { content: "Poyezd raqami\n5", styles: { halign: "center" as const } },
+      { content: "Indeksi\n6", styles: { halign: "center" as const } },
+      { content: "Poyezd vazni\n7", styles: { halign: "center" as const } },
+    ],
+  ];
 
-  const body = rows.map((sub) => {
-    const mashinaStr = sub.mashinadaYetkazildi
-      ? (sub.mashinaRaqami ? `Ha · ${sub.mashinaRaqami}` : "Ha")
-      : "Yo'q";
+  const body = sortedRows.map((sub) => {
+    const amount = getAmount(sub);
+    const qoldiq = Number(sub.qoldiq ?? 0);
+    const hisob = qoldiq + amount;
     return [
       fmtTime(sub.timestamp),
-      sub.korxonaNomi,
-      sub.obyekt,
-      String(sub.texnikaSoni),
-      sub.lavozim ?? "—",
-      String(sub.qanchaOlindi),
-      sub.limit ? String(sub.limit) : "—",
-      sub.dopLimit != null ? String(sub.dopLimit) : "—",
-      sub.isOverLimit ? `Oshgan (+${sub.oshiqMiqdor ?? 0} kg)` : "Norma",
-      mashinaStr,
-      sub.masulShaxs,
+      cellVal(sub.seriya ?? sub.korxonaNomi),
+      cellVal(sub.raqami),
+      "Qurilish",
+      cellVal(sub.poyezdNumber),
+      cellVal(sub.ruxsatIndeksi),
+      cellVal(sub.poyezdVazni),
+      qoldiq ? qoldiq.toLocaleString("uz-UZ") : "—",
+      amount ? amount.toLocaleString("uz-UZ") : "—",
+      hisob.toLocaleString("uz-UZ"),
     ];
   });
 
   autoTable(doc, {
     head, body, startY: y + 4, theme: "grid",
-    styles: { fontSize: 7, cellPadding: 1.8, valign: "middle", lineColor: [0, 0, 0], lineWidth: 0.2 },
-    headStyles: { fillColor: [180, 80, 20], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7.5 },
-    alternateRowStyles: { fillColor: [252, 248, 244] },
+    styles: { fontSize: 7, cellPadding: 1.15, valign: "middle", lineColor: [0, 0, 0], lineWidth: 0.2 },
+    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold", fontSize: 7, lineColor: [0, 0, 0], lineWidth: 0.3, cellPadding: 1 },
+    alternateRowStyles: { fillColor: [250, 250, 250] },
     columnStyles: {
-      0: { cellWidth: 15 }, 1: { cellWidth: 38 }, 2: { cellWidth: 34 },
-      3: { cellWidth: 18 }, 4: { cellWidth: 24 },
-      5: { cellWidth: 22, halign: "right" as const }, 6: { cellWidth: 20, halign: "right" as const },
-      7: { cellWidth: 22, halign: "right" as const }, 8: { cellWidth: 24 },
-      9: { cellWidth: 22 }, 10: { cellWidth: 34 },
+      0: { cellWidth: 14 }, 1: { cellWidth: 20 }, 2: { cellWidth: 18 },
+      3: { cellWidth: 22 }, 4: { cellWidth: 22 }, 5: { cellWidth: 28 },
+      6: { cellWidth: 20 }, 7: { cellWidth: 26, halign: "right" as const },
+      8: { cellWidth: 22, halign: "right" as const }, 9: { cellWidth: 22, halign: "right" as const },
     },
   });
 
-  const total = rows.reduce((s, r) => s + Number(r.qanchaOlindi ?? 0), 0);
+  const total = sortedRows.reduce((s, r) => s + getAmount(r), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont("helvetica", "bold");
   doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
@@ -321,6 +376,7 @@ const TAMIR_LABEL: Record<string, string> = {
 };
 
 function exportTamirlashCatPdf(rows: any[]) {
+  const sortedRows = sortRowsOldestFirst(rows);
   const now = new Date();
   const dateStr = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()}`;
   const doc = new jsPDF("landscape", "mm", "a4");
@@ -335,7 +391,7 @@ function exportTamirlashCatPdf(rows: any[]) {
 
   const head = [["Vaqt", "Seriya", "Raqami", "Ta'mirlash Turi", "Qancha Berildi (kg)", "Diz Masla (kg)", "Mas'ul shaxs", "Mashinada yetkazildi"]];
 
-  const body = rows.map((sub) => {
+  const body = sortedRows.map((sub) => {
     const mashinaStr = sub.mashinadaYetkazildi
       ? (sub.mashinaRaqami ? `Ha · ${sub.mashinaRaqami}` : "Ha")
       : "Yo'q";
@@ -363,8 +419,8 @@ function exportTamirlashCatPdf(rows: any[]) {
     },
   });
 
-  const totalFuel = rows.reduce((s, r) => s + Number(r.qanchaBerildi ?? 0), 0);
-  const totalMasla = rows.reduce((s, r) => s + Number(r.dizMasla ?? 0), 0);
+  const totalFuel = sortedRows.reduce((s, r) => s + Number(r.qanchaBerildi ?? 0), 0);
+  const totalMasla = sortedRows.reduce((s, r) => s + Number(r.dizMasla ?? 0), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont("helvetica", "bold");
   doc.text(`Jami yoqilg'i: ${totalFuel.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
@@ -573,21 +629,23 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
 
             {/* ── KORXONA ── */}
             {category === "korxona" && (
-              <table className="w-full table-fixed border-collapse">
+              <table className="w-full table-fixed border-collapse" style={{ minWidth: 940 }}>
                 <colgroup>
                   <col style={{ width: "3%" }} />
                   <col style={{ width: "5%" }} />
-                  <col style={{ width: "27%" }} />
-                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "8%" }} />
                   <col style={{ width: "8%" }} />
                   <col style={{ width: "9%" }} />
-                  <col style={{ width: "16%" }} />
-                  <col style={{ width: "19%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "18%" }} />
                   <col style={{ width: "4%" }} />
                 </colgroup>
                 <thead>
                   <tr style={{ background: "#eab308" }}>
-                    {["№","VAQT","KORXONA NOMI","QANCHA","SUTKA","LIMIT","MASHINA","MAS'UL","AMAL"].map((lbl, i) => (
+                    {["№","VAQT","KORXONA NOMI","P.RAQ","INDEX","QANCHA","SUTKA","LIMIT","MASHINA","MAS'UL","AMAL"].map((lbl, i) => (
                       <th key={lbl}
                         className="px-1.5 py-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight leading-tight select-none overflow-hidden"
                         style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
@@ -613,21 +671,23 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                         {td(<span className="text-gray-500 font-bold text-[10px]">{rowNum}</span>,"center")}
                         {td(<span className="text-yellow-400 font-black text-[10px] tabular-nums">{fmtTime(s.timestamp)}</span>,"left",1)}
                         {td(<span className="text-cyan-400 font-black text-[10px] block truncate">{s.korxonaNomi ?? "—"}</span>,"left",2)}
-                        {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,"right",3)}
-                        {td(<span className="text-gray-300 font-bold text-[10px]">{s.nechaSutkalik ?? "—"}</span>,"center",4)}
-                        {td(<span className="text-amber-200 font-bold text-[10px] tabular-nums">{s.limit ? String(s.limit) : "—"}</span>,"right",5)}
-                        {td(renderMashinaCell(s), "center", 6)}
+                        {td(<span className="text-gray-300 font-bold text-[10px] block truncate">{s.poyezdNumber ?? "—"}</span>,"left",3)}
+                        {td(<span className="text-purple-300 font-bold text-[10px] block truncate">{s.ruxsatIndeksi ?? "—"}</span>,"left",4)}
+                        {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,"right",5)}
+                        {td(<span className="text-gray-300 font-bold text-[10px]">{s.nechaSutkalik ?? "—"}</span>,"center",6)}
+                        {td(<span className="text-amber-200 font-bold text-[10px] tabular-nums">{s.limit ? String(s.limit) : "—"}</span>,"right",7)}
+                        {td(renderMashinaCell(s), "center", 8)}
                         {td(
                           <span className="text-emerald-300 font-black text-[10px] block truncate">
                             {staffMap.get(String(s.staffCode ?? "").trim()) ?? s.staffName ?? "—"}
-                          </span>,"left",7
+                          </span>,"left",9
                         )}
                         {td(
                           <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
                             className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
                             style={{ background:"rgba(99,102,241,0.12)" }} aria-label="Tahrirlash">
                             <Pencil className="w-3.5 h-3.5 text-primary" />
-                          </button>,"center",8
+                          </button>,"center",10
                         )}
                       </tr>
                     );
@@ -638,25 +698,24 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
 
             {/* ── QURULISH ── */}
             {category === "qurulish" && (
-              <table className="w-full table-fixed border-collapse" style={{ minWidth: 960 }}>
+              <table className="w-full table-fixed border-collapse" style={{ minWidth: 980 }}>
                 <colgroup>
                   <col style={{ width: "3%" }} />
                   <col style={{ width: "5%" }} />
-                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "9%" }} />
                   <col style={{ width: "10%" }} />
-                  <col style={{ width: "6%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "7%" }} />
-                  <col style={{ width: "7%" }} />
-                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "12%" }} />
                   <col style={{ width: "8%" }} />
                   <col style={{ width: "10%" }} />
-                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "9%" }} />
                   <col style={{ width: "4%" }} />
                 </colgroup>
                 <thead>
                   <tr style={{ background: "#eab308" }}>
-                    {["№","VAQT","KORXONA","OBYEKT","TEXNIKA","LAVOZIM","QANCHA","LIMIT","DOP.LIMIT","HOLAT","MASHINA","MAS'UL","AMAL"].map((lbl, i) => (
+                    {["№","VAQT","SERIYA","RAQAMI","P.RAQ","INDEX","P.VAZNI","QOLDIQ","YOQILG'I","HISOB","HOLAT","AMAL"].map((lbl, i) => (
                       <th key={lbl}
                         className="px-1.5 py-2 text-[8px] font-black uppercase tracking-tight leading-tight select-none whitespace-nowrap"
                         style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
@@ -670,7 +729,14 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                     const s = sub as any;
                     const rowNum = (page-1)*PAGE_SIZE + i + 1;
                     const rowBg = i%2===0 ? "#111c11" : "#0f190f";
-                    const amount = Number(s.qanchaOlindi ?? 0);
+                    const amount = getAmount(s);
+                    const qoldiq = Number(s.qoldiq ?? 0);
+                    const hisob = qoldiq + amount;
+                    const poyezdDisplay = s.harakatTuri === "manyovr"
+                      ? (s.stansiya ?? "—")
+                      : s.harakatTuri === "xojalik"
+                        ? (s.tashkilot ?? "—")
+                        : (s.poyezdNumber ?? "—");
                     const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
                       <td className="px-1.5 py-2 align-middle overflow-hidden"
                         style={{ borderLeft:idx>0?"1px solid rgba(255,255,255,0.07)":undefined, textAlign:align }}>
@@ -681,27 +747,26 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                       <tr key={sub.id} style={{ background:rowBg }} className="hover:brightness-125 transition-all">
                         {td(<span className="text-gray-500 font-bold text-[10px]">{rowNum}</span>,"center")}
                         {td(<span className="text-yellow-400 font-black text-[10px] tabular-nums">{fmtTime(s.timestamp)}</span>,"left",1)}
-                        {td(<span className="text-cyan-400 font-black text-[10px] block truncate" style={{maxWidth:120}}>{s.korxonaNomi ?? "—"}</span>,"left",2)}
-                        {td(<span className="text-white font-bold text-[10px] block truncate" style={{maxWidth:100}}>{s.obyekt ?? "—"}</span>,"left",3)}
-                        {td(<span className="text-gray-300 font-bold text-[10px] tabular-nums">{s.texnikaSoni ?? "—"}</span>,"center",4)}
-                        {td(<span className="text-purple-300 font-bold text-[10px] block truncate" style={{maxWidth:80}}>{s.lavozim ?? "—"}</span>,"left",5)}
-                        {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,"right",6)}
-                        {td(<span className="text-amber-200 font-bold text-[10px] tabular-nums">{s.limit ? String(s.limit) : "—"}</span>,"right",7)}
-                        {td(<span className="text-orange-300 font-bold text-[10px] tabular-nums">{s.dopLimit != null ? String(s.dopLimit) : "—"}</span>,"right",8)}
+                        {td(<span className="text-cyan-400 font-black text-[10px] block truncate">{cellVal(s.seriya ?? s.korxonaNomi)}</span>,"left",2)}
+                        {td(<span className="text-white font-bold text-[10px] block truncate">{cellVal(s.raqami)}</span>,"left",3)}
+                        {td(<span className="text-gray-300 font-bold text-[10px] tabular-nums block truncate">{cellVal(poyezdDisplay)}</span>,"left",4)}
+                        {td(<span className="text-purple-300 font-bold text-[10px] block truncate">{cellVal(s.ruxsatIndeksi)}</span>,"left",5)}
+                        {td(<span className="text-gray-300 font-bold text-[10px] tabular-nums">{cellVal(s.poyezdVazni)}</span>,"right",6)}
+                        {td(<span className="text-amber-200 font-black text-[10px] tabular-nums">{qoldiq ? qoldiq.toLocaleString("uz-UZ") : "—"}</span>,"right",7)}
+                        {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount ? amount.toLocaleString("uz-UZ") : "—"}</span>,"right",8)}
+                        {td(<span className="text-cyan-200 font-black text-[11px] tabular-nums">{hisob.toLocaleString("uz-UZ")}</span>,"right",9)}
                         {td(
                           s.isOverLimit
                             ? <span className="text-red-400 font-black text-[9px] uppercase">+{s.oshiqMiqdor ?? 0} kg</span>
                             : <span className="text-emerald-400 font-black text-[9px] uppercase">Norma</span>,
-                          "left",9
+                          "left",10
                         )}
-                        {td(renderMashinaCell(s), "center", 10)}
-                        {td(<span className="text-emerald-300 font-black text-[10px] block truncate" style={{maxWidth:90}}>{s.masulShaxs ?? "—"}</span>,"left",11)}
                         {td(
                           <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
                             className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
                             style={{ background:"rgba(99,102,241,0.12)" }} aria-label="Tahrirlash">
                             <Pencil className="w-3.5 h-3.5 text-primary" />
-                          </button>,"center",12
+                          </button>,"center",11
                         )}
                       </tr>
                     );
@@ -820,12 +885,16 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                     const tafsilot =
                       s.category==="lokomotiv" ? (s.rusumi ?? "—") :
                       s.category==="korxona"   ? (s.korxonaNomi ?? "—") :
-                      s.category==="qurulish"  ? (s.obyekt ?? "—") :
+                      s.category==="qurulish"  ? (s.seriya ?? s.korxonaNomi ?? "—") :
                       (s.seriya ?? "—");
                     const raqami  = s.lokomotivNumber ?? s.raqami ?? "—";
                     const harakat = HARAKAT_LABEL[s.harakatTuri] ?? s.harakatTuri ?? s.tamirlashTuri ?? s.category ?? "—";
-                    const poyezdN = s.poyezdNumber ?? "—";
-                    const indexVal = s.harakatTuri === "manyovr" ? (s.stansiya ?? "—") : (s.ruxsatIndeksi ?? "—");
+                    const poyezdN = s.harakatTuri === "manyovr"
+                      ? (s.stansiya ?? "—")
+                      : s.harakatTuri === "xojalik"
+                        ? (s.tashkilot ?? "—")
+                        : (s.poyezdNumber ?? "—");
+                    const indexVal = s.ruxsatIndeksi ?? "—";
 
                     const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
                       <td className="px-1.5 py-2 align-middle overflow-hidden"

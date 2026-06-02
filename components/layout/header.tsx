@@ -6,6 +6,7 @@ import { LogOut, User, Home, ArrowLeft } from "lucide-react";
 import { clearSession, getSession } from "@/lib/utils/session";
 import { useEffect, useState } from "react";
 import { Session } from "@/lib/types";
+import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 
 export function Header() {
   const router = useRouter();
@@ -39,6 +40,10 @@ export function Header() {
       router.push("/admin");
     }
   };
+
+  const zapravkaName = session?.stationId
+    ? ZAPRAVKALAR.find((z) => z.id === session.stationId)?.name ?? session.stationId
+    : null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/92 shadow-[0_8px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/88">
@@ -78,9 +83,16 @@ export function Header() {
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <div className="flex min-w-0 items-center gap-2.5 rounded-xl border-2 border-indigo-200 bg-white px-3 py-2 shadow-sm shadow-indigo-500/10 dark:border-indigo-400/25 dark:bg-slate-900 sm:px-4">
             <User className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" />
-            <span className="max-w-[118px] truncate text-base font-black text-slate-950 dark:text-white sm:max-w-[210px] sm:text-lg">
-              {session?.displayName || "Foydalanuvchi"}
-            </span>
+            <div className="min-w-0">
+              <span className="block max-w-[118px] truncate text-base font-black leading-tight text-slate-950 dark:text-white sm:max-w-[210px] sm:text-lg">
+                {session?.displayName || "Foydalanuvchi"}
+              </span>
+              {zapravkaName && (
+                <span className="block max-w-[118px] truncate text-[10px] font-black uppercase leading-tight tracking-wide text-indigo-600 dark:text-indigo-300 sm:max-w-[210px]">
+                  Zapravka: {zapravkaName}
+                </span>
+              )}
+            </div>
           </div>
 
           {time && (

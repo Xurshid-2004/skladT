@@ -1,13 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Drawer } from 'vaul';
-import type { Submission } from '@/lib/types';
+import type { HarakatTuri, Submission } from '@/lib/types';
+import { RUSUMI_LIST as STATIC_RUSUMI_LIST } from '@/lib/data/lokomotiv-config';
+import {
+  subscribeLokomotivRusumSettings,
+  type LokomotivRusumSettings,
+} from '@/lib/firebase/lokomotiv-rusum-service';
 import { Loader2, X, Save, FileEdit } from 'lucide-react';
 import { updateSubmissionWithSummary } from '@/lib/firebase/submission-mutations';
 
-const RUSUMI_LIST = ['TEM2', 'CHME-3', '2TE10M', '3TE10M', '4TE10M', 'TEP70', 'UZTE16M2', 'UZTE16M3', 'UZTE16M4'];
 const HARAKAT_LIST = ['yuk', 'yolovchi', 'manyovr', 'xojalik', 'ijara'];
+const HARAKAT_LABEL: Record<string, string> = {
+  yuk: 'Yuk',
+  yolovchi: "Yo'lovchi",
+  manyovr: 'Manyovr',
+  xojalik: "Xo'jalik",
+  ijara: 'Ijara',
+};
 const TAMIRLASH_TURI_LIST = ['katta', 'kichik', 'profilaktika'];
 
 const CAT_LABEL: Record<string, string> = {
@@ -41,10 +52,19 @@ const selectCls =
 export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<string, any>>({});
+  const [rusumSettings, setRusumSettings] = useState<LokomotivRusumSettings>({
+    items: [],
+    hiddenStaticValues: [],
+  });
 
   useEffect(() => {
     if (submission) setForm({ ...(submission as any) });
   }, [submission?.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    return subscribeLokomotivRusumSettings(setRusumSettings);
+  }, [open]);
 
   function set(key: string, value: any) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -59,7 +79,11 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
         stationId: _sid, nodeId: _nid, timestamp: _ts, createdAt: _ca,
         ...editable
       } = form as any;
-      const changes = { ...editable, isEdited: true, editedAt: Date.now() };
+      const editableData = { ...editable };
+      if (submission.category === 'qurulish') {
+        editableData.qanchaOlindi = Number(editableData.qanchaBerildi ?? editableData.qanchaOlindi ?? 0);
+      }
+      const changes = { ...editableData, isEdited: true, editedAt: Date.now() };
       const updated = await updateSubmissionWithSummary(submission, changes);
       onSaved(updated);
       onClose();
@@ -72,6 +96,26 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
 
   const cat = submission?.category;
   const f = form as any;
+  const rusumiOptions = useMemo(() => {
+    const hiddenStatic = new Set(rusumSettings.hiddenStaticValues.map((value) => value.toLowerCase()));
+    const items = STATIC_RUSUMI_LIST
+      .filter((item) => !hiddenStatic.has(String(item.value).toLowerCase()))
+      .map((item) => ({
+        value: String(item.value),
+        label: item.label,
+      }));
+    const seen = new Set(items.map((item) => item.value.toLowerCase()));
+    const harakat = f.harakatTuri as HarakatTuri | undefined;
+    rusumSettings.items
+      .filter((item) => !harakat || item.harakatTurlari.includes(harakat))
+      .forEach((item) => {
+        const key = item.value.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        items.push({ value: item.value, label: item.label });
+      });
+    return items;
+  }, [rusumSettings, f.harakatTuri]);
 
   function renderCategoryFields() {
     if (!submission) return null;
@@ -81,13 +125,13 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
         <FieldRow label="Harakat turi">
           <select className={selectCls} value={f.harakatTuri ?? ''} onChange={(e) => set('harakatTuri', e.target.value)}>
             {HARAKAT_LIST.map((h) => (
-              <option key={h} value={h}>{h.charAt(0).toUpperCase() + h.slice(1)}</option>
+              <option key={h} value={h}>{HARAKAT_LABEL[h] ?? h.charAt(0).toUpperCase() + h.slice(1)}</option>
             ))}
           </select>
         </FieldRow>
         <FieldRow label="Rusumi">
           <select className={selectCls} value={f.rusumi ?? ''} onChange={(e) => set('rusumi', e.target.value)}>
-            {RUSUMI_LIST.map((r) => <option key={r} value={r}>{r}</option>)}
+            {rusumiOptions.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </FieldRow>
         <FieldRow label="Lokomotiv raqami">
@@ -134,6 +178,12 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
         <FieldRow label="Korxona nomi">
           <input className={inputCls} value={f.korxonaNomi ?? ''} onChange={(e) => set('korxonaNomi', e.target.value)} />
         </FieldRow>
+        <FieldRow label="Poyezd raqami">
+          <input className={inputCls} value={f.poyezdNumber ?? ''} onChange={(e) => set('poyezdNumber', e.target.value)} />
+        </FieldRow>
+        <FieldRow label="Index">
+          <input className={inputCls} value={f.ruxsatIndeksi ?? ''} onChange={(e) => set('ruxsatIndeksi', e.target.value)} />
+        </FieldRow>
         <FieldRow label="Berilgan yoqilg'i (kg)">
           <input className={inputCls} type="number" value={f.qancha ?? ''} onChange={(e) => set('qancha', Number(e.target.value))} />
         </FieldRow>
@@ -145,23 +195,34 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
 
     if (cat === 'qurulish') return (
       <>
-        <FieldRow label="Korxona nomi">
-          <input className={inputCls} value={f.korxonaNomi ?? ''} onChange={(e) => set('korxonaNomi', e.target.value)} />
+        <FieldRow label="Seriya">
+          <input className={inputCls} value={f.seriya ?? ''} onChange={(e) => set('seriya', e.target.value)} />
         </FieldRow>
-        <FieldRow label="Texnika soni">
-          <input className={inputCls} type="number" value={f.texnikaSoni ?? ''} onChange={(e) => set('texnikaSoni', Number(e.target.value))} />
+        <FieldRow label="Raqami">
+          <input className={inputCls} value={f.raqami ?? ''} onChange={(e) => set('raqami', e.target.value)} />
         </FieldRow>
-        <FieldRow label="Obyekt">
-          <input className={inputCls} value={f.obyekt ?? ''} onChange={(e) => set('obyekt', e.target.value)} />
+        <FieldRow label="Poyezd raqami">
+          <input className={inputCls} value={f.poyezdNumber ?? ''} onChange={(e) => set('poyezdNumber', e.target.value)} />
         </FieldRow>
-        <FieldRow label="Mas'ul shaxs">
-          <input className={inputCls} value={f.masulShaxs ?? ''} onChange={(e) => set('masulShaxs', e.target.value)} />
+        <FieldRow label="Index">
+          <input className={inputCls} value={f.ruxsatIndeksi ?? ''} onChange={(e) => set('ruxsatIndeksi', e.target.value)} />
         </FieldRow>
-        <FieldRow label="Lavozim">
-          <input className={inputCls} value={f.lavozim ?? ''} onChange={(e) => set('lavozim', e.target.value)} />
+        <FieldRow label="Bak qoldig'i (kg)">
+          <input className={inputCls} type="number" value={f.qoldiq ?? ''} onChange={(e) => set('qoldiq', Number(e.target.value))} />
         </FieldRow>
-        <FieldRow label="Olingan yoqilg'i (kg)">
-          <input className={inputCls} type="number" value={f.qanchaOlindi ?? ''} onChange={(e) => set('qanchaOlindi', Number(e.target.value))} />
+        <FieldRow label="Poyezd vazni">
+          <input className={inputCls} type="number" value={f.poyezdVazni ?? ''} onChange={(e) => set('poyezdVazni', Number(e.target.value))} />
+        </FieldRow>
+        <FieldRow label="Berilgan yoqilg'i (kg)">
+          <input
+            className={inputCls}
+            type="number"
+            value={f.qanchaBerildi ?? f.qanchaOlindi ?? ''}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              setForm((prev) => ({ ...prev, qanchaBerildi: value, qanchaOlindi: value }));
+            }}
+          />
         </FieldRow>
       </>
     );
@@ -239,6 +300,7 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
               {renderCategoryFields()}
 
               {/* Common: olib borish */}
+              {cat !== 'qurulish' && (
               <div className="pt-3 border-t border-[#2a3a2a] space-y-4">
                 <FieldRow label="Olib borish usuli">
                   <div className="grid grid-cols-2 gap-3">
@@ -276,6 +338,7 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
                   </FieldRow>
                 )}
               </div>
+              )}
             </div>
 
             {/* Footer */}

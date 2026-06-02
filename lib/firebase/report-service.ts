@@ -84,7 +84,7 @@ function calculateZapravkaSummary(zap: any, submissions: any[]): ZapravkaSummary
   const yolovchi = lokomotivByType('yolovchi'); 
   const manyovr = lokomotivByType('manyovr'); 
   const xojalik = lokomotivByType('xojalik'); 
-  const ijara = lokomotivByType('ijara'); 
+  const ijara = lokomotivByType('ijara') + lokomotivByType('arenda'); 
   
   const tamirlashTotal = sumField(tamirlash, 'qanchaBerildi'); 
   const teplovozTotal = yuk + yolovchi + manyovr + xojalik + ijara + tamirlashTotal; 
@@ -116,7 +116,7 @@ function calculateZapravkaSummary(zap: any, submissions: any[]): ZapravkaSummary
       yolovchi: countByType('yolovchi'), 
       manyovr: countByType('manyovr'), 
       xojalik: countByType('xojalik'), 
-      ijara: countByType('ijara'), 
+      ijara: countByType('ijara') + countByType('arenda'), 
       total: lokomotiv.length, 
     }, 
   }; 

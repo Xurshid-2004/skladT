@@ -9,12 +9,40 @@ import {
   updateStaffDoc,
   deleteStaffDoc,
 } from "@/lib/firebase/staff-service";
-import type { StaffVaultRecord } from "@/lib/types";
-import { X, Pencil, Trash2, ShieldBan, ShieldCheck, ChevronRight, Users } from "lucide-react";
+import {
+  addLokomotivRusum,
+  deleteLokomotivRusum,
+  deleteStaticLokomotivRusum,
+  subscribeLokomotivRusumSettings,
+  type CustomLokomotivRusum,
+  type LokomotivRusumSettings,
+  updateLokomotivRusum,
+  updateStaticLokomotivRusum,
+} from "@/lib/firebase/lokomotiv-rusum-service";
+import {
+  HARAKAT_TURI_LIST,
+  RUSUMI_FILTER,
+  RUSUMI_LIST,
+} from "@/lib/data/lokomotiv-config";
+import { getSession } from "@/lib/utils/session";
+import type { HarakatTuri, StaffVaultRecord } from "@/lib/types";
+import {
+  X,
+  Pencil,
+  Trash2,
+  ShieldBan,
+  ShieldCheck,
+  ChevronRight,
+  Users,
+  PlusCircle,
+  TrainFront,
+  CheckCircle2,
+} from "lucide-react";
 
 export type StaffVaultModalProps = {
   open: boolean;
   onClose: () => void;
+  rusumOpenRequest?: number;
   blockedCodes: Set<string>;
   /** Tabel raqam = kirish kodi sifatida blocked_codes ga yoziladi */
   onBlockByTabel: (tabel: string, note: string) => Promise<void>;
@@ -59,13 +87,42 @@ const ERJU_REGION_UI: Record<
   },
 };
 
+const HARAKAT_RUSUM_LABEL: Record<HarakatTuri, string> = {
+  yuk: "\u042e\u041a",
+  manyovr: "\u041c\u0410\u041d\u0401\u0412\u0420",
+  yolovchi: "\u0419\u040e\u041b\u041e\u0412\u0427\u0418",
+  xojalik: "\u0425\u040e\u0416\u0410\u041b\u0418\u041a",
+  ijara: "\u0418\u0416\u0410\u0420\u0410",
+};
+
+const HARAKAT_RUSUM_CARD: Record<HarakatTuri, string> = {
+  yuk: "bg-blue-700 border-blue-800 shadow-blue-900/25",
+  manyovr: "bg-orange-600 border-orange-700 shadow-orange-900/25",
+  yolovchi: "bg-red-500 border-red-700 shadow-red-900/25",
+  xojalik: "bg-emerald-600 border-emerald-700 shadow-emerald-900/25",
+  ijara: "bg-violet-700 border-violet-800 shadow-violet-900/25",
+};
+
 function normalizeLoginCode(value: string) {
   return value.replace(/\D/g, "").slice(0, 4);
+}
+
+function staticRusumEditId(value: string): string {
+  return `static:${value}`;
+}
+
+function isStaticRusumEditId(value: string | null): value is string {
+  return !!value && value.startsWith("static:");
+}
+
+function staticValueFromEditId(value: string): string {
+  return value.slice("static:".length);
 }
 
 export default function StaffVaultModal({
   open,
   onClose,
+  rusumOpenRequest = 0,
   blockedCodes,
   onBlockByTabel,
   onUnblockByTabel,
@@ -82,6 +139,18 @@ export default function StaffVaultModal({
     zapravka: "",
   });
   const [busy, setBusy] = useState(false);
+  const [rusumModalOpen, setRusumModalOpen] = useState(false);
+  const [rusumSettings, setRusumSettings] = useState<LokomotivRusumSettings>({
+    items: [],
+    hiddenStaticValues: [],
+  });
+  const [newRusumName, setNewRusumName] = useState("");
+  const [newRusumHarakat, setNewRusumHarakat] = useState<HarakatTuri[]>([]);
+  const [editingRusumId, setEditingRusumId] = useState<string | null>(null);
+  const [editRusumName, setEditRusumName] = useState("");
+  const [editRusumHarakat, setEditRusumHarakat] = useState<HarakatTuri[]>([]);
+  const [rusumBusy, setRusumBusy] = useState(false);
+  const [rusumError, setRusumError] = useState("");
   const [portalReady, setPortalReady] = useState(false);
 
   useEffect(() => {
@@ -91,6 +160,16 @@ export default function StaffVaultModal({
   useEffect(() => {
     if (!open) return;
     return subscribeStaff(setStaffList);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !rusumOpenRequest) return;
+    setRusumModalOpen(true);
+  }, [open, rusumOpenRequest]);
+
+  useEffect(() => {
+    if (!open) return;
+    return subscribeLokomotivRusumSettings(setRusumSettings);
   }, [open]);
 
   useEffect(() => {
@@ -111,6 +190,21 @@ export default function StaffVaultModal({
     return staffList.filter((s) => s.erju === selectedErju);
   }, [staffList, selectedErju]);
 
+  const customRusumlar = rusumSettings.items;
+
+  const staticRusumlar = useMemo(() => {
+    const hiddenStatic = new Set(rusumSettings.hiddenStaticValues.map((value) => value.toLowerCase()));
+    return RUSUMI_LIST
+      .filter((rusum) => !hiddenStatic.has(String(rusum.value).toLowerCase()))
+      .map((rusum) => ({
+        value: String(rusum.value),
+        label: rusum.label,
+        harakatTurlari: HARAKAT_TURI_LIST
+          .map((item) => item.value as HarakatTuri)
+          .filter((harakat) => RUSUMI_FILTER[harakat].includes(rusum.value)),
+      }));
+  }, [rusumSettings.hiddenStaticValues]);
+
   const closeModal = () => {
     onClose();
     setSelectedErju("");
@@ -118,6 +212,13 @@ export default function StaffVaultModal({
     setNewStaffName("");
     setNewStaffTabel("");
     setEditingStaffId(null);
+    setRusumModalOpen(false);
+    setNewRusumName("");
+    setNewRusumHarakat([]);
+    setEditingRusumId(null);
+    setEditRusumName("");
+    setEditRusumHarakat([]);
+    setRusumError("");
   };
 
   const handleErjuSelect = (name: string) => {
@@ -244,6 +345,135 @@ export default function StaffVaultModal({
     }
   };
 
+  const toggleRusumHarakat = (value: HarakatTuri) => {
+    setNewRusumHarakat((prev) =>
+      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value],
+    );
+    setRusumError("");
+  };
+
+  const toggleEditRusumHarakat = (value: HarakatTuri) => {
+    setEditRusumHarakat((prev) =>
+      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value],
+    );
+    setRusumError("");
+  };
+
+  const saveRusum = async () => {
+    const label = newRusumName.trim();
+    if (!label) {
+      setRusumError("Rusum nomini kiriting.");
+      return;
+    }
+    if (newRusumHarakat.length === 0) {
+      setRusumError("Kamida bitta harakat turini tanlang.");
+      return;
+    }
+
+    setRusumBusy(true);
+    setRusumError("");
+    try {
+      const session = getSession();
+      await addLokomotivRusum({
+        label,
+        harakatTurlari: newRusumHarakat,
+        createdBy: session?.displayName ?? "Admin",
+      });
+      setNewRusumName("");
+      setNewRusumHarakat([]);
+    } catch (err: any) {
+      setRusumError(err?.message || "Rusumni saqlab bo'lmadi.");
+    } finally {
+      setRusumBusy(false);
+    }
+  };
+
+  const startEditRusum = (rusum: CustomLokomotivRusum) => {
+    setEditingRusumId(rusum.id);
+    setEditRusumName(rusum.label);
+    setEditRusumHarakat(rusum.harakatTurlari);
+    setRusumError("");
+  };
+
+  const startEditStaticRusum = (rusum: { value: string; label: string; harakatTurlari: HarakatTuri[] }) => {
+    setEditingRusumId(staticRusumEditId(rusum.value));
+    setEditRusumName(rusum.label);
+    setEditRusumHarakat(rusum.harakatTurlari);
+    setRusumError("");
+  };
+
+  const cancelRusumEdit = () => {
+    setEditingRusumId(null);
+    setEditRusumName("");
+    setEditRusumHarakat([]);
+    setRusumError("");
+  };
+
+  const saveRusumEdit = async () => {
+    if (!editingRusumId) return;
+    const label = editRusumName.trim();
+    if (!label) {
+      setRusumError("Rusum nomini kiriting.");
+      return;
+    }
+    if (editRusumHarakat.length === 0) {
+      setRusumError("Kamida bitta harakat turini tanlang.");
+      return;
+    }
+
+    setRusumBusy(true);
+    setRusumError("");
+    try {
+      if (isStaticRusumEditId(editingRusumId)) {
+        const session = getSession();
+        await updateStaticLokomotivRusum({
+          originalValue: staticValueFromEditId(editingRusumId),
+          label,
+          harakatTurlari: editRusumHarakat,
+          createdBy: session?.displayName ?? "Admin",
+        });
+      } else {
+        await updateLokomotivRusum(editingRusumId, {
+          label,
+          harakatTurlari: editRusumHarakat,
+        });
+      }
+      cancelRusumEdit();
+    } catch (err: any) {
+      setRusumError(err?.message || "Rusumni tahrirlab bo'lmadi.");
+    } finally {
+      setRusumBusy(false);
+    }
+  };
+
+  const deleteStaticRusum = async (rusum: { value: string; label: string }) => {
+    if (!confirm(`${rusum.label} asosiy rusumi user paneldan o'chirilsinmi?`)) return;
+    setRusumBusy(true);
+    setRusumError("");
+    try {
+      await deleteStaticLokomotivRusum(rusum.value);
+      if (editingRusumId === staticRusumEditId(rusum.value)) cancelRusumEdit();
+    } catch (err: any) {
+      setRusumError(err?.message || "Rusumni o'chirib bo'lmadi.");
+    } finally {
+      setRusumBusy(false);
+    }
+  };
+
+  const deleteRusum = async (rusum: CustomLokomotivRusum) => {
+    if (!confirm(`${rusum.label} rusumi o'chirilsinmi?`)) return;
+    setRusumBusy(true);
+    setRusumError("");
+    try {
+      await deleteLokomotivRusum(rusum.id);
+      if (editingRusumId === rusum.id) cancelRusumEdit();
+    } catch (err: any) {
+      setRusumError(err?.message || "Rusumni o'chirib bo'lmadi.");
+    } finally {
+      setRusumBusy(false);
+    }
+  };
+
   if (!open || !portalReady) return null;
 
   return createPortal(
@@ -264,13 +494,24 @@ export default function StaffVaultModal({
               shu raqam bo&apos;yicha ishlaydi.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={closeModal}
-            className="rounded-full border border-red-400/30 bg-red-500/80 p-2 text-white transition-all hover:bg-red-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setRusumModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-600 px-3 py-2 text-xs font-black uppercase text-white shadow-lg shadow-emerald-900/20 transition-all hover:bg-emerald-500"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Rusum qo&apos;shish</span>
+              <span className="sm:hidden">Rusum</span>
+            </button>
+            <button
+              type="button"
+              onClick={closeModal}
+              className="rounded-full border border-red-400/30 bg-red-500/80 p-2 text-white transition-all hover:bg-red-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
@@ -544,6 +785,343 @@ export default function StaffVaultModal({
             )}
           </div>
         </div>
+
+        {rusumModalOpen && (
+          <div className="absolute inset-0 z-[520] flex items-center justify-center bg-black/72 p-3 backdrop-blur-sm sm:p-5">
+            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#101827] shadow-2xl shadow-black/40">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-3 sm:px-5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-900/25">
+                    <TrainFront className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-black uppercase tracking-wide text-white">
+                      Rusum qo&apos;shish
+                    </h3>
+                    <p className="truncate text-[11px] font-semibold text-slate-400">
+                      Rusum tanlangan harakat turlarida user panelda chiqadi
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRusumModalOpen(false);
+                    cancelRusumEdit();
+                    setRusumError("");
+                  }}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500 text-white hover:bg-red-600"
+                  aria-label="Yopish"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Rusum nomi
+                      </label>
+                      <input
+                        value={newRusumName}
+                        onChange={(e) => {
+                          setNewRusumName(e.target.value);
+                          setRusumError("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void saveRusum();
+                          }
+                        }}
+                        placeholder="Masalan: TEM18"
+                        className="h-12 w-full rounded-xl border border-white/10 bg-[#0d1424] px-3.5 text-base font-black uppercase text-white placeholder:text-slate-600 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/15"
+                      />
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Harakat turi
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+                        {HARAKAT_TURI_LIST.map((item) => {
+                          const value = item.value as HarakatTuri;
+                          const active = newRusumHarakat.includes(value);
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => toggleRusumHarakat(value)}
+                              className={`relative flex min-h-[82px] flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border px-2 py-2 text-white shadow-lg transition-none ${
+                                HARAKAT_RUSUM_CARD[value]
+                              } ${active ? "ring-2 ring-white ring-offset-2 ring-offset-black" : ""}`}
+                            >
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-base font-black text-white ring-1 ring-white/25">
+                                {item.number}
+                              </span>
+                              <span className="text-center text-[11px] font-black uppercase leading-none tracking-wide text-white sm:text-[12px]">
+                                {HARAKAT_RUSUM_LABEL[value]}
+                              </span>
+                              {active && (
+                                <span className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-black shadow-sm">
+                                  <CheckCircle2 className="h-3.5 w-3.5 stroke-[3]" />
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {rusumError && (
+                      <p className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300">
+                        {rusumError}
+                      </p>
+                    )}
+
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => void saveRusum()}
+                        disabled={rusumBusy}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-black uppercase text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                        Saqlash
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewRusumName("");
+                          setNewRusumHarakat([]);
+                          setRusumError("");
+                        }}
+                        className="h-11 rounded-xl border border-white/10 bg-white/5 px-5 text-sm font-bold text-slate-300 hover:bg-white/10"
+                      >
+                        Tozalash
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="min-h-0 space-y-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <div>
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Hozirgi rusumlar
+                      </p>
+                      <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+                        {staticRusumlar.map((rusum) => {
+                          const editing = editingRusumId === staticRusumEditId(rusum.value);
+                          return (
+                            <div
+                              key={rusum.value}
+                              className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2"
+                            >
+                              {editing ? (
+                                <div className="space-y-2">
+                                  <input
+                                    value={editRusumName}
+                                    onChange={(e) => {
+                                      setEditRusumName(e.target.value);
+                                      setRusumError("");
+                                    }}
+                                    className="h-10 w-full rounded-lg border border-white/10 bg-[#0d1424] px-3 text-sm font-black uppercase text-white focus:border-emerald-400 focus:outline-none"
+                                  />
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    {HARAKAT_TURI_LIST.map((item) => {
+                                      const value = item.value as HarakatTuri;
+                                      const active = editRusumHarakat.includes(value);
+                                      return (
+                                        <button
+                                          key={value}
+                                          type="button"
+                                          onClick={() => toggleEditRusumHarakat(value)}
+                                          className={`rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-white ${
+                                            active ? HARAKAT_RUSUM_CARD[value] : "border border-white/10 bg-white/5 text-slate-400"
+                                          }`}
+                                        >
+                                          {HARAKAT_RUSUM_LABEL[value]}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => void saveRusumEdit()}
+                                      disabled={rusumBusy}
+                                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+                                    >
+                                      Saqlash
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelRusumEdit}
+                                      className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-white/15"
+                                    >
+                                      Bekor
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="break-words text-sm font-black text-white">{rusum.label}</p>
+                                      <span className="shrink-0 rounded-full bg-slate-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-slate-300">
+                                        Asosiy
+                                      </span>
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                      {rusum.harakatTurlari.map((h) => (
+                                        <span
+                                          key={h}
+                                          className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase text-slate-200"
+                                        >
+                                          {HARAKAT_RUSUM_LABEL[h]}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div className="flex shrink-0 gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => startEditStaticRusum(rusum)}
+                                      className="rounded-lg p-1.5 text-blue-400 hover:bg-blue-400/10"
+                                      title="Tahrirlash"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => void deleteStaticRusum(rusum)}
+                                      disabled={rusumBusy}
+                                      className="rounded-lg p-1.5 text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+                                      title="O'chirish"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-white/10 pt-3">
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Qo&apos;shilgan rusumlar
+                      </p>
+                      {customRusumlar.length === 0 ? (
+                        <p className="py-8 text-center text-xs font-semibold text-slate-500">
+                          Hozircha qo&apos;shimcha rusum yo&apos;q
+                        </p>
+                      ) : (
+                        <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                          {customRusumlar.map((rusum) => {
+                            const editing = editingRusumId === rusum.id;
+                            return (
+                              <div
+                                key={rusum.id}
+                                className="rounded-xl border border-white/[0.08] bg-black/[0.16] px-3 py-2"
+                              >
+                                {editing ? (
+                                  <div className="space-y-2">
+                                    <input
+                                      value={editRusumName}
+                                      onChange={(e) => {
+                                        setEditRusumName(e.target.value);
+                                        setRusumError("");
+                                      }}
+                                      className="h-10 w-full rounded-lg border border-white/10 bg-[#0d1424] px-3 text-sm font-black uppercase text-white focus:border-emerald-400 focus:outline-none"
+                                    />
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      {HARAKAT_TURI_LIST.map((item) => {
+                                        const value = item.value as HarakatTuri;
+                                        const active = editRusumHarakat.includes(value);
+                                        return (
+                                          <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => toggleEditRusumHarakat(value)}
+                                            className={`rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-white ${
+                                              active ? HARAKAT_RUSUM_CARD[value] : "border border-white/10 bg-white/5 text-slate-400"
+                                            }`}
+                                          >
+                                            {HARAKAT_RUSUM_LABEL[value]}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => void saveRusumEdit()}
+                                        disabled={rusumBusy}
+                                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+                                      >
+                                        Saqlash
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={cancelRusumEdit}
+                                        className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-white/15"
+                                      >
+                                        Bekor
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="break-words text-sm font-black text-white">{rusum.label}</p>
+                                      <div className="mt-1 flex flex-wrap gap-1">
+                                        {rusum.harakatTurlari.map((h) => (
+                                          <span
+                                            key={h}
+                                            className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase text-slate-200"
+                                          >
+                                            {HARAKAT_RUSUM_LABEL[h]}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div className="flex shrink-0 gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => startEditRusum(rusum)}
+                                        className="rounded-lg p-1.5 text-blue-400 hover:bg-blue-400/10"
+                                        title="Tahrirlash"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => void deleteRusum(rusum)}
+                                        disabled={rusumBusy}
+                                        className="rounded-lg p-1.5 text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+                                        title="O'chirish"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body,

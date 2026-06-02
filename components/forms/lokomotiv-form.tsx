@@ -9,6 +9,10 @@ import {
   FIELDS_VISIBILITY
 } from "@/lib/data/lokomotiv-config";
 import { addLokomotivSubmission } from "@/lib/firebase/lokomotiv-service";
+import {
+  subscribeLokomotivRusumSettings,
+  type LokomotivRusumSettings,
+} from "@/lib/firebase/lokomotiv-rusum-service";
 import { subscribeToActiveApprovals } from "@/lib/firebase/approval-service";
 import { getSession } from "@/lib/utils/session";
 import { notifyOverLimitEntry } from "@/lib/telegram/bot-service";
@@ -24,11 +28,11 @@ interface LokomotivFormProps {
 }
 
 const HARAKAT_TURI_CYRILLIC: Record<string, string> = {
-  yuk: "\u042e\u041a",
-  manyovr: "\u041c\u0410\u041d\u0401\u0412\u0420",
-  yolovchi: "\u0419\u040e\u041b\u041e\u0412\u0427\u0418",
-  xojalik: "\u0425\u040e\u0416\u0410\u041b\u0418\u041a",
-  ijara: "\u0418\u0416\u0410\u0420\u0410",
+  yuk: "\u0413\u0420\u0423\u0417\u041e\u0412\u041e\u0419",
+  manyovr: "\u041c\u0410\u041d\u0415\u0412\u0420",
+  yolovchi: "\u041f\u0410\u0421\u0421\u0410\u0416\u0418\u0420\u0421\u041a\u0418\u0419",
+  xojalik: "\u0425\u041e\u0417\u042f\u0419\u0421\u0422\u0412\u0415\u041d\u041d\u042b\u0419",
+  ijara: "\u0410\u0420\u0415\u041d\u0414\u0410",
 };
 
 const HARAKAT_TURI_CARD_COLOR: Record<string, string> = {
@@ -46,6 +50,10 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [rusumSettings, setRusumSettings] = useState<LokomotivRusumSettings>({
+    items: [],
+    hiddenStaticValues: [],
+  });
   
   const [formData, setFormData] = useState({
     harakatTuri: "" as HarakatTuri | "",
@@ -92,7 +100,11 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     fetchSettings();
 
     const unsubscribeApprovals = subscribeToActiveApprovals(stationId, setApprovals);
-    return () => unsubscribeApprovals();
+    const unsubscribeRusumlar = subscribeLokomotivRusumSettings(setRusumSettings);
+    return () => {
+      unsubscribeApprovals();
+      unsubscribeRusumlar();
+    };
   }, [stationId]);
 
   const hasApproval = useMemo(() => {
@@ -112,8 +124,26 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
   const filteredRusumlar = useMemo(() => {
     if (!formData.harakatTuri) return [];
     const allowed = RUSUMI_FILTER[formData.harakatTuri as HarakatTuri];
-    return RUSUMI_LIST.filter(r => allowed.includes(r.value));
-  }, [formData.harakatTuri]);
+    const hiddenStatic = new Set(rusumSettings.hiddenStaticValues.map((value) => value.toLowerCase()));
+    const items = RUSUMI_LIST.filter(
+      (r) => allowed.includes(r.value) && !hiddenStatic.has(String(r.value).toLowerCase()),
+    );
+    const seen = new Set(items.map((r) => String(r.value).toLowerCase()));
+    rusumSettings.items
+      .filter((r) => r.harakatTurlari.includes(formData.harakatTuri as HarakatTuri))
+      .forEach((r) => {
+        const key = r.value.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        items.push({
+          value: r.value as Rusumi,
+          label: r.label,
+          number: items.length + 1,
+          custom: true,
+        });
+      });
+    return items;
+  }, [formData.harakatTuri, rusumSettings]);
 
   const jadvalOptions = useMemo(() => {
     if (!formData.harakatTuri) return [];
@@ -324,7 +354,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
               <span className="text-xs font-black uppercase">Admin tomonidan ruxsat berilgan (Limit yumshoq)</span>
             </div>
           )}
-          <div className="grid max-w-5xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid max-w-6xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {HARAKAT_TURI_LIST.map((item) => {
               const active = formData.harakatTuri === item.value;
               return (
@@ -333,16 +363,16 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                   type="button"
                   aria-pressed={active}
                   onClick={() => handleInputChange("harakatTuri", item.value)}
-                  className={`harakat-type-card relative flex min-h-[62px] flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border px-2.5 py-2 text-white shadow-lg transition-none sm:min-h-[66px] ${HARAKAT_TURI_CARD_COLOR[item.value] ?? "bg-slate-700 border-slate-800"} ${
+                  className={`harakat-type-card relative flex min-h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2 text-white shadow-lg transition-none sm:min-h-[66px] sm:gap-3 ${HARAKAT_TURI_CARD_COLOR[item.value] ?? "bg-slate-700 border-slate-800"} ${
                     active ? "ring-2 ring-white ring-offset-2 ring-offset-black" : ""
                   }`}
                 >
                   <span
-                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 text-base font-black text-white ring-1 ring-white/25"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-lg font-black text-white ring-1 ring-white/25 sm:h-10 sm:w-10 sm:text-xl"
                   >
                     {item.number}
                   </span>
-                  <span className="text-center text-[11px] font-black uppercase leading-none tracking-wide text-white sm:text-[12px]">
+                  <span className="min-w-0 text-center text-[13px] font-black uppercase leading-tight tracking-wide text-white sm:text-[15px] xl:text-base">
                     {HARAKAT_TURI_CYRILLIC[item.value] ?? item.label}
                   </span>
                   {active && (

@@ -110,6 +110,8 @@ export interface KorxonaSubmission {
   category: 'korxona'; 
   
   korxonaNomi: string; 
+  poyezdNumber?: string;
+  ruxsatIndeksi?: string;
   qancha: number;              // kg 
   nechaSutkalik: number;       // necha kun 
   buyruqNumber?: string;       // limitdan oshsa majburiy 
@@ -137,13 +139,22 @@ export interface QurulishSubmission {
   stationId: string; 
   category: 'qurulish'; 
   
-  korxonaNomi: string; 
-  texnikaSoni: number; 
-  obyekt: string; 
-  masulShaxs: string; 
-  lavozim: string; 
-  qanchaOlindi: number;        // kg 
-  dopLimit?: number;           // qo'shimcha limit 
+  seriya: string;
+  raqami: string;
+  poyezdNumber: string;
+  ruxsatIndeksi: string;
+  poyezdVazni: number;
+  qoldiq: number;
+  qanchaBerildi: number;       // kg
+  qanchaOlindi: number;        // kg, summary/backward compatibility
+
+  // Eski qurulish yozuvlari uchun ixtiyoriy maydonlar
+  korxonaNomi?: string;
+  texnikaSoni?: number;
+  obyekt?: string;
+  masulShaxs?: string;
+  lavozim?: string;
+  dopLimit?: number;
   buyruqNumber?: string; 
   kimTomonidan?: string; 
   buyruqVaqti?: number; 

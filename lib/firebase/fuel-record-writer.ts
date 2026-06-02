@@ -35,6 +35,7 @@ export async function appendFuelRecordForErjuJu(
   base: BaseFuelRow & {
     locoSeries?: string;
     locoCode?: string;
+    locoNumber?: string;
     trainIndex?: string;
     weight?: string;
     time?: string;
@@ -65,7 +66,7 @@ export async function appendFuelRecordForErjuJu(
     moveType,
     locoSeries: base.locoSeries ?? '',
     locoCode: base.locoCode ?? '',
-    locoNumber: '',
+    locoNumber: base.locoNumber ?? '',
     trainIndex: base.trainIndex ?? '',
     route: '',
     trainCode: '',

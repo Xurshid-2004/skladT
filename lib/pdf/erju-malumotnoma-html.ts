@@ -47,7 +47,8 @@ function toNum(v: unknown): number {
 const ZAGRANITSA_KEY = 'zagranitsa';
 
 function getZagranitsaAmount(r: FuelRecord): number {
-  return toNum(r.zagranitsaAmount ?? r.zagranitsa);
+  // Zagranitsa inputining ERJU logikasi hali ulanmaydi.
+  return 0;
 }
 
 function normalizeSupplyKey(s: string): string {
@@ -177,7 +178,7 @@ const DEFAULT_MOVES: readonly IndexedOption[] = Object.freeze([
   { index: 1, id: 'yolovchi', label: "Yo'lovchi poyezdlari uchun", aliases: ['yolovchi', "yo'lovchi", 'yoʻlovchi', 'пасс', 'pass'] },
   { index: 2, id: 'manyovr', label: 'Manyovr ishlari uchun', aliases: ['manyovr', 'manevr', 'маневр', 'manyevr'] },
   { index: 3, id: 'xojalik', label: "Xo'jalik ishlari uchun", aliases: ['xojalik', "xo'jalik", 'хоз', 'hojalik'] },
-  { index: 4, id: 'ijara', label: 'Ijara', aliases: ['ijara', 'ижара', 'arena'] },
+  { index: 4, id: 'ijara', label: 'Ijara', aliases: ['ijara', 'ижара', 'arena', 'arenda', 'аренда'] },
   {
     index: 5,
     id: 'tamirlash',
@@ -841,7 +842,7 @@ export function downloadErjuYpdf(
     // ── Harakat turi hisobi (jadval ostidan, chap tarafda) ────────────────
     const SHORT_MOVE: Record<string, string> = {
       yuk: 'Yuk', yolovchi: "Yo'lovchi", manyovr: 'Manyovr',
-      xojalik: "Xo'jalik", ijara: 'Ijara', tamirlash: "Ta'mirlash",
+      xojalik: "Xo'jalik", ijara: 'Ijara', arenda: 'Ijara', tamirlash: "Ta'mirlash",
       ref: 'Zagranitsa', zagranitsa: 'Zagranitsa', korxona: 'Korxona', qurulish: 'Qurulish',
     };
     const moveCount = new Map<string, number>();

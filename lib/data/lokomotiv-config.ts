@@ -26,7 +26,7 @@ export const LOKOMOTIV_JADVAL_OPTIONS: Partial<Record<HarakatTuri, string[]>> = 
   yolovchi: JADVAL_OPTIONS,
 };
  
-export const RUSUMI_LIST: { value: Rusumi; label: string; number: number }[] = [ 
+export const RUSUMI_LIST: { value: Rusumi; label: string; number: number; custom?: boolean }[] = [ 
   { value: 'TEM2', label: 'TEM-2', number: 1 }, 
   { value: 'CHME-3', label: 'ChME-3', number: 2 }, 
   { value: '2TE10M', label: '2TE10M', number: 3 }, 
@@ -49,12 +49,18 @@ export const RUSUMI_FILTER: Record<HarakatTuri, Rusumi[]> = {
   xojalik: ['TEM2', 'CHME-3', '2TE10M', '3TE10M', '4TE10M', 'UZTE16M2', 'UZTE16M3', 'UZTE16M4', 'OʻZ12T', 'ТГМ'],
   ijara: ['TEM2', 'CHME-3', '2TE10M', '3TE10M', '4TE10M', 'UZTE16M2', 'UZTE16M3', 'UZTE16M4', 'OʻZ12T', 'ТГМ'],
 };
- 
+
+const TGM_RUSUMI = RUSUMI_LIST.find((r) => r.number === 11)?.value;
+if (TGM_RUSUMI) {
+  RUSUMI_FILTER.yuk = RUSUMI_FILTER.yuk.filter((r) => r !== TGM_RUSUMI);
+  RUSUMI_FILTER.yolovchi = RUSUMI_FILTER.yolovchi.filter((r) => r !== TGM_RUSUMI);
+}
+
 // Qaysi maydonlar qaysi harakat turida ko'rinadi 
 export const FIELDS_VISIBILITY: Record<HarakatTuri, string[]> = {
   yuk:      ['jadval', 'zagranitsa', 'lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'poyezdVazni', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
   yolovchi: ['jadval', 'zagranitsa', 'lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
-  manyovr:  ['jadval', 'zagranitsa', 'lokomotivNumber', 'stansiya', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
+  manyovr:  ['jadval', 'zagranitsa', 'lokomotivNumber', 'stansiya', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
   xojalik:  ['lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'tashkilot'],
   ijara:    ['lokomotivNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'ijarachi'],
 };

@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Drawer } from "vaul";
-import type { LokomotivSubmission } from "@/lib/types";
+import type { HarakatTuri, LokomotivSubmission } from "@/lib/types";
+import { RUSUMI_LIST as STATIC_RUSUMI_LIST } from "@/lib/data/lokomotiv-config";
+import {
+  subscribeLokomotivRusumSettings,
+  type LokomotivRusumSettings,
+} from "@/lib/firebase/lokomotiv-rusum-service";
 import { Loader2, X, Save, Train, CheckCircle2 } from "lucide-react";
 import { updateSubmissionWithSummary } from "@/lib/firebase/submission-mutations";
 
-const RUSUMI_LIST = ["TEM2", "CHME-3", "2TE10M", "3TE10M", "4TE10M", "TEP70", "UZTE16M2", "UZTE16M3", "UZTE16M4"];
 const HARAKAT_LIST = [
   { value: "yuk",      label: "Yuk" },
   { value: "yolovchi", label: "Yo'lovchi" },
@@ -38,11 +42,20 @@ export function LokomotivEditDrawer({ open, onClose, submission, onSaved }: Prop
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
   const [form,   setForm]   = useState<Partial<LokomotivSubmission>>({});
+  const [rusumSettings, setRusumSettings] = useState<LokomotivRusumSettings>({
+    items: [],
+    hiddenStaticValues: [],
+  });
 
   useEffect(() => {
     if (submission) setForm({ ...submission });
     setSaved(false);
   }, [submission?.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    return subscribeLokomotivRusumSettings(setRusumSettings);
+  }, [open]);
 
   function set(key: keyof LokomotivSubmission, value: any) {
     setForm(p => ({ ...p, [key]: value }));
@@ -67,6 +80,26 @@ export function LokomotivEditDrawer({ open, onClose, submission, onSaved }: Prop
   }
 
   const f = form as any;
+  const rusumiOptions = useMemo(() => {
+    const hiddenStatic = new Set(rusumSettings.hiddenStaticValues.map((value) => value.toLowerCase()));
+    const items = STATIC_RUSUMI_LIST
+      .filter((item) => !hiddenStatic.has(String(item.value).toLowerCase()))
+      .map((item) => ({
+        value: String(item.value),
+        label: item.label,
+      }));
+    const seen = new Set(items.map((item) => item.value.toLowerCase()));
+    const harakat = f.harakatTuri as HarakatTuri | undefined;
+    rusumSettings.items
+      .filter((item) => !harakat || item.harakatTurlari.includes(harakat))
+      .forEach((item) => {
+        const key = item.value.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        items.push({ value: item.value, label: item.label });
+      });
+    return items;
+  }, [rusumSettings, f.harakatTuri]);
 
   return (
     <Drawer.Root open={open} onOpenChange={v => { if (!v) onClose(); }} direction="right">
@@ -122,18 +155,18 @@ export function LokomotivEditDrawer({ open, onClose, submission, onSaved }: Prop
               {/* Rusumi */}
               <Field label="Rusumi">
                 <div className="grid grid-cols-3 gap-2">
-                  {RUSUMI_LIST.map(r => (
+                  {rusumiOptions.map(r => (
                     <button
-                      key={r}
+                      key={r.value}
                       type="button"
-                      onClick={() => set("rusumi", r)}
+                      onClick={() => set("rusumi", r.value)}
                       className={`py-2 rounded-xl font-bold text-[11px] transition-all border ${
-                        f.rusumi === r
+                        f.rusumi === r.value
                           ? "bg-primary border-primary text-white"
                           : "bg-transparent border-[#2a3a2a] text-gray-400 hover:border-primary/40 hover:text-white"
                       }`}
                     >
-                      {r}
+                      {r.label}
                     </button>
                   ))}
                 </div>
@@ -147,6 +180,11 @@ export function LokomotivEditDrawer({ open, onClose, submission, onSaved }: Prop
               {/* Poyezd raqami */}
               <Field label="Poyezd raqami">
                 <input className={inp} value={f.poyezdNumber ?? ""} onChange={e => set("poyezdNumber", e.target.value)} />
+              </Field>
+
+              {/* Ruxsat indeksi */}
+              <Field label="Ruxsat indeksi">
+                <input className={inp} value={f.ruxsatIndeksi ?? ""} onChange={e => set("ruxsatIndeksi", e.target.value)} />
               </Field>
 
               {/* Poyezd vazni */}

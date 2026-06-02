@@ -53,15 +53,14 @@ async function addFuelRecord(data: Omit<LokomotivSubmission, 'id' | 'timestamp' 
   const zap = ZAPRAVKALAR.find(z => z.id === data.stationId);
   const supplyPoint = zap?.name ?? data.stationId;
 
-  // Col 6 (Ruxsat indeksi): stansiya / tashkilot / ijarachi / mashina raqami
-  const extraParts: string[] = [];
-  if (data.stansiya)    extraParts.push(data.stansiya);
-  if (data.tashkilot)   extraParts.push(data.tashkilot);
-  if (data.ijarachi)    extraParts.push(data.ijarachi);
-  if (data.jadval)      extraParts.push(data.jadval);
-  if (data.mashinadaYetkazildi && data.mashinaRaqami)
-    extraParts.push(`M: ${data.mashinaRaqami}`);
-  const trainIndex = extraParts.join(' / ');
+  const locoNumber = data.harakatTuri === 'manyovr'
+    ? data.stansiya ?? ''
+    : data.harakatTuri === 'xojalik'
+      ? data.tashkilot ?? ''
+      : data.poyezdNumber ?? '';
+
+  // ERJU Y.PDF 6-ustun: faqat formadagi Index/Ruxsat indeksi.
+  const trainIndex = data.ruxsatIndeksi ?? '';
 
   const payload = sanitizeForFirestore({
     date,
@@ -74,12 +73,14 @@ async function addFuelRecord(data: Omit<LokomotivSubmission, 'id' | 'timestamp' 
     locCode:      data.stationId,
     locoSeries:   data.rusumi,
     locoCode:     data.lokomotivNumber,
-    jadval:       data.jadval ?? '',
-    zagranitsa:   data.zagranitsa != null ? String(data.zagranitsa) : '',
-    zagranitsaAmount: data.zagranitsa != null ? String(data.zagranitsa) : '',
+    // Depo/jadval va Zagranitsa logikasi hozircha PDF/fuelRecordsga ulanmaydi.
+    jadval:       '',
+    zagranitsa:   '',
+    zagranitsaAmount: '',
     moveType:     data.harakatTuri,
-    locoNumber:   data.poyezdNumber ?? '',
+    locoNumber,
     trainIndex,
+    ruxsatIndeksi: data.ruxsatIndeksi ?? '',
     weight:       data.poyezdVazni != null ? String(data.poyezdVazni) : '',
     balanceBefore: String(data.qoldiq),
     fuelAmount:   String(data.qanchaBerildi),

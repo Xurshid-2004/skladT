@@ -21,6 +21,7 @@ import { deleteSubmissionWithSummary } from '@/lib/firebase/submission-mutations
 import RentCalendar from '@/app/calendar';
 import { SubmissionEditDrawer } from '@/components/admin/submission-edit-drawer';
 import { clearSession, getSession } from '@/lib/utils/session';
+import { pdfText } from '@/lib/utils/pdf-text';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -134,6 +135,7 @@ const HARAKAT_LABEL: Record<string, string> = {
   yolovchi: "Yo'lovchi",
   xojalik:  "Xo'jalik",
   ijara:    'Ijara',
+  arenda:   'Ijara',
 };
 
 const CAT_COLOR: Record<string, string> = {
@@ -183,8 +185,8 @@ const HISOBOTLAR_EDIT_BTN =
   'grid place-items-center h-8 w-8 shrink-0 rounded-lg border-2 border-emerald-300 bg-emerald-500 text-white shadow-[0_0_14px_rgba(34,197,94,0.75)] transition-all hover:bg-emerald-400 hover:shadow-[0_0_18px_rgba(34,197,94,0.9)]';
 const HISOBOTLAR_DELETE_BTN =
   'grid place-items-center h-8 w-8 shrink-0 rounded-lg border-2 border-red-300 bg-red-500 text-white shadow-[0_0_14px_rgba(239,68,68,0.7)] transition-all hover:bg-red-400 hover:shadow-[0_0_18px_rgba(239,68,68,0.9)] disabled:opacity-40';
-const KORXONA_COL_PCT = [4, 6, 8, 12, 16, 12, 10, 10, 14];
-const QURULISH_COL_PCT = [3, 5, 7, 9, 10, 10, 6, 7, 10, 8, 7, 8, 10];
+const KORXONA_COL_PCT = [4, 5, 8, 11, 15, 8, 8, 10, 8, 9, 14];
+const QURULISH_COL_PCT = [3, 5, 7, 9, 8, 8, 9, 11, 7, 9, 9, 9, 7];
 const TAMIRLASH_COL_PCT = [4, 6, 8, 12, 12, 12, 12, 10, 8, 8, 8];
 
 /** Ingichka vertikal ajratuvchi — chap chegara shu indeksdagi ustunda (0-based) */
@@ -210,6 +212,36 @@ function fmtDate(ts: any): { date: string; time: string } {
 
 function getAmount(sub: any): number {
   return Number(sub.qanchaBerildi ?? sub.qancha ?? sub.qanchaOlindi ?? 0);
+}
+
+function cellVal(raw: unknown, fallback = '—'): string {
+  if (raw == null || String(raw) === '') return fallback;
+  return String(raw);
+}
+
+function rowCreatedMs(row: any): number {
+  const ts = row?.timestamp ?? row?.createdAt;
+  if (typeof ts?.toMillis === 'function') return ts.toMillis();
+  if (typeof ts?.toDate === 'function') return ts.toDate().getTime();
+  if (ts instanceof Date) return ts.getTime();
+
+  const numeric = Number(ts);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+
+  const date = String(row?.dateISO ?? row?.date ?? '').trim();
+  const time = String(row?.time ?? '').trim();
+  const parsed = date && time ? Date.parse(`${date}T${time.length === 5 ? `${time}:00` : time}`) : NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sortRowsOldestFirst<T>(rows: T[]): T[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const diff = rowCreatedMs(a.row) - rowCreatedMs(b.row);
+      return diff || a.index - b.index;
+    })
+    .map(({ row }) => row);
 }
 
 function shortDateLabel(start: Date, end: Date): string {
@@ -337,12 +369,13 @@ const TAMIR_LABEL: Record<string, string> = {
 };
 
 function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
+  const sortedRows = sortRowsOldestFirst(rows);
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const W   = doc.internal.pageSize.width;
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  const lines = doc.splitTextToSize(reportTitleLine, W - 28);
+  const lines = doc.splitTextToSize(pdfText(reportTitleLine), W - 28);
   let yTitle = 10;
   lines.forEach((ln: string) => { doc.text(ln, W / 2, yTitle, { align: 'center' }); yTitle += 5; });
   doc.setFont('helvetica', 'normal');
@@ -357,7 +390,7 @@ function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: stri
   };
 
   const dateGroups = new Map<string, any[]>();
-  for (const row of rows) {
+  for (const row of sortedRows) {
     const dk = getRowDateKey(row);
     if (!dateGroups.has(dk)) dateGroups.set(dk, []);
     dateGroups.get(dk)!.push(row);
@@ -454,8 +487,8 @@ function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: stri
     },
   });
 
-  const totalFuel = rows.reduce((s, r) => s + Number(r.qanchaBerildi ?? 0), 0);
-  const totalMasla = rows.reduce((s, r) => s + Number(r.dizMasla ?? 0), 0);
+  const totalFuel = sortedRows.reduce((s, r) => s + Number(r.qanchaBerildi ?? 0), 0);
+  const totalMasla = sortedRows.reduce((s, r) => s + Number(r.dizMasla ?? 0), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
@@ -465,6 +498,7 @@ function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: stri
 }
 
 function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
+  const sortedRows = sortRowsOldestFirst(rows);
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const W   = doc.internal.pageSize.width;
   doc.setFontSize(10); doc.setFont('helvetica', 'bold');
@@ -480,14 +514,14 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   };
   const dateGroups = new Map<string, any[]>();
-  for (const row of rows) {
+  for (const row of sortedRows) {
     const dk = getRowDateKey(row);
     if (!dateGroups.has(dk)) dateGroups.set(dk, []);
     dateGroups.get(dk)!.push(row);
   }
   const sortedDates = [...dateGroups.keys()].sort();
 
-  const head = [["Vaqt", "Korxona nomi", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
+  const head = [["Vaqt", "Korxona nomi", "Poyezd raqami", "Index", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
   const body: any[] = [];
   const dateBg: [number,number,number] = [10,40,10];
   const dateFg: [number,number,number] = [255,220,50];
@@ -499,7 +533,7 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
     const dateRows = dateGroups.get(dateKey)!;
     if (showDateGroups) {
       const [y, m, dd] = dateKey.split('-');
-      body.push([{ content: `${dd}.${m}.${y}`, colSpan: 7, styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: dateBg, textColor: dateFg, cellPadding: { top:2,bottom:2,left:3,right:3 } } }]);
+      body.push([{ content: `${dd}.${m}.${y}`, colSpan: 9, styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: dateBg, textColor: dateFg, cellPadding: { top:2,bottom:2,left:3,right:3 } } }]);
     }
     const zapGroups = new Map<string, any[]>();
     for (const row of dateRows) {
@@ -517,12 +551,12 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
       const zapTotal = stRows.reduce((acc,r) => acc + Number(r.qancha ?? 0), 0);
       body.push([
         { content: stName,          colSpan: 4, styles: { halign:'left'  as const, fontStyle:'bold'   as const, fontSize:8, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
-        { content: `jami: ${zapTotal.toLocaleString('uz-UZ')} kg`, colSpan: 3, styles: { halign:'right' as const, fontStyle:'italic' as const, fontSize:7, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
+        { content: `jami: ${zapTotal.toLocaleString('uz-UZ')} kg`, colSpan: 5, styles: { halign:'right' as const, fontStyle:'italic' as const, fontSize:7, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
       ]);
       for (const s of stRows) {
         const { time } = fmtDate(s.timestamp);
         const mashinaStr = s.mashinadaYetkazildi ? (s.mashinaRaqami ? `Ha · ${s.mashinaRaqami}` : 'Ha') : "Yo'q";
-        body.push([time, String(s.korxonaNomi ?? '—'), String(s.qancha ?? 0), String(s.nechaSutkalik ?? '—'), s.limit ? String(s.limit) : '—', mashinaStr, s.staffName ?? '—']);
+        body.push([time, String(s.korxonaNomi ?? '—'), String(s.poyezdNumber ?? '—'), String(s.ruxsatIndeksi ?? '—'), String(s.qancha ?? 0), String(s.nechaSutkalik ?? '—'), s.limit ? String(s.limit) : '—', mashinaStr, s.staffName ?? '—']);
       }
     }
   }
@@ -532,9 +566,13 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
     styles: { fontSize: 8, cellPadding: 2, valign: 'middle', lineColor: [0,0,0], lineWidth: 0.2 },
     headStyles: { fillColor: [20,80,20], textColor: [255,255,255], fontStyle: 'bold', fontSize: 8, lineColor: [0,0,0], lineWidth: 0.3, cellPadding: 1 },
     alternateRowStyles: { fillColor: [245,252,245] },
-    columnStyles: { 0:{cellWidth:20}, 1:{cellWidth:72}, 2:{cellWidth:32,halign:'right'as const}, 3:{cellWidth:32}, 4:{cellWidth:30,halign:'right'as const}, 5:{cellWidth:38}, 6:{cellWidth:52} },
+    columnStyles: {
+      0:{cellWidth:20}, 1:{cellWidth:50}, 2:{cellWidth:24}, 3:{cellWidth:24},
+      4:{cellWidth:30,halign:'right'as const}, 5:{cellWidth:24},
+      6:{cellWidth:22,halign:'right'as const}, 7:{cellWidth:28}, 8:{cellWidth:40},
+    },
   });
-  const total = rows.reduce((s,r) => s + Number(r.qancha ?? 0), 0);
+  const total = sortedRows.reduce((s,r) => s + Number(r.qancha ?? 0), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont('helvetica','bold');
   doc.text(`Jami berildi: ${total.toLocaleString('uz-UZ')} kg`, 14, fY + 8);
@@ -542,6 +580,7 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
 }
 
 function exportQurulishPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
+  const sortedRows = sortRowsOldestFirst(rows);
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const W   = doc.internal.pageSize.width;
   doc.setFontSize(10); doc.setFont('helvetica', 'bold');
@@ -557,14 +596,31 @@ function exportQurulishPDF(rows: any[], fileSlug: string, reportTitleLine: strin
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   };
   const dateGroups = new Map<string, any[]>();
-  for (const row of rows) {
+  for (const row of sortedRows) {
     const dk = getRowDateKey(row);
     if (!dateGroups.has(dk)) dateGroups.set(dk, []);
     dateGroups.get(dk)!.push(row);
   }
   const sortedDates = [...dateGroups.keys()].sort();
 
-  const head = [["Vaqt", "Korxona nomi", "Obyekt", "Texnika soni", "Lavozimi", "Qancha (kg)", "Limit (kg)", "Dop limit (kg)", "Holat", "Mashinada", "Mas'ul shaxs"]];
+  const head = [
+    [
+      { content: 'Vaqt\n1', rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+      { content: "Teplovozlar bo'yicha ma'lumot", colSpan: 2, styles: { halign: 'center' as const } },
+      { content: "Poyezdlar va tashkilotlar bo'yicha ma'lumot", colSpan: 4, styles: { halign: 'center' as const } },
+      { content: "Diz.Yoqilg'i berishdan\noldingi bakdagi\nqoldiq\n8", rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+      { content: "Berilgan diz\nyoqilg'i miqdori\n9", rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+      { content: 'Umumiy miqdor, kg\n10', rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+    ],
+    [
+      { content: 'Seriya\n2', styles: { halign: 'center' as const } },
+      { content: 'Raqami\n3', styles: { halign: 'center' as const } },
+      { content: "Yo'nalish\n4", styles: { halign: 'center' as const } },
+      { content: 'Poyezd raqami\n5', styles: { halign: 'center' as const } },
+      { content: 'Indeksi\n6', styles: { halign: 'center' as const } },
+      { content: 'Poyezd vazni\n7', styles: { halign: 'center' as const } },
+    ],
+  ];
   const body: any[] = [];
   const dateBg: [number,number,number] = [50,20,10];
   const dateFg: [number,number,number] = [255,220,50];
@@ -576,7 +632,7 @@ function exportQurulishPDF(rows: any[], fileSlug: string, reportTitleLine: strin
     const dateRows = dateGroups.get(dateKey)!;
     if (showDateGroups) {
       const [y, m, dd] = dateKey.split('-');
-      body.push([{ content: `${dd}.${m}.${y}`, colSpan: 11, styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: dateBg, textColor: dateFg, cellPadding: { top:2,bottom:2,left:3,right:3 } } }]);
+      body.push([{ content: `${dd}.${m}.${y}`, colSpan: 10, styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: dateBg, textColor: dateFg, cellPadding: { top:2,bottom:2,left:3,right:3 } } }]);
     }
     const zapGroups = new Map<string, any[]>();
     for (const row of dateRows) {
@@ -591,27 +647,40 @@ function exportQurulishPDF(rows: any[], fileSlug: string, reportTitleLine: strin
         const uniqueNames = [...new Set(stRows.map((r:any)=>r.staffCode?.trim()).filter(Boolean).map((c:string)=>staffMap.get(c)).filter(Boolean))] as string[];
         if (uniqueNames.length > 0) stName = `${stBase}  —  ${uniqueNames.join(', ')}`;
       }
-      const zapTotal = stRows.reduce((acc,r) => acc + Number(r.qanchaOlindi ?? 0), 0);
+      const zapTotal = stRows.reduce((acc,r) => acc + getAmount(r), 0);
       body.push([
-        { content: stName,          colSpan: 6, styles: { halign:'left'  as const, fontStyle:'bold'   as const, fontSize:8, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
+        { content: stName,          colSpan: 5, styles: { halign:'left'  as const, fontStyle:'bold'   as const, fontSize:8, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
         { content: `jami: ${zapTotal.toLocaleString('uz-UZ')} kg`, colSpan: 5, styles: { halign:'right' as const, fontStyle:'italic' as const, fontSize:7, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
       ]);
       for (const s of stRows) {
         const { time } = fmtDate(s.timestamp);
-        const mashinaStr = s.mashinadaYetkazildi ? (s.mashinaRaqami ? `Ha · ${s.mashinaRaqami}` : 'Ha') : "Yo'q";
-        body.push([time, String(s.korxonaNomi??'—'), String(s.obyekt??'—'), String(s.texnikaSoni??'—'), String(s.lavozim??'—'), String(s.qanchaOlindi??0), s.limit?String(s.limit):'—', s.dopLimit!=null?String(s.dopLimit):'—', s.isOverLimit?`Oshgan (+${s.oshiqMiqdor??0} kg)`:'Norma', mashinaStr, String(s.masulShaxs??'—')]);
+        const amount = getAmount(s);
+        const qoldiq = Number(s.qoldiq ?? 0);
+        const hisob = qoldiq + amount;
+        body.push([
+          time,
+          cellVal(s.seriya ?? s.korxonaNomi),
+          cellVal(s.raqami),
+          'Qurilish',
+          cellVal(s.poyezdNumber),
+          cellVal(s.ruxsatIndeksi),
+          cellVal(s.poyezdVazni),
+          qoldiq ? qoldiq.toLocaleString('uz-UZ') : '—',
+          amount ? amount.toLocaleString('uz-UZ') : '—',
+          hisob.toLocaleString('uz-UZ'),
+        ]);
       }
     }
   }
 
   autoTable(doc, {
     head, body, startY: yTitle + 4, theme: 'grid',
-    styles: { fontSize: 7, cellPadding: 1.8, valign: 'middle', lineColor: [0,0,0], lineWidth: 0.2 },
-    headStyles: { fillColor: [180,80,20], textColor: [255,255,255], fontStyle: 'bold', fontSize: 7.5, lineColor: [0,0,0], lineWidth: 0.3, cellPadding: 1 },
-    alternateRowStyles: { fillColor: [252,248,244] },
-    columnStyles: { 0:{cellWidth:15}, 1:{cellWidth:38}, 2:{cellWidth:34}, 3:{cellWidth:18}, 4:{cellWidth:24}, 5:{cellWidth:22,halign:'right'as const}, 6:{cellWidth:20,halign:'right'as const}, 7:{cellWidth:22,halign:'right'as const}, 8:{cellWidth:24}, 9:{cellWidth:22}, 10:{cellWidth:34} },
+    styles: { fontSize: 7, cellPadding: 1.15, valign: 'middle', lineColor: [0,0,0], lineWidth: 0.2 },
+    headStyles: { fillColor: [255,255,255], textColor: [0,0,0], fontStyle: 'bold', fontSize: 7, lineColor: [0,0,0], lineWidth: 0.3, cellPadding: 1 },
+    alternateRowStyles: { fillColor: [250,250,250] },
+    columnStyles: { 0:{cellWidth:14}, 1:{cellWidth:20}, 2:{cellWidth:18}, 3:{cellWidth:22}, 4:{cellWidth:22}, 5:{cellWidth:28}, 6:{cellWidth:20}, 7:{cellWidth:26,halign:'right'as const}, 8:{cellWidth:22,halign:'right'as const}, 9:{cellWidth:22,halign:'right'as const} },
   });
-  const total = rows.reduce((s,r) => s + Number(r.qanchaOlindi ?? 0), 0);
+  const total = sortedRows.reduce((s,r) => s + getAmount(r), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont('helvetica','bold');
   doc.text(`Jami berildi: ${total.toLocaleString('uz-UZ')} kg`, 14, fY + 8);
@@ -619,12 +688,13 @@ function exportQurulishPDF(rows: any[], fileSlug: string, reportTitleLine: strin
 }
 
 function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
+  const sortedRows = sortRowsOldestFirst(rows);
   const doc  = new jsPDF('landscape', 'mm', 'a4');
   const W    = doc.internal.pageSize.width;
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  const lines = doc.splitTextToSize(reportTitleLine, W - 28);
+  const lines = doc.splitTextToSize(pdfText(reportTitleLine), W - 28);
   let yTitle = 10;
   lines.forEach((ln: string) => {
     doc.text(ln, W / 2, yTitle, { align: 'center' });
@@ -643,7 +713,7 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
   };
 
   const dateGroups = new Map<string, any[]>();
-  for (const row of rows) {
+  for (const row of sortedRows) {
     const dk = getRowDateKey(row);
     if (!dateGroups.has(dk)) dateGroups.set(dk, []);
     dateGroups.get(dk)!.push(row);
@@ -721,7 +791,7 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
 
       body.push([
         {
-          content: stName,
+          content: pdfText(stName),
           colSpan: 5,
           styles: { halign: 'left' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: zapBg, textColor: zapFg, cellPadding: hdrPad },
         },
@@ -737,23 +807,24 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
         const amount   = getAmount(s);
         const qoldiq   = Number((s as any).qoldiq ?? 0);
         const hisob    = qoldiq + amount;
-        const poyezdNum = String((s as any).poyezdNumber ?? '—');
-        const indexVal = (s as any).harakatTuri === 'manyovr'
+        const poyezdNum = (s as any).harakatTuri === 'manyovr'
           ? String((s as any).stansiya ?? '—')
-          : String((s as any).ruxsatIndeksi ?? '—');
+          : (s as any).harakatTuri === 'xojalik'
+            ? String((s as any).tashkilot ?? '—')
+            : String((s as any).poyezdNumber ?? '—');
+        const indexVal = String((s as any).ruxsatIndeksi ?? '—');
         body.push([
           time,
-          String((s as any).rusumi ?? (s as any).seriya ?? '—'),
-          String((s as any).lokomotivNumber ?? (s as any).raqami ?? '—'),
-          String(
+          pdfText((s as any).rusumi ?? (s as any).seriya),
+          pdfText((s as any).lokomotivNumber ?? (s as any).raqami),
+          pdfText(
             HARAKAT_LABEL[(s as any).harakatTuri]
               ?? (s as any).harakatTuri
               ?? (s as any).tamirlashTuri
               ?? (s as any).category
-              ?? '—',
           ),
-          poyezdNum,
-          indexVal,
+          pdfText(poyezdNum),
+          pdfText(indexVal),
           (s as any).poyezdVazni != null && String((s as any).poyezdVazni) !== ''
             ? String((s as any).poyezdVazni)
             : '—',
@@ -787,7 +858,7 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
   });
 
   // Umumiy jami — jadvaldan keyin, oxirgi sahifada, chapdan
-  const grandTotal = rows.reduce((s: number, r: any) => s + getAmount(r), 0);
+  const grandTotal = sortedRows.reduce((s: number, r: any) => s + getAmount(r), 0);
   const margin = 14;
   const finalY = (doc as any).lastAutoTable?.finalY ?? 100;
   const pageH = doc.internal.pageSize.height;
@@ -1194,14 +1265,16 @@ export default function HisobotlarPage() {
                       const rowBg  = i % 2 === 0 ? '#111c11' : '#0f190f';
                       const tafsilot = s.category === 'lokomotiv' ? (s.rusumi ?? '—') :
                                        s.category === 'korxona'   ? (s.korxonaNomi ?? '—') :
-                                       s.category === 'qurulish'  ? (s.obyekt ?? '—') :
+                                       s.category === 'qurulish'  ? (s.seriya ?? s.korxonaNomi ?? '—') :
                                        (s.seriya ?? '—');
                       const raqami  = s.lokomotivNumber ?? s.raqami ?? '—';
                       const harakat = HARAKAT_LABEL[s.harakatTuri] ?? s.harakatTuri ?? s.tamirlashTuri ?? s.category ?? '—';
-                      const poyezdNumber = s.poyezdNumber ?? '—';
-                      const rowIndexVal = s.harakatTuri === 'manyovr'
+                      const poyezdNumber = s.harakatTuri === 'manyovr'
                         ? (s.stansiya ?? '—')
-                        : (s.ruxsatIndeksi ?? '—');
+                        : s.harakatTuri === 'xojalik'
+                          ? (s.tashkilot ?? '—')
+                          : (s.poyezdNumber ?? '—');
+                      const rowIndexVal = s.ruxsatIndeksi ?? '—';
                       return (
                         <tr key={sub.id} style={{ background: rowBg }} className="hover:brightness-125 transition-all">
                           <td className={`px-1.5 sm:px-2 py-2 align-top text-center border-solid ${hisobotlarDividerLeftClass(0, 'body')}`}>
@@ -1291,7 +1364,7 @@ export default function HisobotlarPage() {
                 </table>
               )}
 
-              {/* Korxona table: 9 columns */}
+              {/* Korxona table */}
               {globalCategory === 'korxona' && (
                 <table className="hisobotlar-data-table w-full table-fixed border-collapse text-left">
                   <colgroup>
@@ -1301,7 +1374,7 @@ export default function HisobotlarPage() {
                   </colgroup>
                   <thead>
                     <tr style={{ background: '#eab308' }}>
-                      {['№', 'VAQT', 'ZAPRAVKA', 'XODIM', 'KORXONA NOMI', 'QANCHA (kg)', 'SUTKALIK', 'MASHINA', 'AMAL'].map((label) => (
+                      {['№', 'VAQT', 'ZAPRAVKA', 'XODIM', 'KORXONA NOMI', 'P.RAQ', 'INDEX', 'QANCHA (kg)', 'SUTKALIK', 'MASHINA', 'AMAL'].map((label) => (
                         <th key={label} className="px-1.5 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-tight whitespace-normal" style={{ color: '#b91c1c' }}>
                           {label}
                         </th>
@@ -1324,6 +1397,8 @@ export default function HisobotlarPage() {
                             <p className="text-emerald-400 font-black text-[10px] break-all">{s.staffCode ? (staffMap.get(s.staffCode.trim()) ?? s.staffName ?? s.staffCode) : '—'}</p>
                           </td>
                           <td className="px-2 py-2 align-top"><span className="text-cyan-400 font-black text-xs break-words">{s.korxonaNomi ?? '—'}</span></td>
+                          <td className="px-2 py-2 align-top"><span className="text-gray-300 text-[10px] font-bold break-words">{s.poyezdNumber ?? '—'}</span></td>
+                          <td className="px-2 py-2 align-top"><span className="text-purple-300 text-[10px] font-bold break-words">{s.ruxsatIndeksi ?? '—'}</span></td>
                           <td className="px-2 py-2 align-top text-right">
                             <span className={`font-black text-sm tabular-nums ${s.isOverLimit ? 'text-red-400' : 'text-lime-300'}`}>{Number(s.qancha ?? 0).toLocaleString('uz-UZ')}</span>
                           </td>
@@ -1378,7 +1453,7 @@ export default function HisobotlarPage() {
                   </colgroup>
                   <thead>
                     <tr style={{ background: '#eab308' }}>
-                      {['№', 'VAQT', 'ZAPRAVKA', 'XODIM', 'KORXONA', 'OBYEKT', 'TEXNIKA', 'LAVOZIM', 'QANCHA (kg)', 'DOP LIMIT', 'MASHINA', "MAS'UL", 'AMAL'].map((label) => (
+                      {['№', 'VAQT', 'ZAPRAVKA', 'XODIM', 'SERIYA', 'RAQAMI', 'P.RAQ', 'INDEX', 'P.VAZNI', 'QOLDIQ', "YOQILG'I", 'HISOB', 'AMAL'].map((label) => (
                         <th key={label} className="px-1.5 py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-tight leading-tight whitespace-normal" style={{ color: '#b91c1c' }}>
                           {label}
                         </th>
@@ -1392,6 +1467,14 @@ export default function HisobotlarPage() {
                       const zap = ZAPRAVKALAR.find(z => z.id === s.stationId);
                       const rowNum = (globalPage - 1) * PAGE_SIZE + i + 1;
                       const rowBg = i % 2 === 0 ? '#111c11' : '#0f190f';
+                      const amount = getAmount(s);
+                      const qoldiq = Number(s.qoldiq ?? 0);
+                      const hisob = qoldiq + amount;
+                      const poyezdDisplay = s.harakatTuri === 'manyovr'
+                        ? (s.stansiya ?? '—')
+                        : s.harakatTuri === 'xojalik'
+                          ? (s.tashkilot ?? '—')
+                          : (s.poyezdNumber ?? '—');
                       return (
                         <tr key={sub.id} style={{ background: rowBg }} className="hover:brightness-125 transition-all">
                           <td className="px-2 py-2 text-center align-top"><span className="text-gray-400 font-bold text-[10px]">{rowNum}</span></td>
@@ -1400,22 +1483,18 @@ export default function HisobotlarPage() {
                           <td className="px-2 py-2 align-top">
                             <p className="text-emerald-400 font-black text-[10px] break-all">{s.staffCode ? (staffMap.get(s.staffCode.trim()) ?? s.staffName ?? s.staffCode) : '—'}</p>
                           </td>
-                          <td className="px-2 py-2 align-top"><span className="text-cyan-400 font-black text-[10px] break-words">{s.korxonaNomi ?? '—'}</span></td>
-                          <td className="px-2 py-2 align-top"><span className="text-gray-200 text-[10px] font-bold break-words">{s.obyekt ?? '—'}</span></td>
-                          <td className="px-2 py-2 align-top text-center"><span className="text-gray-300 text-[10px] font-bold">{s.texnikaSoni ?? '—'}</span></td>
-                          <td className="px-2 py-2 align-top"><span className="text-gray-300 text-[10px] font-bold break-words">{s.lavozim ?? '—'}</span></td>
+                          <td className="px-2 py-2 align-top"><span className="text-cyan-400 font-black text-[10px] break-words">{cellVal(s.seriya ?? s.korxonaNomi)}</span></td>
+                          <td className="px-2 py-2 align-top"><span className="text-gray-200 text-[10px] font-bold break-words">{cellVal(s.raqami)}</span></td>
+                          <td className="px-2 py-2 align-top"><span className="text-gray-300 text-[10px] font-bold break-words">{cellVal(poyezdDisplay)}</span></td>
+                          <td className="px-2 py-2 align-top"><span className="text-purple-300 text-[10px] font-bold break-words">{cellVal(s.ruxsatIndeksi)}</span></td>
+                          <td className="px-2 py-2 align-top text-right"><span className="text-gray-300 text-[10px] font-bold tabular-nums">{cellVal(s.poyezdVazni)}</span></td>
                           <td className="px-2 py-2 align-top text-right">
-                            <span className={`font-black text-sm tabular-nums ${s.isOverLimit ? 'text-red-400' : 'text-lime-300'}`}>{Number(s.qanchaOlindi ?? 0).toLocaleString('uz-UZ')}</span>
+                            {qoldiq > 0 ? <span className="text-amber-200 font-black text-sm tabular-nums">{qoldiq.toLocaleString('uz-UZ')}</span> : <span className="text-gray-600 text-[10px]">—</span>}
                           </td>
                           <td className="px-2 py-2 align-top text-right">
-                            {s.dopLimit ? <span className="text-orange-400 font-bold text-[10px]">{Number(s.dopLimit).toLocaleString('uz-UZ')}</span> : <span className="text-gray-600 text-[10px]">—</span>}
+                            <span className={`font-black text-sm tabular-nums ${s.isOverLimit ? 'text-red-400' : 'text-lime-300'}`}>{amount ? amount.toLocaleString('uz-UZ') : '—'}</span>
                           </td>
-                          <td className="px-2 py-2 align-top">
-                            {s.mashinadaYetkazildi
-                              ? <span className="text-blue-400 font-bold text-[10px]">{s.mashinaRaqami ?? 'Ha'}</span>
-                              : <span className="text-gray-500 text-[10px]">Yo'q</span>}
-                          </td>
-                          <td className="px-2 py-2 align-top"><span className="text-gray-300 text-[10px] font-bold break-words">{s.masulShaxs ?? '—'}</span></td>
+                          <td className="px-2 py-2 align-top text-right"><span className="text-cyan-200 font-black text-sm tabular-nums">{hisob.toLocaleString('uz-UZ')}</span></td>
                           <td className="overflow-visible px-1 py-2 align-top">
                             <div className="flex flex-nowrap items-center justify-center gap-1 leading-none">
                               <button
