@@ -1,27 +1,40 @@
 import { db } from './config';
 import {
   collection, addDoc, query, where, orderBy, limit,
-  getDocs, doc, updateDoc, onSnapshot, serverTimestamp
+  getDocs, onSnapshot, serverTimestamp
 } from 'firebase/firestore';
 import { LokomotivSubmission } from '@/lib/types';
 import { sanitizeForFirestore } from './sanitize';
 import { ZAPRAVKALAR } from '@/lib/data/uzellar';
+import {
+  recordSubmissionCreatedForSummaries,
+  submissionWithStandardDateFields,
+  toLocalDateISO,
+} from './summary-service';
+import { updateSubmissionByIdWithSummary } from './submission-mutations';
 
 const COLLECTION = 'submissions';
 
 // Yangi yozuv qo'shish
 export async function addLokomotivSubmission(data: Omit<LokomotivSubmission, 'id' | 'timestamp' | 'createdAt'>) {
+  const now = new Date();
+  const datedData = submissionWithStandardDateFields(data, now);
   const payload = sanitizeForFirestore({
-    ...data,
+    ...datedData,
     timestamp: serverTimestamp(),
     createdAt: serverTimestamp(),
     category: 'lokomotiv',
   });
   const docRef = await addDoc(collection(db, COLLECTION), payload);
+  await recordSubmissionCreatedForSummaries({
+    id: docRef.id,
+    ...datedData,
+    category: 'lokomotiv',
+  });
 
   // fuelRecords kolleksiyasiga ham yoz (ERJU ma'lumotnoma uchun)
   try {
-    await addFuelRecord(data);
+    await addFuelRecord(datedData);
   } catch (e) {
     console.warn('fuelRecord yozilmadi:', e);
   }
@@ -32,7 +45,7 @@ export async function addLokomotivSubmission(data: Omit<LokomotivSubmission, 'id
 // fuelRecords kolleksiyasiga yozish (ERJU PDF uchun)
 async function addFuelRecord(data: Omit<LokomotivSubmission, 'id' | 'timestamp' | 'createdAt'>) {
   const now = new Date();
-  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const date = typeof (data as any).dateISO === 'string' ? (data as any).dateISO : toLocalDateISO(now);
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
   const time = `${hh}:${mm}`;
@@ -45,12 +58,15 @@ async function addFuelRecord(data: Omit<LokomotivSubmission, 'id' | 'timestamp' 
   if (data.stansiya)    extraParts.push(data.stansiya);
   if (data.tashkilot)   extraParts.push(data.tashkilot);
   if (data.ijarachi)    extraParts.push(data.ijarachi);
+  if (data.jadval)      extraParts.push(data.jadval);
   if (data.mashinadaYetkazildi && data.mashinaRaqami)
     extraParts.push(`M: ${data.mashinaRaqami}`);
   const trainIndex = extraParts.join(' / ');
 
   const payload = sanitizeForFirestore({
     date,
+    dateISO: date,
+    year: Number(date.slice(0, 4)),
     time,
     supplyPoint,
     staffCode:    data.staffCode,
@@ -58,6 +74,9 @@ async function addFuelRecord(data: Omit<LokomotivSubmission, 'id' | 'timestamp' 
     locCode:      data.stationId,
     locoSeries:   data.rusumi,
     locoCode:     data.lokomotivNumber,
+    jadval:       data.jadval ?? '',
+    zagranitsa:   data.zagranitsa != null ? String(data.zagranitsa) : '',
+    zagranitsaAmount: data.zagranitsa != null ? String(data.zagranitsa) : '',
     moveType:     data.harakatTuri,
     locoNumber:   data.poyezdNumber ?? '',
     trainIndex,
@@ -113,11 +132,10 @@ export function subscribeToSubmissions(
  
 // Yozuvni tahrirlash (faqat shu kun ichida)
 export async function updateSubmission(id: string, updates: Partial<LokomotivSubmission>) {
-  const docRef = doc(db, COLLECTION, id);
   const payload = sanitizeForFirestore({
     ...updates,
     isEdited: true,
     editedAt: Date.now(),
   });
-  await updateDoc(docRef, payload);
+  await updateSubmissionByIdWithSummary(id, payload);
 }

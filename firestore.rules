@@ -100,8 +100,9 @@ service cloud.firestore {
     // ─── Kirish kodlari (seed / kelajakdagi boshqaruv) ────────────────
 
     match /access_codes/{code} {
-      allow read: if true;
-      allow write: if isAdminPanel();
+      allow get: if isAuthenticated();
+      allow list: if hasActiveSession() && isAdminPanel();
+      allow create, update, delete: if hasActiveSession() && isAdminPanel();
     }
 
     // ─── Yuborishlar (lokomotiv, korxona, …) ───────────────────────────
@@ -133,6 +134,34 @@ service cloud.firestore {
       allow delete: if hasActiveSession() && isAdminPanel();
     }
 
+    // ─── Kunlik/yillik agregat summary cache ──────────────────────────
+
+    match /dailySummaries/{summaryId} {
+      allow read: if hasActiveSession();
+      allow create: if hasActiveSession() && (
+        isAdminPanel() || request.resource.data.stationId == getUserStation()
+      );
+      allow update: if hasActiveSession() && (
+        isAdminPanel()
+        || request.resource.data.stationId == getUserStation()
+        || resource.data.stationId == getUserStation()
+      );
+      allow delete: if hasActiveSession() && isAdminPanel();
+    }
+
+    match /yearlySummaries/{summaryId} {
+      allow read: if hasActiveSession();
+      allow create: if hasActiveSession() && (
+        isAdminPanel() || request.resource.data.stationId == getUserStation()
+      );
+      allow update: if hasActiveSession() && (
+        isAdminPanel()
+        || request.resource.data.stationId == getUserStation()
+        || resource.data.stationId == getUserStation()
+      );
+      allow delete: if hasActiveSession() && isAdminPanel();
+    }
+
     // ─── Xodimlar vault ────────────────────────────────────────────────
 
     // Ishchi jadvalida tabel → F.I.Sh (useStaffMap); admin — to'liq ro'yxat
@@ -148,16 +177,6 @@ service cloud.firestore {
       allow get: if true;
       allow list: if hasActiveSession() && isAdminPanel();
       allow create, update, delete: if hasActiveSession() && isAdminPanel();
-    }
-
-    // ─── Chat ──────────────────────────────────────────────────────────
-
-    match /messages/{msgId} {
-      allow read: if hasActiveSession();
-      allow create: if hasActiveSession();
-      allow update: if hasActiveSession()
-        && (resource.data.senderCode == getUserCode() || isAdminPanel());
-      allow delete: if false;
     }
 
     // ─── Ruxsatnomalar ─────────────────────────────────────────────────

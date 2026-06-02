@@ -165,7 +165,17 @@ export default function TamirlashRecentTable({ stationId }: TamirlashRecentTable
       </div>
 
       <div className="hidden md:block bg-background/70 backdrop-blur-md rounded-3xl border-2 border-primary/15 overflow-hidden shadow-lg">
-        <table className="w-full text-left">
+        <table className="w-full table-fixed text-left">
+          <colgroup>
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "15%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "6%" }} />
+          </colgroup>
           <thead className="bg-primary/5 text-[10px] font-black uppercase tracking-widest text-primary">
             <tr>
               <th className="px-6 py-4">Vaqt</th>
@@ -173,7 +183,7 @@ export default function TamirlashRecentTable({ stationId }: TamirlashRecentTable
               <th className="px-6 py-4">Ta'mir turi</th>
               <th className="px-6 py-4">Berildi (kg)</th>
               <th className="px-6 py-4">Diz Masla</th>
-              <th className="px-6 py-4">Mashina</th>
+              <th className="px-6 py-4 text-center">Mashina</th>
               <th className="px-6 py-4">Mas'ul</th>
               <th className="px-6 py-4"></th>
             </tr>
@@ -181,17 +191,17 @@ export default function TamirlashRecentTable({ stationId }: TamirlashRecentTable
           <tbody className="divide-y divide-primary/5">
             {todaySubmissions.map((sub) => (
               <tr key={sub.id}>
-                <td className="px-6 py-4 font-bold">{formatTimestamp(sub.timestamp)}</td>
-                <td className="px-6 py-4 font-black">{sub.seriya}-{sub.raqami}</td>
-                <td className="px-6 py-4 text-xs font-black uppercase">{sub.tamirlashTuri}</td>
-                <td className="px-6 py-4 font-black">{sub.qanchaBerildi} kg</td>
-                <td className="px-6 py-4 font-bold">{sub.dizMasla || 0} kg</td>
-                <td className="px-6 py-4 text-sm">
+                <td className="px-6 py-4 font-bold truncate">{formatTimestamp(sub.timestamp)}</td>
+                <td className="px-6 py-4 font-black truncate">{sub.seriya}-{sub.raqami}</td>
+                <td className="px-6 py-4 text-xs font-black uppercase truncate">{sub.tamirlashTuri}</td>
+                <td className="px-6 py-4 text-right font-black tabular-nums whitespace-nowrap">{sub.qanchaBerildi} kg</td>
+                <td className="px-6 py-4 text-right font-bold tabular-nums whitespace-nowrap">{sub.dizMasla || 0} kg</td>
+                <td className="px-6 py-4 text-center text-sm">
                   {sub.mashinadaYetkazildi
                     ? <span className="text-blue-600 font-bold">{sub.mashinaRaqami ? sub.mashinaRaqami : "Ha"}</span>
                     : <span className="text-muted-foreground">Yo'q</span>}
                 </td>
-                <td className="px-6 py-4 text-xs font-bold">{sub.masulShaxs}</td>
+                <td className="px-6 py-4 text-xs font-bold truncate">{sub.masulShaxs}</td>
                 <td className="px-6 py-4">
                   {isToday(sub.timestamp) && (
                     <button onClick={() => { setEditSub(sub as unknown as Submission); setEditOpen(true); }}

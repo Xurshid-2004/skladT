@@ -153,25 +153,33 @@ export default function KorxonaRecentTable({ stationId }: KorxonaRecentTableProp
 
         {/* Desktop */}
         <div className="hidden md:block bg-background/70 backdrop-blur-md rounded-3xl border-2 border-primary/15 overflow-hidden shadow-lg">
-          <table className="w-full text-left">
+          <table className="w-full table-fixed text-left">
+            <colgroup>
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "34%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "12%" }} />
+            </colgroup>
             <thead className="bg-primary/5 text-[10px] font-black uppercase tracking-widest text-primary">
               <tr>
                 <th className="px-4 py-3">Vaqt</th>
                 <th className="px-4 py-3">Korxona</th>
                 <th className="px-4 py-3">Qancha</th>
                 <th className="px-4 py-3">Sutka</th>
-                <th className="px-4 py-3">Mashina</th>
+                <th className="px-4 py-3 text-center">Mashina</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-primary/5">
               {todaySubmissions.map((sub) => (
                 <tr key={sub.id} className={sub.isOverLimit ? "text-danger" : ""}>
-                  <td className="px-4 py-3 font-bold text-sm">{formatTimestamp(sub.timestamp)}</td>
-                  <td className="px-4 py-3 font-black">{sub.korxonaNomi}</td>
-                  <td className="px-4 py-3 font-black">{sub.qancha} kg</td>
-                  <td className="px-4 py-3">{sub.nechaSutkalik}</td>
-                  <td className="px-4 py-3 text-sm">
+                  <td className="px-4 py-3 font-bold text-sm truncate">{formatTimestamp(sub.timestamp)}</td>
+                  <td className="px-4 py-3 font-black truncate">{sub.korxonaNomi}</td>
+                  <td className="px-4 py-3 font-black tabular-nums whitespace-nowrap">{sub.qancha} kg</td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap">{sub.nechaSutkalik}</td>
+                  <td className="px-4 py-3 text-center text-sm">
                     {sub.mashinadaYetkazildi
                       ? <span className="text-blue-600 font-bold">{sub.mashinaRaqami ? `Ha · ${sub.mashinaRaqami}` : "Ha"}</span>
                       : <span className="text-muted-foreground">Yo'q</span>}

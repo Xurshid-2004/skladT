@@ -166,6 +166,14 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
     }
   };
 
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key !== "Enter") return;
+    const target = e.target as HTMLElement;
+    if (target.tagName === "BUTTON" || target.tagName === "TEXTAREA") return;
+    e.preventDefault();
+    if (!loading && !isSaveDisabled) e.currentTarget.requestSubmit();
+  };
+
   const handleReset = () => {
     setFormData({
       korxonaNomi: "",
@@ -183,19 +191,19 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
   const korxonalar = limits?.korxonaList?.[stationId] || limits?.korxonaList?.default || [];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className={`p-8 rounded-3xl border-2 transition-all duration-500 shadow-xl backdrop-blur-md ${
+    <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-2.5">
+      <div className={`p-3.5 sm:p-4 rounded-[22px] border-2 transition-all duration-500 shadow-lg backdrop-blur-md ${
         limitInfo.isOverLimit ? "bg-danger/10 border-danger/30" : "bg-background/70 border-primary/15"
       }`}>
-        <h2 className={`text-2xl font-black mb-8 uppercase tracking-tighter ${
+        <h2 className={`text-base sm:text-lg font-black mb-3 uppercase tracking-tight ${
           limitInfo.isOverLimit ? "text-danger" : "text-primary"
         }`}>
           Korxona uchun yoqilg'i berish
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:grid-cols-[minmax(15rem,1.6fr)_minmax(8rem,0.7fr)_minmax(8rem,0.7fr)_minmax(12rem,0.9fr)]">
           {/* Korxona Nomi */}
-          <div className="space-y-2">
+          <div className="space-y-1 md:col-span-2 lg:col-span-1">
             <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
               1. Korxona Nomi
             </label>
@@ -205,7 +213,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
               value={formData.korxonaNomi}
               onChange={(e) => handleInputChange("korxonaNomi", e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-lg text-foreground transition-all"
+              className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
               placeholder="Tanlang yoki yozing"
             />
             <datalist id="korxonalar">
@@ -214,7 +222,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
           </div>
 
           {/* Qancha */}
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
               2. Qancha (kg)
             </label>
@@ -223,13 +231,13 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
               value={formData.qancha}
               onChange={(e) => handleInputChange("qancha", e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-lg text-foreground transition-all"
+              className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
               placeholder="0"
             />
           </div>
 
           {/* Necha Sutkalik */}
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
               3. Necha Sutkalik
             </label>
@@ -243,14 +251,14 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
                 handleInputChange("nechaSutkalik", val);
               }}
               onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-lg text-foreground transition-all"
+              className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
               placeholder="1"
             />
           </div>
 
           {/* Limit Info */}
-          <div className="flex items-center gap-3">
-            <div className={`p-4 rounded-2xl font-bold text-sm ${
+          <div className="flex min-h-10 items-end gap-2 md:col-span-2 lg:col-span-1">
+            <div className={`w-full h-10 px-3 rounded-lg flex items-center font-black text-xs ${
               limitInfo.isOverLimit ? "bg-danger text-white" : "bg-primary/10 text-primary"
             }`}>
               Limit: {limitInfo.limit} kg/sutka
@@ -265,19 +273,19 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
 
         {/* Over Limit Fields */}
         {limitInfo.isOverLimit && (
-          <div className="mt-8 pt-8 border-t border-danger/20 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500">
-            <div className="space-y-2">
+          <div className="mt-3 pt-3 border-t border-danger/20 grid grid-cols-1 md:grid-cols-3 gap-2.5 animate-in slide-in-from-top-4 duration-500">
+            <div className="space-y-1">
               <label className="text-xs font-black text-danger uppercase tracking-widest">Buyruq №</label>
               <input
                 type="text"
                 value={formData.buyruqNumber}
                 onChange={(e) => handleInputChange("buyruqNumber", e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full h-14 px-5 bg-background border-2 border-danger/20 rounded-2xl focus:outline-none focus:border-danger font-bold"
+                className="w-full h-10 px-3 bg-background border-2 border-danger/20 rounded-lg focus:outline-none focus:border-danger font-black text-sm sm:text-base text-foreground"
                 placeholder="Buyruq raqami"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label className="text-xs font-black text-danger uppercase tracking-widest">Kim Tomonidan</label>
               <input
                 type="text"
@@ -285,83 +293,88 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
                 value={formData.kimTomonidan}
                 onChange={(e) => handleInputChange("kimTomonidan", e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full h-14 px-5 bg-background border-2 border-danger/20 rounded-2xl focus:outline-none focus:border-danger font-bold"
+                className="w-full h-10 px-3 bg-background border-2 border-danger/20 rounded-lg focus:outline-none focus:border-danger font-black text-sm sm:text-base text-foreground"
                 placeholder="Ism sharif"
               />
               <datalist id="buyruqEgalari">
                 {(limits?.buyruqEgalariList?.[stationId] || limits?.buyruqEgalariList?.default || []).map(b => <option key={b} value={b} />)}
               </datalist>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label className="text-xs font-black text-danger uppercase tracking-widest">Vaqti</label>
               <input
                 type="datetime-local"
                 value={formData.buyruqVaqti}
                 onChange={(e) => handleInputChange("buyruqVaqti", e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full h-14 px-5 bg-background border-2 border-danger/20 rounded-2xl focus:outline-none focus:border-danger font-bold"
+                className="w-full h-10 px-3 bg-background border-2 border-danger/20 rounded-lg focus:outline-none focus:border-danger font-black text-sm sm:text-base text-foreground"
               />
             </div>
           </div>
         )}
 
         {/* Mashina */}
-        <div className="mt-8 space-y-4">
-          <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
-            Mashinada yetkazildimi?
-          </label>
-          <div className="flex gap-4">
+        <div className="mt-3 grid gap-2.5 lg:grid-cols-[minmax(14rem,0.75fr)_minmax(12rem,0.65fr)_minmax(16rem,0.9fr)] lg:items-end">
+          <div className="space-y-2">
+            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+              Mashinada yetkazildimi?
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleInputChange("mashinadaYetkazildi", true)}
+                className={`flex-1 h-10 rounded-lg font-black transition-all border-2 ${
+                  formData.mashinadaYetkazildi ? "bg-primary border-primary text-white" : "bg-background border-muted-foreground/10"
+                }`}
+              >
+                HA
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInputChange("mashinadaYetkazildi", false)}
+                className={`flex-1 h-10 rounded-lg font-black transition-all border-2 ${
+                  !formData.mashinadaYetkazildi ? "bg-primary border-primary text-white" : "bg-background border-muted-foreground/10"
+                }`}
+              >
+                YO'Q
+              </button>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {formData.mashinadaYetkazildi ? (
+              <input
+                type="text"
+                list="mashinaRaqamlari"
+                value={formData.mashinaRaqami}
+                onChange={(e) => handleInputChange("mashinaRaqami", e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all animate-in zoom-in-95"
+                placeholder="Mashina raqami"
+              />
+            ) : (
+              <div className="hidden lg:block h-10" />
+            )}
+            <datalist id="mashinaRaqamlari">
+              {(limits?.mashinaRaqamlari?.[stationId] || limits?.mashinaRaqamlari?.default || []).map(m => <option key={m} value={m} />)}
+            </datalist>
+          </div>
+
+          <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => handleInputChange("mashinadaYetkazildi", true)}
-              className={`flex-1 py-4 rounded-2xl font-black transition-all border-2 ${
-                formData.mashinadaYetkazildi ? "bg-primary border-primary text-white" : "bg-background border-muted-foreground/10"
-              }`}
+              onClick={handleReset}
+              className="h-10 flex-1 bg-black text-white rounded-lg font-black text-sm hover:opacity-90 transition-all uppercase"
             >
-              HA
+              Tozalash
             </button>
             <button
-              type="button"
-              onClick={() => handleInputChange("mashinadaYetkazildi", false)}
-              className={`flex-1 py-4 rounded-2xl font-black transition-all border-2 ${
-                !formData.mashinadaYetkazildi ? "bg-primary border-primary text-white" : "bg-background border-muted-foreground/10"
-              }`}
+              type="submit"
+              disabled={loading || isSaveDisabled}
+              className="h-10 flex-[1.5] bg-accent text-white rounded-lg font-black text-sm hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase shadow-lg shadow-accent/20"
             >
-              YO'Q
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Saqlash"}
             </button>
           </div>
-          {formData.mashinadaYetkazildi && (
-            <input
-              type="text"
-              list="mashinaRaqamlari"
-              value={formData.mashinaRaqami}
-              onChange={(e) => handleInputChange("mashinaRaqami", e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-foreground transition-all animate-in zoom-in-95"
-              placeholder="Mashina raqami"
-            />
-          )}
-          <datalist id="mashinaRaqamlari">
-            {(limits?.mashinaRaqamlari?.[stationId] || limits?.mashinaRaqamlari?.default || []).map(m => <option key={m} value={m} />)}
-          </datalist>
-        </div>
-
-        {/* Actions */}
-        <div className="mt-10 flex flex-col sm:flex-row gap-4">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="flex-1 py-5 bg-muted rounded-2xl font-black text-lg hover:opacity-80 transition-all uppercase"
-          >
-            Tozalash
-          </button>
-          <button
-            type="submit"
-            disabled={loading || isSaveDisabled}
-            className="flex-[2] py-5 bg-accent text-white rounded-2xl font-black text-xl hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase shadow-xl shadow-accent/20"
-          >
-            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Saqlash"}
-          </button>
         </div>
       </div>
 

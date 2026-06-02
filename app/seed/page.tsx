@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { db } from "@/lib/firebase/config";
-import { collection, doc, setDoc, writeBatch, addDoc } from "firebase/firestore";
-import { ZAPRAVKALAR } from "@/lib/data/uzellar";
-import { ADMIN_CODES } from "@/lib/data/kodlar";
+import { collection, doc, setDoc, addDoc } from "firebase/firestore";
 import { Header } from "@/components/layout/header";
 
 export default function SeedPage() {
@@ -21,64 +19,7 @@ export default function SeedPage() {
     addLog("Ma'lumotlarni to'ldirish boshlandi...");
 
     try {
-      // 1. Seed Access Codes
-      addLog("Kirish kodlarini yozish boshlandi...");
-      const batch = writeBatch(db);
-      let codeCount = 0;
-
-      // Worker codes
-      ZAPRAVKALAR.forEach((zap) => {
-        zap.workerCodes.forEach((code) => {
-          const codeDoc = doc(collection(db, "access_codes"), code);
-          batch.set(codeDoc, {
-            code,
-            role: "worker",
-            displayName: zap.name,
-            nodeId: zap.uzelId,
-            stationId: zap.id,
-            codeType: "main",
-            isActive: true,
-            createdAt: Date.now(),
-          });
-          codeCount++;
-        });
-        zap.reserveCodes.forEach((code) => {
-          const codeDoc = doc(collection(db, "access_codes"), code);
-          batch.set(codeDoc, {
-            code,
-            role: "worker",
-            displayName: `${zap.name} (Zaxira)`,
-            nodeId: zap.uzelId,
-            stationId: zap.id,
-            codeType: "reserve",
-            isActive: true,
-            createdAt: Date.now(),
-          });
-          codeCount++;
-        });
-      });
-
-      // Admin codes
-      ADMIN_CODES.forEach((code) => {
-        const codeDoc = doc(collection(db, "access_codes"), code);
-        batch.set(codeDoc, {
-          code,
-          role: "admin",
-          displayName: "Admin",
-          nodeId: null,
-          stationId: null,
-          codeType: "admin",
-          isActive: true,
-          createdAt: Date.now(),
-        });
-        codeCount++;
-      });
-
-      await batch.commit();
-      addLog(`${codeCount} ta kirish kodi yozildi ✅`);
-      setProgress(33);
-
-      // 2. Global Settings
+      // 1. Global Settings
       addLog("Global sozlamalarni yozish...");
       await setDoc(doc(db, "settings", "global"), {
         version: "1.0.0",
@@ -133,67 +74,10 @@ export default function SeedPage() {
       addLog("Limit sozlamalari yozildi ✅");
       setProgress(66);
 
-      // 4. Welcome Messages
-      addLog("Test xabarlarni yozish...");
-      const messageId = "test-message-1";
-      await setDoc(doc(db, "messages", messageId), {
-        chatType: 'umumiy',
-        chatScope: 'global',
-        senderCode: 'SYSTEM',
-        senderName: 'Tizim',
-        senderRole: 'admin',
-        type: 'text',
-        text: 'Xush kelibsiz! Tizim ishga tushirildi.',
-        createdAt: Date.now()
-      });
-
-      // Test Lokomotiv Request
-      await setDoc(doc(db, "messages", "test-req-1"), {
-        chatType: 'uzel',
-        chatScope: 'uzel-toshkent',
-        senderCode: '1111',
-        senderName: 'Aliyev V.',
-        senderRole: 'worker',
-        senderStation: 'toshkent-1',
-        senderNode: 'uzel-toshkent',
-        type: 'lokomotiv_request',
-        request: {
-          requestType: 'lokomotiv',
-          seriya: '2TE10M',
-          lokomotivNumber: '1141',
-          requestKind: 'tashqari',
-          status: 'pending'
-        },
-        createdAt: Date.now() - 3600000
-      });
-
-      // Test Korxona Request (Approved)
-      await setDoc(doc(db, "messages", "test-req-2"), {
-        chatType: 'uzel',
-        chatScope: 'uzel-toshkent',
-        senderCode: '1111',
-        senderName: 'Aliyev V.',
-        senderRole: 'worker',
-        senderStation: 'toshkent-1',
-        senderNode: 'uzel-toshkent',
-        type: 'korxona_request',
-        request: {
-          requestType: 'korxona',
-          korxonaNomi: 'Test Korxona',
-          qancha: 6000,
-          sutka: 2,
-          status: 'approved',
-          approvedBy: '1222',
-          approvedByName: 'Admin',
-          approvedAt: Date.now() - 1800000,
-          sutkalikLimit: 3
-        },
-        createdAt: Date.now() - 7200000
-      });
-
-      // Add corresponding approval record
+      // 4. Test approval record
+      addLog("Test ruxsatnomani yozish...");
       await setDoc(doc(db, "approvals", "test-app-1"), {
-        messageId: "test-req-2",
+        messageId: "manual-test-approval-1",
         requestType: 'korxona',
         korxonaNomi: 'Test Korxona',
         stationId: 'toshkent-1',

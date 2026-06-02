@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Drawer } from 'vaul';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/config';
 import type { Submission } from '@/lib/types';
 import { Loader2, X, Save, FileEdit } from 'lucide-react';
+import { updateSubmissionWithSummary } from '@/lib/firebase/submission-mutations';
 
 const RUSUMI_LIST = ['TEM2', 'CHME-3', '2TE10M', '3TE10M', '4TE10M', 'TEP70', 'UZTE16M2', 'UZTE16M3', 'UZTE16M4'];
 const HARAKAT_LIST = ['yuk', 'yolovchi', 'manyovr', 'xojalik', 'ijara'];
@@ -61,8 +60,8 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
         ...editable
       } = form as any;
       const changes = { ...editable, isEdited: true, editedAt: Date.now() };
-      await updateDoc(doc(db, 'submissions', submission.id), changes);
-      onSaved({ ...submission, ...changes } as Submission);
+      const updated = await updateSubmissionWithSummary(submission, changes);
+      onSaved(updated);
       onClose();
     } catch (e) {
       console.error(e);

@@ -9,29 +9,29 @@ const SECTIONS = [
     key: "lokomotiv",
     label: "ЛОКОМОТИВ",
     icon: Truck,
-    card: "bg-blue-700 border-blue-800 shadow-blue-900/20",
-    iconBox: "bg-white/18 text-white ring-white/25",
+    card: "bg-gradient-to-br from-sky-500 via-blue-700 to-indigo-800 border-indigo-900 shadow-indigo-900/25",
+    iconBox: "bg-white/20 text-white ring-white/30",
   },
   {
     key: "korxona",
     label: "КОРХОНА",
     icon: Building2,
-    card: "bg-orange-600 border-orange-700 shadow-orange-900/20",
-    iconBox: "bg-white/18 text-white ring-white/25",
+    card: "bg-gradient-to-br from-rose-500 via-pink-600 to-red-700 border-rose-800 shadow-rose-900/25",
+    iconBox: "bg-white/20 text-white ring-white/30",
   },
   {
     key: "qurulish",
     label: "КУРИЛИШ",
     icon: HardHat,
-    card: "bg-red-500 border-red-700 shadow-red-900/20",
-    iconBox: "bg-white/18 text-white ring-white/25",
+    card: "bg-gradient-to-br from-yellow-500 via-amber-600 to-orange-700 border-orange-800 shadow-orange-900/25",
+    iconBox: "bg-white/20 text-white ring-white/30",
   },
   {
     key: "tamirlash",
     label: "ТАЪМИРЛАШ",
     icon: Wrench,
-    card: "bg-emerald-600 border-emerald-700 shadow-emerald-900/20",
-    iconBox: "bg-white/18 text-white ring-white/25",
+    card: "bg-gradient-to-br from-teal-400 via-emerald-600 to-green-800 border-emerald-900 shadow-emerald-900/25",
+    iconBox: "bg-white/20 text-white ring-white/30",
   },
 ] as const;
 
@@ -45,7 +45,7 @@ export default function SectionTabs() {
 
   return (
     <div
-      className="mx-auto my-5 grid w-full max-w-[1780px] grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4"
+      className="mx-auto mb-3 mt-1 grid w-full max-w-[1500px] grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-4"
       role="tablist"
       aria-label="Bo'limlar"
     >
@@ -59,26 +59,26 @@ export default function SectionTabs() {
             role="tab"
             aria-selected={isActive}
             aria-label={section.label}
-            className={`section-tab-card relative flex min-h-[74px] flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border px-2.5 py-3 text-white shadow-lg transition-none sm:min-h-[78px] ${section.card} ${
+            className={`section-tab-card relative flex min-h-[56px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border px-2 py-1.5 text-white shadow-lg transition-none sm:min-h-[60px] ${section.card} ${
               isActive ? "ring-2 ring-white/70 ring-offset-2 ring-offset-background" : ""
             }`}
           >
             {isActive && (
               <span
-                className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white text-slate-900 shadow-md ring-1 ring-white/70"
+                className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-white text-slate-900 shadow-md ring-1 ring-white/70"
                 aria-hidden
               >
-                <Check className="h-4 w-4 stroke-[3]" />
+                <Check className="h-3.5 w-3.5 stroke-[3]" />
               </span>
             )}
 
             <span
-              className={`relative flex h-9 w-9 items-center justify-center rounded-xl ring-1 sm:h-10 sm:w-10 ${section.iconBox}`}
+              className={`relative flex h-7 w-7 items-center justify-center rounded-xl ring-1 sm:h-8 sm:w-8 ${section.iconBox}`}
             >
-              <Icon className="h-5 w-5 stroke-[2.9] text-white" />
+              <Icon className="h-4 w-4 stroke-[2.9] text-white sm:h-[18px] sm:w-[18px]" />
             </span>
 
-            <span className="relative text-center text-[11px] font-black uppercase leading-none tracking-wide text-white sm:text-xs">
+            <span className="relative text-center text-[12px] font-black uppercase leading-none tracking-wide text-white sm:text-[13px]">
               {section.label}
             </span>
 

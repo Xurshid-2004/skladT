@@ -1,5 +1,5 @@
 import { db } from './config'; 
-import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore'; 
+import { collection, query, where, getDocs, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore'; 
 import type { ReportFilter, ReportData, ZapravkaSummary, NodeSummary } from '@/lib/types'; 
 import { UZELLAR, ZAPRAVKALAR } from '@/lib/data/uzellar'; 
  
@@ -9,8 +9,8 @@ export async function generateReport(filter: ReportFilter): Promise<ReportData> 
   // Submissions kolleksiyasidan vaqt oralig'idagi yozuvlarni olish 
   const submissionsQuery = query( 
     collection(db, 'submissions'), 
-    where('timestamp', '>=', period.startDate), 
-    where('timestamp', '<=', period.endDate), 
+    where('timestamp', '>=', Timestamp.fromMillis(period.startDate)), 
+    where('timestamp', '<=', Timestamp.fromMillis(period.endDate)), 
     orderBy('timestamp', 'asc') 
   ); 
   

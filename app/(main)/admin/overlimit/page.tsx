@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AdminLayout from "@/components/admin/admin-layout";
-import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { subDays } from "date-fns";
 import { format } from "date-fns";
@@ -13,17 +13,43 @@ export default function AdminOverlimitPage() {
   const [rows, setRows] = useState<any[]>([]);
 
   useEffect(() => {
-    const since = subDays(new Date(), 21).getTime();
-    const q = query(
+    const sinceDate = subDays(new Date(), 21);
+    const since = sinceDate.getTime();
+    let timestampRows: any[] = [];
+    let numericRows: any[] = [];
+    const publish = () => {
+      const byId = new Map<string, any>();
+      for (const row of timestampRows) byId.set(row.id, row);
+      for (const row of numericRows) byId.set(row.id, row);
+      setRows([...byId.values()].filter((r: any) => r.isOverLimit === true).slice(0, 120));
+    };
+
+    const timestampQuery = query(
+      collection(db, "submissions"),
+      where("timestamp", ">=", Timestamp.fromDate(sinceDate)),
+      orderBy("timestamp", "desc"),
+      limit(400),
+    );
+    const numericTimestampQuery = query(
       collection(db, "submissions"),
       where("timestamp", ">=", since),
       orderBy("timestamp", "desc"),
       limit(400),
     );
-    return onSnapshot(q, (snap) => {
-      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setRows(all.filter((r: any) => r.isOverLimit === true).slice(0, 120));
+
+    const unsubTimestamp = onSnapshot(timestampQuery, (snap) => {
+      timestampRows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      publish();
     });
+    const unsubNumeric = onSnapshot(numericTimestampQuery, (snap) => {
+      numericRows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      publish();
+    });
+
+    return () => {
+      unsubTimestamp();
+      unsubNumeric();
+    };
   }, []);
 
   function ts(m: unknown): number {

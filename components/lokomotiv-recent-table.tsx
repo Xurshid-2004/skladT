@@ -40,6 +40,22 @@ const CAT_COLOR: Record<string, string> = {
   tamirlash: "text-slate-500 bg-slate-100 dark:bg-slate-800",
 };
 
+const RECENT_FILTER_LABEL: Record<string, string> = {
+  all:       "БАРЧАСИ",
+  lokomotiv: "ЛОКОМОТИВ",
+  korxona:   "КОРХОНА",
+  qurulish:  "КУРИЛИШ",
+  tamirlash: "ТАЪМИРЛАШ",
+};
+
+const RECENT_FILTER_BG: Record<string, string> = {
+  all:       "#2f80ed",
+  lokomotiv: "#7c3aed",
+  korxona:   "#059669",
+  qurulish:  "#f59e0b",
+  tamirlash: "#e11d48",
+};
+
 const HARAKAT_LABEL: Record<string, string> = {
   yuk:      "Yuk",
   manyovr:  "Manyovr",
@@ -49,6 +65,19 @@ const HARAKAT_LABEL: Record<string, string> = {
 };
 
 const PAGE_SIZE = 20;
+
+function renderMashinaCell(s: any) {
+  if (!s.mashinadaYetkazildi) {
+    return <span className="block text-center text-gray-500 text-[10px] font-bold">Yo'q</span>;
+  }
+
+  return (
+    <span className="mx-auto flex w-full min-w-0 items-center justify-center gap-0.5 text-blue-400 font-black text-[10px]">
+      <Car className="h-3 w-3 shrink-0" />
+      <span className="min-w-0 truncate">{s.mashinaRaqami ?? "Ha"}</span>
+    </span>
+  );
+}
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -472,19 +501,27 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
     <div className="space-y-3">
 
       {/* ── Filter bar — admin panelidagi kabi ── */}
-      <div className="bg-background rounded-2xl border-2 border-primary/8 px-4 py-3 flex flex-wrap gap-2 items-center shadow-sm">
+      <div className="rounded-2xl bg-black px-4 py-3 flex flex-wrap gap-3 items-center shadow-[0_14px_32px_rgba(15,23,42,0.22)]">
 
         {/* Kategoriya pills */}
-        <div className="flex gap-1 bg-muted p-1 rounded-xl flex-wrap">
+        <div className="flex gap-2.5 flex-wrap">
           {(["all", "lokomotiv", "korxona", "qurulish", "tamirlash"] as const).map(cat => (
-            <button key={cat} onClick={() => switchCat(cat)}
-              className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all whitespace-nowrap ${
-                category === cat
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
+            <button
+              key={cat}
+              onClick={() => switchCat(cat)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[13px] sm:text-sm font-black uppercase tracking-wide text-white whitespace-nowrap min-w-[132px] border-2 transition-none shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(0,0,0,0.22)]"
+              style={{
+                background: RECENT_FILTER_BG[cat],
+                borderColor: category === cat ? "#ffffff" : "rgba(255,255,255,0.18)",
+                boxShadow: category === cat
+                  ? "inset 0 0 0 3px rgba(255,255,255,0.92), 0 10px 22px rgba(47,128,237,0.35)"
+                  : "inset 0 1px 0 rgba(255,255,255,0.24), 0 8px 18px rgba(0,0,0,0.22)",
+              }}
             >
-              {cat === "all" ? "Barchasi" : CAT_LABEL[cat]}
+              {category === cat && (
+                <span className="h-3 w-3 rounded-full bg-white shadow-[0_0_0_4px_rgba(255,255,255,0.18)]" />
+              )}
+              {RECENT_FILTER_LABEL[cat]}
             </button>
           ))}
         </div>
@@ -579,12 +616,7 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                         {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,"right",3)}
                         {td(<span className="text-gray-300 font-bold text-[10px]">{s.nechaSutkalik ?? "—"}</span>,"center",4)}
                         {td(<span className="text-amber-200 font-bold text-[10px] tabular-nums">{s.limit ? String(s.limit) : "—"}</span>,"right",5)}
-                        {td(
-                          s.mashinadaYetkazildi
-                            ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
-                            : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
-                          "left",6
-                        )}
+                        {td(renderMashinaCell(s), "center", 6)}
                         {td(
                           <span className="text-emerald-300 font-black text-[10px] block truncate">
                             {staffMap.get(String(s.staffCode ?? "").trim()) ?? s.staffName ?? "—"}
@@ -606,7 +638,22 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
 
             {/* ── QURULISH ── */}
             {category === "qurulish" && (
-              <table className="w-full border-collapse" style={{ minWidth: 960 }}>
+              <table className="w-full table-fixed border-collapse" style={{ minWidth: 960 }}>
+                <colgroup>
+                  <col style={{ width: "3%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "4%" }} />
+                </colgroup>
                 <thead>
                   <tr style={{ background: "#eab308" }}>
                     {["№","VAQT","KORXONA","OBYEKT","TEXNIKA","LAVOZIM","QANCHA","LIMIT","DOP.LIMIT","HOLAT","MASHINA","MAS'UL","AMAL"].map((lbl, i) => (
@@ -647,12 +694,7 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                             : <span className="text-emerald-400 font-black text-[9px] uppercase">Norma</span>,
                           "left",9
                         )}
-                        {td(
-                          s.mashinadaYetkazildi
-                            ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
-                            : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
-                          "left",10
-                        )}
+                        {td(renderMashinaCell(s), "center", 10)}
                         {td(<span className="text-emerald-300 font-black text-[10px] block truncate" style={{maxWidth:90}}>{s.masulShaxs ?? "—"}</span>,"left",11)}
                         {td(
                           <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
@@ -717,12 +759,7 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                         {td(<span className="text-lime-300 font-black text-[11px] tabular-nums">{amount ? amount.toLocaleString("uz-UZ") : "—"}</span>,"right",5)}
                         {td(masla>0?<span className="text-orange-400 font-black text-[10px] tabular-nums">{masla}</span>:<span className="text-gray-600 text-[10px]">—</span>,"right",6)}
                         {td(<span className="text-emerald-300 font-black text-[10px] block truncate">{s.masulShaxs ?? "—"}</span>,"left",7)}
-                        {td(
-                          s.mashinadaYetkazildi
-                            ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
-                            : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
-                          "left",8
-                        )}
+                        {td(renderMashinaCell(s), "center", 8)}
                         {td(
                           <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
                             className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
@@ -760,7 +797,7 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                 </colgroup>
                 <thead>
                   <tr style={{ background: "#eab308" }}>
-                    {["№","VAQT","KAT","TEPLOVOZ","RAQAMI","HARAKAT","P.RAQ","INDEKS","XODIM","MASHINA","B.MASLA","QOLDIQ","YOQILG'I","HISOB","HOLAT","AMAL"]
+                    {["№","VAQT","HARAKAT TURI","TEPLOVOZ","RAQAMI","HARAKAT","P.RAQ","INDEKS","XODIM","MASHINA","B.MASLA","QOLDIQ","YOQILG'I","HISOB","HOLAT","AMAL"]
                       .map((lbl, i) => (
                       <th key={lbl}
                         className="px-1.5 py-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight leading-tight select-none overflow-hidden"
@@ -819,12 +856,7 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                             <p className="text-gray-600 text-[9px] tabular-nums truncate">{s.staffCode ?? ""}</p>
                           </div>,"left",8
                         )}
-                        {td(
-                          s.mashinadaYetkazildi
-                            ? <span className="flex items-center gap-0.5 text-blue-400 font-black text-[10px] min-w-0"><Car className="w-3 h-3 shrink-0"/><span className="truncate">{s.mashinaRaqami??"Ha"}</span></span>
-                            : <span className="text-gray-500 text-[10px] font-bold">Yo'q</span>,
-                          "left",9
-                        )}
+                        {td(renderMashinaCell(s), "center", 9)}
                         {td(masla>0?<span className="text-orange-400 font-black text-[10px] tabular-nums">{masla}</span>:<span className="text-gray-600 text-[10px]">—</span>,"right",10)}
                         {td(
                           qoldiq>0

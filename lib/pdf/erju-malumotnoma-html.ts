@@ -44,6 +44,12 @@ function toNum(v: unknown): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+const ZAGRANITSA_KEY = 'zagranitsa';
+
+function getZagranitsaAmount(r: FuelRecord): number {
+  return toNum(r.zagranitsaAmount ?? r.zagranitsa);
+}
+
 function normalizeSupplyKey(s: string): string {
   return s
     .trim()
@@ -180,9 +186,9 @@ const DEFAULT_MOVES: readonly IndexedOption[] = Object.freeze([
   },
   {
     index: 6,
-    id: 'ref',
-    label: 'Ref. seksiyalar',
-    aliases: ['ref', 'refrigerat', 'seksiya'],
+    id: ZAGRANITSA_KEY,
+    label: 'zagranitsa',
+    aliases: ['zagranitsa', 'zagranisa', 'zagranintsa', 'ref', 'refrigerat', 'seksiya'],
   },
   {
     index: 7,
@@ -274,8 +280,9 @@ export function handleExportErjuPdf(
     if (!ej) continue;
 
     const fuel = toNum(r.fuelAmount);
+    const zagranitsaFuel = getZagranitsaAmount(r);
     /** balanceBefore yoqiladi emas — nol yozuv hammaga ta'sirsiz */
-    if (fuel <= 0) continue;
+    if (fuel <= 0 && zagranitsaFuel <= 0) continue;
 
     const bucket = bucketMap.get(ej.id);
     if (!bucket) continue;
@@ -290,9 +297,18 @@ export function handleExportErjuPdf(
     }
 
     const za = bucket.zaps.get(z.id)!;
-    const mk = moveColumnKey(r.moveType, activeCols);
-    za.byMove.set(mk, (za.byMove.get(mk) ?? 0) + fuel);
-    za.totalFuel += fuel;
+    if (fuel > 0) {
+      const mk = moveColumnKey(r.moveType, activeCols);
+      za.byMove.set(mk, (za.byMove.get(mk) ?? 0) + fuel);
+      za.totalFuel += fuel;
+    }
+    if (zagranitsaFuel > 0) {
+      const zk = moveColumnKey(ZAGRANITSA_KEY, activeCols);
+      if (zk !== NOMA_KEY && zk !== MISC_AGG) {
+        za.byMove.set(zk, (za.byMove.get(zk) ?? 0) + zagranitsaFuel);
+        za.totalFuel += zagranitsaFuel;
+      }
+    }
   }
 
   const orderedBuckets = ERJU_DATA.map((ej) => bucketMap.get(ej.id)!)
@@ -642,7 +658,8 @@ export function downloadErjuYpdf(
       const ej = erjuBucketForStation(z.id);
       if (!ej) continue;
       const fuel = toNum(r.fuelAmount);
-      if (fuel <= 0) continue;
+      const zagranitsaFuel = getZagranitsaAmount(r);
+      if (fuel <= 0 && zagranitsaFuel <= 0) continue;
       const bucket = bucketMap.get(ej.id);
       if (!bucket) continue;
       if (!bucket.zaps.has(z.id)) {
@@ -653,11 +670,22 @@ export function downloadErjuYpdf(
         });
       }
       const za = bucket.zaps.get(z.id)!;
-      const mk = moveColumnKey(r.moveType, activeCols);
-      za.byMove.set(mk, (za.byMove.get(mk) ?? 0) + fuel);
-      za.byMoveCount.set(mk, (za.byMoveCount.get(mk) ?? 0) + 1);
-      za.totalFuel += fuel;
-      za.totalCount += 1;
+      if (fuel > 0) {
+        const mk = moveColumnKey(r.moveType, activeCols);
+        za.byMove.set(mk, (za.byMove.get(mk) ?? 0) + fuel);
+        za.byMoveCount.set(mk, (za.byMoveCount.get(mk) ?? 0) + 1);
+        za.totalFuel += fuel;
+        za.totalCount += 1;
+      }
+      if (zagranitsaFuel > 0) {
+        const zk = moveColumnKey(ZAGRANITSA_KEY, activeCols);
+        if (zk !== NOMA_KEY && zk !== MISC_AGG) {
+          za.byMove.set(zk, (za.byMove.get(zk) ?? 0) + zagranitsaFuel);
+          za.byMoveCount.set(zk, (za.byMoveCount.get(zk) ?? 0) + 1);
+          za.totalFuel += zagranitsaFuel;
+          za.totalCount += 1;
+        }
+      }
     }
 
     const orderedBuckets = ERJU_DATA
@@ -814,14 +842,20 @@ export function downloadErjuYpdf(
     const SHORT_MOVE: Record<string, string> = {
       yuk: 'Yuk', yolovchi: "Yo'lovchi", manyovr: 'Manyovr',
       xojalik: "Xo'jalik", ijara: 'Ijara', tamirlash: "Ta'mirlash",
-      ref: 'Ref', korxona: 'Korxona', qurulish: 'Qurulish',
+      ref: 'Zagranitsa', zagranitsa: 'Zagranitsa', korxona: 'Korxona', qurulish: 'Qurulish',
     };
     const moveCount = new Map<string, number>();
     for (const r of dayRows) {
-      if (toNum(r.fuelAmount) <= 0) continue;
-      const mk = moveColumnKey(r.moveType, activeCols);
-      if (mk === NOMA_KEY || mk === MISC_AGG) continue;
-      moveCount.set(mk, (moveCount.get(mk) ?? 0) + 1);
+      const rowMoveKeys = new Set<string>();
+      if (toNum(r.fuelAmount) > 0) {
+        const mk = moveColumnKey(r.moveType, activeCols);
+        if (mk !== NOMA_KEY && mk !== MISC_AGG) rowMoveKeys.add(mk);
+      }
+      if (getZagranitsaAmount(r) > 0) {
+        const zk = moveColumnKey(ZAGRANITSA_KEY, activeCols);
+        if (zk !== NOMA_KEY && zk !== MISC_AGG) rowMoveKeys.add(zk);
+      }
+      for (const key of rowMoveKeys) moveCount.set(key, (moveCount.get(key) ?? 0) + 1);
     }
     const afterPivot = (doc as any).lastAutoTable?.finalY ?? afterMain + 6;
     let cy = afterPivot + 5;

@@ -165,7 +165,20 @@ export default function QurulishRecentTable({ stationId }: QurulishRecentTablePr
 
         {/* Desktop */}
         <div className="hidden md:block bg-background/70 backdrop-blur-md rounded-3xl border-2 border-primary/15 overflow-hidden shadow-lg overflow-x-auto">
-          <table className="text-left" style={{ minWidth: 900 }}>
+          <table className="table-fixed text-left" style={{ minWidth: 900 }}>
+            <colgroup>
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "11%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "6%" }} />
+              <col style={{ width: "2%" }} />
+            </colgroup>
             <thead className="bg-primary/5 text-[9px] font-black uppercase tracking-widest text-primary">
               <tr>
                 <th className="px-3 py-3 whitespace-nowrap">Vaqt</th>
@@ -176,7 +189,7 @@ export default function QurulishRecentTable({ stationId }: QurulishRecentTablePr
                 <th className="px-3 py-3 whitespace-nowrap">Qancha</th>
                 <th className="px-3 py-3 whitespace-nowrap">Limit</th>
                 <th className="px-3 py-3 whitespace-nowrap">Dop Limit</th>
-                <th className="px-3 py-3 whitespace-nowrap">Mashina</th>
+                <th className="px-3 py-3 text-center whitespace-nowrap">Mashina</th>
                 <th className="px-3 py-3 whitespace-nowrap">Mas'ul</th>
                 <th className="px-3 py-3"></th>
               </tr>
@@ -188,15 +201,15 @@ export default function QurulishRecentTable({ stationId }: QurulishRecentTablePr
                   : <span className="text-muted-foreground">Yo'q</span>;
                 return (
                   <tr key={sub.id} className={sub.isOverLimit ? "text-danger" : ""}>
-                    <td className="px-3 py-3 font-bold whitespace-nowrap">{formatTimestamp(sub.timestamp)}</td>
+                    <td className="px-3 py-3 font-bold truncate">{formatTimestamp(sub.timestamp)}</td>
                     <td className="px-3 py-3 font-black max-w-[160px] truncate">{sub.korxonaNomi}</td>
-                    <td className="px-3 py-3 font-bold whitespace-nowrap">{sub.texnikaSoni}</td>
+                    <td className="px-3 py-3 text-center font-bold whitespace-nowrap">{sub.texnikaSoni}</td>
                     <td className="px-3 py-3 max-w-[120px] truncate">{sub.obyekt}</td>
                     <td className="px-3 py-3 max-w-[110px] truncate">{sub.lavozim ?? "—"}</td>
-                    <td className="px-3 py-3 font-black whitespace-nowrap">{sub.qanchaOlindi} kg</td>
+                    <td className="px-3 py-3 text-right font-black tabular-nums whitespace-nowrap">{sub.qanchaOlindi} kg</td>
                     <td className="px-3 py-3 whitespace-nowrap">{sub.limit ? `${sub.limit} kg` : "—"}</td>
                     <td className="px-3 py-3 whitespace-nowrap">{sub.dopLimit != null ? `${sub.dopLimit} kg` : "—"}</td>
-                    <td className="px-3 py-3 whitespace-nowrap">{mashinaCell}</td>
+                    <td className="px-3 py-3 text-center whitespace-nowrap">{mashinaCell}</td>
                     <td className="px-3 py-3 text-xs font-bold max-w-[110px] truncate">{sub.masulShaxs}</td>
                     <td className="px-3 py-3">
                       {isToday(sub.timestamp) && (

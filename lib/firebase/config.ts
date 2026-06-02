@@ -1,5 +1,12 @@
 import { initializeApp, getApps } from "firebase/app";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, type Firestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  memoryLocalCache,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  getFirestore,
+  type Firestore,
+} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
@@ -18,11 +25,16 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 // Offline persistence: ma'lumotlar IndexedDB da saqlanadi, internet yo'q bo'lsa ham ishlaydi
 let db: Firestore;
 try {
-  db = typeof window !== "undefined"
-    ? initializeFirestore(app, {
-        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-      })
-    : getFirestore(app);
+  if (typeof window !== "undefined") {
+    db = initializeFirestore(app, {
+      localCache:
+        process.env.NODE_ENV === "development"
+          ? memoryLocalCache()
+          : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } else {
+    db = getFirestore(app);
+  }
 } catch {
   db = getFirestore(app);
 }

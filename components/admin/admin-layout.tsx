@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import {
-  LayoutDashboard, FileText, MessageSquare, ShieldCheck,
-  AlertTriangle, Users, Menu, X,
+  LayoutDashboard, FileText,
+  AlertTriangle, Users, UserCog, Menu, X,
   LogOut, ChevronLeft, ChevronRight, Bell, Home
 } from 'lucide-react';
 import Link from 'next/link';
@@ -76,9 +76,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       color: { bg: 'bg-blue-600', bgHover: 'hover:bg-blue-700', grad: 'from-blue-600 to-indigo-700', glow: 'shadow-blue-600/50' },
     },
     {
-      title: 'Ruxsatnomalar',
-      icon: ShieldCheck,
-      href: '/admin/ruxsatnomalar',
+      title: 'Operator',
+      icon: UserCog,
+      href: '/admin/operator',
       roles: ['admin'],
       color: { bg: 'bg-sky-500', bgHover: 'hover:bg-sky-600', grad: 'from-sky-600 to-cyan-600', glow: 'shadow-sky-600/50' },
     },
@@ -90,18 +90,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       color: { bg: 'bg-red-500', bgHover: 'hover:bg-red-600', grad: 'from-red-600 to-rose-600', glow: 'shadow-red-600/50' },
     },
     {
-      title: "Chat & So'rovlar",
-      icon: MessageSquare,
-      href: '/admin/chat',
-      roles: ['admin'],
-      color: { bg: 'bg-amber-500', bgHover: 'hover:bg-amber-600', grad: 'from-amber-600 to-yellow-600', glow: 'shadow-amber-600/50' },
-    },
-    {
       type: 'logout',
       title: 'Chiqish',
       icon: LogOut,
       roles: ['admin'],
-      color: { bg: 'bg-red-500', bgHover: 'hover:bg-red-600', grad: 'from-red-600 to-rose-600', glow: 'shadow-red-600/50' },
+      color: { bg: 'bg-yellow-500', bgHover: 'hover:bg-yellow-600', grad: 'from-yellow-500 to-amber-600', glow: 'shadow-yellow-500/50' },
     },
   ];
 
@@ -243,7 +236,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           'shadow-[0_1px_0_rgba(255,255,255,0.6),0_4px_16px_rgba(15,23,42,0.05)]',
           'backdrop-blur-2xl z-10',
         ].join(' ')}>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="md:hidden grid h-9 w-9 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-500 shadow-sm hover:bg-primary/10 hover:border-primary/40 hover:text-primary dark:border-white/15 dark:bg-white/6"
@@ -251,13 +244,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <Menu className="h-4.5 w-4.5" style={{ width: '1.1rem', height: '1.1rem' }} />
             </button>
 
-            <div>
+            <div className="min-w-0">
               <p className="text-[9.5px] font-black uppercase tracking-[0.22em] text-slate-400 leading-none">Xush kelibsiz</p>
-              <p className="mt-0.5 font-black tracking-tight text-slate-900 dark:text-white leading-tight">{session.displayName}</p>
+              <p className="mt-0.5 whitespace-normal break-words font-black tracking-tight text-slate-900 dark:text-white leading-tight">{session.displayName}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Link
               href="/uzellar"
               className="flex items-center gap-2 rounded-[13px] bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-violet-500/22 transition-all hover:scale-[1.03] hover:shadow-violet-500/32"

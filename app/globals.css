@@ -176,6 +176,25 @@ button[class*="rounded"]:not(:disabled):hover {
   filter: none !important;
 }
 
+.harakat-type-card:hover {
+  transform: none !important;
+  filter: none !important;
+}
+
+.user-panel .harakat-panel {
+  background: #000000 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.user-panel .harakat-panel > div:first-child {
+  background: #000000 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.user-panel .harakat-panel h3 {
+  color: #ffffff !important;
+}
+
 /* ==== Inputs: number spinner'larni butunlay olib tashlash ==== */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -573,7 +592,7 @@ th {
 
 .user-panel label {
   color: var(--up-text) !important;
-  font-size: 0.86rem !important;
+  font-size: 0.8rem !important;
   font-weight: 950 !important;
   letter-spacing: 0.015em !important;
   line-height: 1.25 !important;
@@ -582,12 +601,12 @@ th {
 .user-panel input:not([type="checkbox"]):not([type="radio"]),
 .user-panel select,
 .user-panel textarea {
-  min-height: 3.5rem;
+  min-height: 3rem;
   width: 100%;
   color: var(--up-text) !important;
   border-color: var(--up-field-border) !important;
   border-width: 2px !important;
-  font-size: 1.08rem !important;
+  font-size: 1rem !important;
   font-weight: 900 !important;
   line-height: 1.25 !important;
   background-color: #ffffff !important;

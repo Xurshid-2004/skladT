@@ -7,6 +7,24 @@ export const HARAKAT_TURI_LIST: { value: HarakatTuri; label: string; number: num
   { value: 'xojalik', label: "Xo'jalik", number: 4 }, 
   { value: 'ijara', label: 'Ijara', number: 5 }, 
 ]; 
+
+const JADVAL_OPTIONS = [
+  'ТЧ-1 Уз депос',
+  'ТЧ-2 Коканд',
+  'ТЧ-5 Тинчлик',
+  'ТЧ-6 Бухоро',
+  'ТЧ-7 Қўнғирот',
+  'ТЧ-8 Карши',
+  'ТЧ-8 Карши',
+  'ТЧ-9 Термиз',
+  'ТЧ-10 Урганч',
+];
+
+export const LOKOMOTIV_JADVAL_OPTIONS: Partial<Record<HarakatTuri, string[]>> = {
+  yuk: JADVAL_OPTIONS,
+  manyovr: JADVAL_OPTIONS,
+  yolovchi: JADVAL_OPTIONS,
+};
  
 export const RUSUMI_LIST: { value: Rusumi; label: string; number: number }[] = [ 
   { value: 'TEM2', label: 'TEM-2', number: 1 }, 
@@ -34,9 +52,9 @@ export const RUSUMI_FILTER: Record<HarakatTuri, Rusumi[]> = {
  
 // Qaysi maydonlar qaysi harakat turida ko'rinadi 
 export const FIELDS_VISIBILITY: Record<HarakatTuri, string[]> = {
-  yuk:      ['lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'poyezdVazni', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
-  yolovchi: ['lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
-  manyovr:  ['lokomotivNumber', 'stansiya', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
+  yuk:      ['jadval', 'zagranitsa', 'lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'poyezdVazni', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
+  yolovchi: ['jadval', 'zagranitsa', 'lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
+  manyovr:  ['jadval', 'zagranitsa', 'lokomotivNumber', 'stansiya', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
   xojalik:  ['lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'tashkilot'],
   ijara:    ['lokomotivNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'ijarachi'],
 };

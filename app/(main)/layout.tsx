@@ -1,6 +1,5 @@
 "use client";
 
-import ChatWidget from "@/components/chat/chat-widget";
 import PresenceHeartbeat from "@/components/common/presence-heartbeat";
 import { ensureActiveSession, getSession, isSessionValid } from "@/lib/utils/session";
 import { useEffect, useState } from "react";
@@ -9,7 +8,6 @@ import { usePathname, useRouter } from "next/navigation";
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [showChat, setShowChat] = useState(false);
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
@@ -34,7 +32,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       await ensureActiveSession(s);
       if (cancelled) return;
 
-      setShowChat(true);
       setAllowed(true);
     }
 
@@ -51,7 +48,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <>
       <PresenceHeartbeat />
       {children}
-      {showChat && <ChatWidget />}
     </>
   );
 }

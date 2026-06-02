@@ -1,8 +1,7 @@
 import { Session } from "../types";
 import { auth, db } from "../firebase/config";
 import { signInAnonymously, signOut } from "firebase/auth";
-import { doc, setDoc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
-import { getStaffFullNameByTabel } from "../firebase/staff-service";
+import { doc, setDoc, deleteDoc } from "firebase/firestore";
 
 const SESSION_KEY = "uz_temiryo_session";
 
@@ -28,10 +27,6 @@ export async function ensureActiveSession(
 
     const ref = doc(db, "active_sessions", user.uid);
     const now = Date.now();
-    const snap = await getDoc(ref);
-    const prev = snap.exists() ? snap.data() : null;
-    const createdAt =
-      typeof prev?.createdAt === "number" ? prev.createdAt : now;
 
     await setDoc(
       ref,
@@ -41,32 +36,12 @@ export async function ensureActiveSession(
         stationId: session.stationId ?? null,
         nodeId: session.nodeId ?? null,
         displayName: session.displayName ?? null,
-        staffVaultFullName:
-          typeof prev?.staffVaultFullName === "string"
-            ? prev.staffVaultFullName
-            : prev?.staffVaultFullName === null
-              ? null
-              : null,
-        createdAt,
+        staffVaultFullName: session.role === "worker" ? session.displayName : null,
+        createdAt: now,
         lastSeen: now,
       },
       { merge: true },
     );
-
-    try {
-      const data = (await getDoc(ref)).data();
-      if (!data?.staffVaultFullName) {
-        const vaultFullName = await getStaffFullNameByTabel(session.code);
-        if (vaultFullName) {
-          await updateDoc(ref, {
-            staffVaultFullName: vaultFullName,
-            lastSeen: Date.now(),
-          });
-        }
-      }
-    } catch (vaultErr) {
-      console.warn("staff vault F.I.Sh qo'shilmadi:", vaultErr);
-    }
 
     return true;
   } catch (authError: unknown) {

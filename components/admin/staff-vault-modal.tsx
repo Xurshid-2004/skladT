@@ -59,6 +59,10 @@ const ERJU_REGION_UI: Record<
   },
 };
 
+function normalizeLoginCode(value: string) {
+  return value.replace(/\D/g, "").slice(0, 4);
+}
+
 export default function StaffVaultModal({
   open,
   onClose,
@@ -134,6 +138,10 @@ export default function StaffVaultModal({
       return;
 
     const tabel = newStaffTabel.trim();
+    if (tabel.length !== 4) {
+      window.alert("Xodim paroli 4 ta raqamdan iborat bo'lishi kerak.");
+      return;
+    }
     const duplicate = staffList.find((s) => s.tabelNumber === tabel);
     if (duplicate) {
       window.alert("Bu tabel raqam allaqachon mavjud!");
@@ -173,6 +181,10 @@ export default function StaffVaultModal({
       return;
 
     const tabel = editStaff.tabel.trim();
+    if (tabel.length !== 4) {
+      window.alert("Xodim paroli 4 ta raqamdan iborat bo'lishi kerak.");
+      return;
+    }
     const duplicate = staffList.find(
       (s) => s.tabelNumber === tabel && s.id !== editingStaffId,
     );
@@ -330,18 +342,20 @@ export default function StaffVaultModal({
                     </p>
                     <div>
                       <label className="ml-1 text-[10px] font-bold uppercase text-slate-400">
-                        Tabel raqam (parol bilan bir xil bo&apos;lishi mumkin)
+                        Parol/kod (4 raqam)
                       </label>
                       <input
                         value={newStaffTabel}
-                        onChange={(e) => setNewStaffTabel(e.target.value)}
+                        onChange={(e) => setNewStaffTabel(normalizeLoginCode(e.target.value))}
+                        inputMode="numeric"
+                        maxLength={4}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
                             void addStaff();
                           }
                         }}
-                        placeholder="12345"
+                        placeholder="1234"
                         className="mt-1 w-full rounded-xl border border-white/10 bg-[#0d1424] px-3 py-2 text-sm text-white"
                       />
                     </div>
@@ -423,8 +437,13 @@ export default function StaffVaultModal({
                             <input
                               value={editStaff.tabel}
                               onChange={(e) =>
-                                setEditStaff((p) => ({ ...p, tabel: e.target.value }))
+                                setEditStaff((p) => ({
+                                  ...p,
+                                  tabel: normalizeLoginCode(e.target.value),
+                                }))
                               }
+                              inputMode="numeric"
+                              maxLength={4}
                               placeholder="Tabel"
                               className="w-24 rounded-lg border border-white/10 bg-[#0d1424] px-2 py-1.5 text-xs text-white"
                             />

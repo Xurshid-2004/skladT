@@ -1,22 +1,34 @@
 import { db } from './config';
 import {
   collection, addDoc, query, where, orderBy, limit,
-  getDocs, doc, updateDoc, onSnapshot, serverTimestamp
+  getDocs, onSnapshot, serverTimestamp
 } from 'firebase/firestore';
 import { Submission, Category } from '@/lib/types';
 import { sanitizeForFirestore } from './sanitize';
+import {
+  recordSubmissionCreatedForSummaries,
+  submissionWithStandardDateFields,
+} from './summary-service';
+import { updateSubmissionByIdWithSummary } from './submission-mutations';
 
 const COLLECTION = 'submissions';
 
 // Yangi yozuv qo'shish
 export async function addSubmission(category: Category, data: any) {
+  const now = new Date();
+  const datedData = submissionWithStandardDateFields(data, now);
   const payload = sanitizeForFirestore({
-    ...data,
+    ...datedData,
     timestamp: serverTimestamp(),
     createdAt: serverTimestamp(),
     category: category,
   });
   const docRef = await addDoc(collection(db, COLLECTION), payload);
+  await recordSubmissionCreatedForSummaries({
+    id: docRef.id,
+    ...datedData,
+    category,
+  });
   return docRef.id;
 }
  
@@ -57,13 +69,12 @@ export function subscribeToSubmissions(
  
 // Yozuvni tahrirlash (faqat shu kun ichida)
 export async function updateSubmission(id: string, updates: any) {
-  const docRef = doc(db, COLLECTION, id);
   const payload = sanitizeForFirestore({
     ...updates,
     isEdited: true,
     editedAt: serverTimestamp(),
   });
-  await updateDoc(docRef, payload);
+  await updateSubmissionByIdWithSummary(id, payload);
 }
 
 // Tahrirlash mumkinligini tekshirish (faqat shu kun)

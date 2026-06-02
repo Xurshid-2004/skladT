@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/common/theme-provider";
 import OnlineStatus from "@/components/common/online-status";
+import NumberInputWheelGuard from "@/components/common/number-input-wheel-guard";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -42,11 +43,12 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <OnlineStatus />
+          <NumberInputWheelGuard />
           {children}
         </ThemeProvider>
         

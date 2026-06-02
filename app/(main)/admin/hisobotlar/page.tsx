@@ -13,10 +13,11 @@ import {
 } from 'lucide-react';
 import { ZAPRAVKALAR } from '@/lib/data/uzellar';
 import { Submission, Category, Session } from '@/lib/types';
-import { collection, query, where, orderBy, getDocs, onSnapshot, limit, startAfter, deleteDoc, doc as firestoreDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, onSnapshot, limit, startAfter, Timestamp } from 'firebase/firestore';
 import { downloadErjuYpdf } from '@/lib/pdf/erju-malumotnoma-html';
 import type { FuelRecord } from '@/lib/pdf/erju-html-pdf';
 import { db } from '@/lib/firebase/config';
+import { deleteSubmissionWithSummary } from '@/lib/firebase/submission-mutations';
 import RentCalendar from '@/app/calendar';
 import { SubmissionEditDrawer } from '@/components/admin/submission-edit-drawer';
 import { clearSession, getSession } from '@/lib/utils/session';
@@ -76,42 +77,42 @@ function HisobotlarNavbar() {
             <FileText className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h1 className="truncate text-sm sm:text-base font-black tracking-tight text-foreground">
-              6 ta ERJ bo'yicha barcha hisobotlar
+            <h1 className="relative inline-flex max-w-full items-center">
+              <span className="truncate bg-gradient-to-r from-emerald-600 via-blue-600 to-violet-600 bg-clip-text text-sm font-black uppercase tracking-[0.16em] text-transparent drop-shadow-sm sm:text-base">
+                6-Ta ERJU ma&apos;lumotlari
+              </span>
+              <span className="pointer-events-none absolute -bottom-1 left-0 h-0.5 w-full rounded-full bg-gradient-to-r from-emerald-400 via-blue-500 to-violet-500" />
             </h1>
-            <p className="hidden sm:block text-[9px] font-black uppercase tracking-[0.28em] text-primary/70">
-              Real vaqt · Bugungi kun
-            </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="hidden sm:flex items-center gap-1.5 rounded-2xl border border-primary/10 bg-white/70 px-3 py-2 text-xs font-bold text-muted-foreground shadow-sm dark:bg-white/5">
-            <User className="h-4 w-4 text-primary" />
-            <span className="max-w-[90px] truncate">{session?.displayName || 'Admin'}</span>
-          </div>
-          {time ? (
-            <div className="hidden md:flex rounded-2xl border border-primary/10 bg-white/70 px-3 py-2 text-xs font-black tabular-nums tracking-widest text-primary shadow-sm dark:bg-white/5">
-              {time}
+          <div className="flex min-w-0 shrink-0 items-center gap-2">
+            <div className="hidden items-center gap-1.5 rounded-2xl border border-primary/10 bg-white/70 px-3 py-2 text-xs font-bold text-muted-foreground shadow-sm dark:bg-white/5 sm:flex">
+              <User className="h-4 w-4 text-primary" />
+              <span className="whitespace-nowrap">{session?.displayName || 'Admin'}</span>
             </div>
-          ) : null}
-          <ThemeToggle />
-          <button
-            type="button"
-            onClick={handleHome}
-            className="grid h-10 w-10 place-items-center rounded-2xl border border-primary/10 bg-white/70 text-muted-foreground shadow-sm transition-colors hover:bg-primary/10 hover:text-primary dark:bg-white/5"
-            title="Bosh sahifa"
-          >
-            <Home className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="grid h-10 w-10 place-items-center rounded-2xl border border-danger/10 bg-white/70 text-muted-foreground shadow-sm transition-colors hover:bg-danger/10 hover:text-danger dark:bg-white/5"
-            title="Chiqish"
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
+            {time ? (
+              <div className="hidden md:flex rounded-2xl border border-primary/10 bg-white/70 px-3 py-2 text-xs font-black tabular-nums tracking-widest text-primary shadow-sm dark:bg-white/5">
+                {time}
+              </div>
+            ) : null}
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={handleHome}
+              className="grid h-10 w-10 place-items-center rounded-2xl border border-primary/10 bg-white/70 text-muted-foreground shadow-sm transition-colors hover:bg-primary/10 hover:text-primary dark:bg-white/5"
+              title="Bosh sahifa"
+            >
+              <Home className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="grid h-10 w-10 place-items-center rounded-2xl border border-danger/10 bg-white/70 text-muted-foreground shadow-sm transition-colors hover:bg-danger/10 hover:text-danger dark:bg-white/5"
+              title="Chiqish"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
         </div>
       </div>
     </header>
@@ -257,14 +258,17 @@ function buildErjuReportTitle(start: Date, end: Date): string {
 
 // ─── Barcha yozuvlarni cursor-pagination bilan olish ─────────────────────────
 
-async function fetchAllSubmissionsInRange(start: Date, end: Date): Promise<Submission[]> {
+async function fetchSubmissionsInRangeByBounds(
+  startBound: Timestamp | number,
+  endBound: Timestamp | number,
+): Promise<Submission[]> {
   const all: Submission[] = [];
   let lastDoc: any = null;
   const batchSize = 1000;
   while (true) {
     const constraints: any[] = [
-      where('timestamp', '>=', Timestamp.fromDate(start)),
-      where('timestamp', '<=', Timestamp.fromDate(end)),
+      where('timestamp', '>=', startBound),
+      where('timestamp', '<=', endBound),
       orderBy('timestamp', 'desc'),
       limit(batchSize),
     ];
@@ -278,6 +282,21 @@ async function fetchAllSubmissionsInRange(start: Date, end: Date): Promise<Submi
   return all;
 }
 
+async function fetchAllSubmissionsInRange(start: Date, end: Date): Promise<Submission[]> {
+  const byId = new Map<string, Submission>();
+  const timestampRows = await fetchSubmissionsInRangeByBounds(
+    Timestamp.fromDate(start),
+    Timestamp.fromDate(end),
+  );
+  for (const row of timestampRows) byId.set(row.id, row);
+
+  // Eski yozuvlarda timestamp number bo'lib qolgan bo'lsa ham hisobotdan tushib qolmasin.
+  const numericRows = await fetchSubmissionsInRangeByBounds(start.getTime(), end.getTime());
+  for (const row of numericRows) byId.set(row.id, row);
+
+  return [...byId.values()];
+}
+
 async function fetchAllFuelRecordsInRange(isoStart: string, isoEnd: string): Promise<any[]> {
   const all: any[] = [];
   let lastDoc: any = null;
@@ -286,6 +305,7 @@ async function fetchAllFuelRecordsInRange(isoStart: string, isoEnd: string): Pro
     const constraints: any[] = [
       where('date', '>=', isoStart),
       where('date', '<=', isoEnd),
+      orderBy('date', 'asc'),
       limit(batchSize),
     ];
     if (lastDoc) constraints.push(startAfter(lastDoc));
@@ -900,7 +920,7 @@ export default function HisobotlarPage() {
     if (!window.confirm(`Ushbu yozuvni o'chirmoqchimisiz?\n#${sub.id.slice(-6)} — ${(sub as any).stationId ?? ''}`)) return;
     setDeletingId(sub.id);
     try {
-      await deleteDoc(firestoreDoc(db, 'submissions', sub.id));
+      await deleteSubmissionWithSummary(sub);
       setGlobalSubs((prev) => prev.filter((s) => s.id !== sub.id));
     } catch (e) {
       console.error(e);

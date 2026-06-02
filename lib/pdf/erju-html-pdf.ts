@@ -15,6 +15,8 @@ export interface FuelRecord {
   weight: string;
   balanceBefore: string;
   fuelAmount: string;
+  zagranitsa?: string;
+  zagranitsaAmount?: string;
   maslaAmount: string;
   staffName: string;
   staffCode?: string;

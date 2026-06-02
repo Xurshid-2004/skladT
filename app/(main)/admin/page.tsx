@@ -2,7 +2,7 @@
 
 import AdminLayout from "@/components/admin/admin-layout";
 import { useEffect, useState } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { startOfDay, endOfDay, subDays, format } from "date-fns";
 import Link from "next/link";
@@ -61,16 +61,9 @@ function presenceZapravka(p: PresenceSessionDoc): string {
 
   if (p.role === "admin") return "Admin panel";
 
-  if (p.code) {
-    const byCode = ZAPRAVKALAR.find(
-      (z) => z.workerCodes.includes(p.code) || z.reserveCodes.includes(p.code),
-    );
-    if (byCode) return byCode.name;
-  }
-
   const dn = p.displayName?.trim();
   if (dn && p.role === "worker") {
-    return dn.replace(/\s*\(Zaxira\)\s*$/i, "").trim() || dn;
+    return dn;
   }
 
   return "—";
@@ -80,6 +73,24 @@ function displayFullName(p: PresenceSessionDoc): string {
   if (p.staffVaultFullName?.trim()) return p.staffVaultFullName.trim();
   if (p.displayName?.trim()) return p.displayName.trim();
   return "—";
+}
+
+function normalizePresenceIdentity(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function presencePersonKey(p: PresenceSessionDoc): string {
+  const vaultName = normalizePresenceIdentity(p.staffVaultFullName);
+  const fullName = vaultName || normalizePresenceIdentity(p.displayName);
+  if (fullName && fullName !== "—") return `name:${fullName}`;
+
+  const code = normalizePresenceIdentity(p.code);
+  if (code) return `code:${code}`;
+
+  return `uid:${p.uid}`;
 }
 
 function rolLabel(role: string): string {
@@ -105,6 +116,19 @@ function sortPresenceRows(rows: PresenceSessionDoc[], now: number): PresenceSess
   });
 }
 
+function dedupePresenceRows(rows: PresenceSessionDoc[], now: number): PresenceSessionDoc[] {
+  const unique = new Map<string, PresenceSessionDoc>();
+
+  for (const row of sortPresenceRows(rows, now)) {
+    const key = presencePersonKey(row);
+    if (!unique.has(key)) {
+      unique.set(key, row);
+    }
+  }
+
+  return Array.from(unique.values());
+}
+
 export default function AdminDashboard() {
   const [todayKg, setTodayKg] = useState(0);
   const [yesterdayKg, setYesterdayKg] = useState(0);
@@ -121,26 +145,43 @@ export default function AdminDashboard() {
     let cancelled = false;
 
     const load = async () => {
-      const dayStart = startOfDay(new Date()).getTime();
-      const dayEnd = endOfDay(new Date()).getTime();
-      const yStart = startOfDay(subDays(new Date(), 1)).getTime();
-      const yEnd = endOfDay(subDays(new Date(), 1)).getTime();
+      const dayStartDate = startOfDay(new Date());
+      const dayEndDate = endOfDay(new Date());
+      const yStartDate = startOfDay(subDays(new Date(), 1));
+      const yEndDate = endOfDay(subDays(new Date(), 1));
+      const dayStart = dayStartDate.getTime();
+      const dayEnd = dayEndDate.getTime();
+      const yStart = yStartDate.getTime();
+      const yEnd = yEndDate.getTime();
 
-      const q = query(
+      const timestampQuery = query(
+        collection(db, "submissions"),
+        where("timestamp", ">=", Timestamp.fromDate(yStartDate)),
+        where("timestamp", "<=", Timestamp.fromDate(dayEndDate)),
+      );
+      const numericTimestampQuery = query(
         collection(db, "submissions"),
         where("timestamp", ">=", yStart),
         where("timestamp", "<=", dayEnd),
       );
-      const snap = await getDocs(q);
+      const [snap, numericSnap] = await Promise.all([
+        getDocs(timestampQuery),
+        getDocs(numericTimestampQuery),
+      ]);
       let tSum = 0;
       let ySum = 0;
-      snap.forEach((docSnap) => {
+      const seen = new Set<string>();
+      const addDoc = (docSnap: (typeof snap.docs)[number]) => {
+        if (seen.has(docSnap.id)) return;
+        seen.add(docSnap.id);
         const data = docSnap.data();
         const ts = submissionTs(data);
         const kg = fuelKg(data);
         if (ts >= dayStart && ts <= dayEnd) tSum += kg;
         else if (ts >= yStart && ts <= yEnd) ySum += kg;
-      });
+      };
+      snap.docs.forEach(addDoc);
+      numericSnap.docs.forEach(addDoc);
       if (!cancelled) {
         setTodayKg(tSum);
         setYesterdayKg(ySum);
@@ -163,10 +204,10 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  const sortedPresence = sortPresenceRows(presence, presenceNow);
-  const tablePresence = sortedPresence.filter((p) =>
+  const visiblePresence = sortPresenceRows(presence, presenceNow).filter((p) =>
     isPresenceTableVisible(p.lastSeen, presenceNow, p.createdAt),
   );
+  const tablePresence = dedupePresenceRows(visiblePresence, presenceNow);
   const onlinePresence = tablePresence.filter((p) => isPresenceOnline(p.lastSeen, presenceNow));
   const onlineWorkers = onlinePresence.filter((p) => p.role === "worker").length;
 
@@ -213,7 +254,7 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="space-y-10 max-w-5xl mx-auto">
+      <div className="flex flex-col space-y-10 max-w-5xl mx-auto">
         <div>
           <p className="text-red-500 font-bold uppercase text-[10px] tracking-widest">
             Bugun vs kecha — barcha ERJ bo&apos;yicha yig&apos;ma sarflanma
@@ -226,7 +267,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Ulangan foydalanuvchilar — premium jadval */}
-        <div className="overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-xl shadow-slate-300/40">
+        <div className="order-2 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-xl shadow-slate-300/40">
           <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
             <h2 className="flex items-center gap-3 text-base font-black uppercase tracking-tight text-slate-900 sm:text-lg">
               <Users className="h-6 w-6 text-indigo-600" />
@@ -267,7 +308,7 @@ export default function AdminDashboard() {
                   const zap = presenceZapravka(p);
                   return (
                     <tr
-                      key={p.uid}
+                      key={presencePersonKey(p)}
                       className="rounded-lg ring-1 ring-slate-900/10"
                     >
                       <td className="rounded-l-lg px-3 py-2 sm:px-5">
@@ -326,7 +367,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Yoqilg'i — kecha vs bugun (yashil panel, donut + ustun) */}
-        <section className="fuel-compare-panel overflow-hidden rounded-[28px] border border-emerald-900/50 shadow-2xl shadow-emerald-950/40">
+        <section className="fuel-compare-panel order-1 overflow-hidden rounded-[28px] border border-emerald-900/50 shadow-2xl shadow-emerald-950/40">
           <div className="bg-gradient-to-br from-emerald-950 via-green-900 to-teal-950 px-5 py-6 text-white sm:px-8 sm:py-8">
             <p className="text-[10px] font-black uppercase tracking-[0.35em] text-emerald-200/90">
               Yoqilg&apos;i sarfi

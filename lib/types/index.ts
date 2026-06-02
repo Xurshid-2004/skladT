@@ -14,8 +14,6 @@ export interface Zapravka {
   uzelId: string; 
   name: string; 
   slug: string; 
-  workerCodes: string[]; 
-  reserveCodes: string[]; 
 } 
  
 export interface AccessCode { 
@@ -24,7 +22,7 @@ export interface AccessCode {
   displayName: string; 
   nodeId: string | null; 
   stationId: string | null; 
-  codeType: 'main' | 'reserve' | 'admin' | 'developer'; 
+  codeType: 'admin' | 'developer'; 
   isActive: boolean; 
   createdAt: number; 
 } 
@@ -81,6 +79,8 @@ export interface LokomotivSubmission {
   harakatTuri: HarakatTuri; 
   rusumi: Rusumi; 
   lokomotivNumber: string; 
+  jadval?: string;              // yuk/manyovr/yo'lovchi uchun qo'shimcha select
+  zagranitsa?: number;           // Y.PDF dagi zagranitsa ustuni uchun ixtiyoriy qiymat
   poyezdNumber?: string;        // ixtiyoriy (manyovrda yo'q)
   ruxsatIndeksi?: string;       // ruxsat indeksi
   poyezdVazni?: number;         // faqat YUK uchun
@@ -185,45 +185,7 @@ export interface TamirlashSubmission {
 
 export type Submission = LokomotivSubmission | KorxonaSubmission | QurulishSubmission | TamirlashSubmission;
 
-export type ChatType = 'umumiy' | 'uzel' | 'admin'; 
-export type MessageType = 'text' | 'lokomotiv_request' | 'korxona_request' | 'system'; 
-export type RequestStatus = 'pending' | 'approved' | 'rejected'; 
 export type RequestKind = 'tashqari' | 'oldinroq'; 
-  
-export interface ChatMessage { 
-  id: string; 
-  chatType: ChatType; 
-  chatScope: string; 
-    
-  senderCode: string; 
-  senderName: string; 
-  senderRole: 'worker' | 'admin' | 'developer'; 
-  senderStation?: string; 
-  senderNode?: string; 
-    
-  type: MessageType; 
-  text?: string; 
-    
-  request?: { 
-    requestType: 'lokomotiv' | 'korxona'; 
-    seriya?: string; 
-    lokomotivNumber?: string; 
-    requestKind?: RequestKind; 
-    korxonaNomi?: string; 
-    qancha?: number; 
-    sutka?: number; 
-    buyruqNumber?: string; 
-    kimTomonidan?: string; 
-    status: RequestStatus; 
-    approvedBy?: string; 
-    approvedByName?: string; 
-    approvedAt?: number; 
-    sutkalikLimit?: number; 
-  }; 
-    
-  createdAt: number; 
-  isDeleted?: boolean; 
-} 
   
 export interface Approval { 
   id: string; 
@@ -382,4 +344,3 @@ export interface AuditLog {
   changes: Record<string, { old: any; new: any }>; 
   timestamp: number; 
 } 
-

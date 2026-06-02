@@ -43,7 +43,7 @@ export default function LokomotivClient() {
 
       <main className="w-full">
         {/* Header + Form — cheklangan kenglik */}
-        <div className="w-full px-3 pt-5 sm:px-5 sm:pt-6">
+        <div className="w-full px-3 pt-3 sm:px-5 sm:pt-4">
           <SectionTabs />
 
           {/* Form */}
@@ -56,10 +56,10 @@ export default function LokomotivClient() {
         </div>
 
         {/* Table — to'liq kenglik */}
-        <div className="w-full px-3 sm:px-5 mt-10 pb-10 animate-in fade-in duration-700">
-          <div className="flex items-center gap-3 mb-4 px-1">
-            <div className="w-1 h-7 bg-primary rounded-full" />
-            <h2 className="text-xl font-black text-primary uppercase tracking-tighter">
+        <div className="w-full px-3 sm:px-5 mt-5 pb-8 animate-in fade-in duration-700">
+          <div className="flex items-center gap-2.5 mb-2.5 px-1">
+            <div className="w-1 h-6 bg-primary rounded-full" />
+            <h2 className="text-lg font-black text-primary uppercase tracking-tighter">
               Mening yozuvlarim
             </h2>
           </div>

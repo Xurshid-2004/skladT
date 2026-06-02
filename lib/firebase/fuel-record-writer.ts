@@ -7,6 +7,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from './config';
 import { sanitizeForFirestore } from './sanitize';
 import { ZAPRAVKALAR } from '@/lib/data/uzellar';
+import { toLocalDateISO } from './summary-service';
 
 /** Y.PDF ustunlari bilan mos keladigan moveType qiymati */
 export type ErjuFuelMoveType =
@@ -43,7 +44,7 @@ export async function appendFuelRecordForErjuJu(
   if (!Number(base.fuelAmountKg) || base.fuelAmountKg <= 0) return;
 
   const now = new Date();
-  const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const localDate = toLocalDateISO(now);
   const date = base.dateISO ?? localDate;
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
@@ -54,6 +55,8 @@ export async function appendFuelRecordForErjuJu(
 
   const payload = sanitizeForFirestore({
     date,
+    dateISO: date,
+    year: Number(date.slice(0, 4)),
     time,
     supplyPoint,
     staffCode: base.staffCode,

@@ -111,6 +111,14 @@ export default function TamirlashForm({ stationId, onSaved }: TamirlashFormProps
     }
   };
 
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key !== "Enter") return;
+    const target = e.target as HTMLElement;
+    if (target.tagName === "BUTTON" || target.tagName === "TEXTAREA") return;
+    e.preventDefault();
+    if (!loading && !isSaveDisabled) e.currentTarget.requestSubmit();
+  };
+
   const handleReset = () => {
     setFormData({
       seriya: "",
@@ -125,46 +133,46 @@ export default function TamirlashForm({ stationId, onSaved }: TamirlashFormProps
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-8 rounded-3xl border-2 border-primary/15 bg-background/70 shadow-xl backdrop-blur-md">
-        <h2 className="text-2xl font-black text-primary mb-8 uppercase tracking-tighter">Teplovozlar ta'mirlash</h2>
+    <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-2.5">
+      <div className="p-3.5 sm:p-4 rounded-[22px] border-2 border-amber-200/70 bg-gradient-to-br from-amber-50 via-white to-rose-50 shadow-lg backdrop-blur-md">
+        <h2 className="text-base sm:text-lg font-black text-primary mb-3 uppercase tracking-tight">Teplovozlar ta'mirlash</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 xl:grid-cols-[minmax(8rem,0.7fr)_minmax(7rem,0.65fr)_minmax(19rem,1.25fr)_minmax(8rem,0.7fr)_minmax(8rem,0.7fr)_minmax(12rem,1fr)]">
+          <div className="space-y-1">
             <label className="text-xs font-black uppercase tracking-widest text-primary">1. Seriya</label>
             <select
               value={formData.seriya}
               onChange={(e) => handleInputChange("seriya", e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-foreground transition-all"
+              className="w-full h-10 px-3 bg-white/95 border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
             >
               <option value="">Tanlang</option>
               {SERIYA_LIST.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className="text-xs font-black uppercase tracking-widest text-primary">2. Raqami</label>
             <input
               type="text"
               value={formData.raqami}
               onChange={(e) => handleInputChange("raqami", e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-foreground transition-all"
+              className="w-full h-10 px-3 bg-white/95 border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
               placeholder="0000"
             />
           </div>
 
-          <div className="col-span-full space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-primary">3. Ta'mirlash Turi</label>
-            <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1 md:col-span-3 xl:col-span-1">
+            <label className="text-xs font-black uppercase tracking-widest text-primary">3. Ta'mirlash turi</label>
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
               {TAMIRLASH_TURI_LIST.map(t => (
                 <button
                   key={t.value}
                   type="button"
                   onClick={() => handleInputChange("tamirlashTuri", t.value)}
-                  className={`py-4 rounded-2xl font-black transition-all border-2 ${
-                    formData.tamirlashTuri === t.value ? "bg-primary border-primary text-white" : "bg-background border-muted-foreground/10"
+                  className={`h-10 rounded-lg border-2 px-2 text-xs sm:text-sm font-black transition-all ${
+                    formData.tamirlashTuri === t.value ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" : "bg-white/95 border-muted-foreground/10 text-foreground"
                   }`}
                 >
                   {t.label}
@@ -173,87 +181,99 @@ export default function TamirlashForm({ stationId, onSaved }: TamirlashFormProps
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-primary">4. Qancha Berildi (kg)</label>
+          <div className="space-y-1">
+            <label className="text-xs font-black uppercase tracking-widest text-primary">4. Qancha berildi (kg)</label>
             <input
               type="number"
               value={formData.qanchaBerildi}
               onChange={(e) => handleInputChange("qanchaBerildi", e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-foreground transition-all"
+              className="w-full h-10 px-3 bg-white/95 border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
+              placeholder="0"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-primary">5. Diz Masla (kg)</label>
+          <div className="space-y-1">
+            <label className="text-xs font-black uppercase tracking-widest text-primary">5. Diz masla (kg)</label>
             <input
               type="number"
               value={formData.dizMasla}
               onChange={(e) => handleInputChange("dizMasla", e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-foreground transition-all"
+              className="w-full h-10 px-3 bg-white/95 border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
+              placeholder="0"
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1 md:col-span-2 xl:col-span-1">
             <label className="text-xs font-black uppercase tracking-widest text-primary">6. Mas'ul shaxs</label>
             <input
               type="text"
               value={formData.masulShaxs}
               onChange={(e) => handleInputChange("masulShaxs", e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-foreground transition-all"
+              className="w-full h-10 px-3 bg-white/95 border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
               placeholder="F.I.SH"
             />
           </div>
         </div>
 
-        <div className="mt-8 space-y-4">
-          <label className="text-xs font-black uppercase tracking-widest text-primary">Mashinada yetkazildimi?</label>
-          <div className="flex gap-4">
-            <button
-              type="button"
-              onClick={() => handleInputChange("mashinadaYetkazildi", true)}
-              className={`flex-1 py-4 rounded-2xl font-black transition-all border-2 ${
-                formData.mashinadaYetkazildi ? "bg-primary border-primary text-white" : "bg-background border-muted-foreground/10"
-              }`}
-            >
-              HA
-            </button>
-            <button
-              type="button"
-              onClick={() => { handleInputChange("mashinadaYetkazildi", false); handleInputChange("mashinaRaqami", ""); }}
-              className={`flex-1 py-4 rounded-2xl font-black transition-all border-2 ${
-                !formData.mashinadaYetkazildi ? "bg-primary border-primary text-white" : "bg-background border-muted-foreground/10"
-              }`}
-            >
-              YO'Q
-            </button>
+        <div className="mt-3 grid gap-2.5 lg:grid-cols-[minmax(14rem,0.75fr)_minmax(12rem,0.65fr)_minmax(16rem,0.9fr)] lg:items-end">
+          <div className="space-y-2">
+            <label className="text-xs font-black uppercase tracking-widest text-primary">Mashinada yetkazildimi?</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleInputChange("mashinadaYetkazildi", true)}
+                className={`flex-1 h-10 rounded-lg font-black transition-all border-2 ${
+                  formData.mashinadaYetkazildi ? "bg-primary border-primary text-white" : "bg-white/95 border-muted-foreground/10"
+                }`}
+              >
+                HA
+              </button>
+              <button
+                type="button"
+                onClick={() => { handleInputChange("mashinadaYetkazildi", false); handleInputChange("mashinaRaqami", ""); }}
+                className={`flex-1 h-10 rounded-lg font-black transition-all border-2 ${
+                  !formData.mashinadaYetkazildi ? "bg-primary border-primary text-white" : "bg-white/95 border-muted-foreground/10"
+                }`}
+              >
+                YO'Q
+              </button>
+            </div>
           </div>
-          {formData.mashinadaYetkazildi && (
-            <div className="space-y-2 mt-4">
-              <label className="text-xs font-black uppercase tracking-widest text-primary">Mashina raqami</label>
+
+          <div className="space-y-1.5">
+            {formData.mashinadaYetkazildi ? (
               <input
                 type="text"
                 value={formData.mashinaRaqami}
                 onChange={(e) => handleInputChange("mashinaRaqami", e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full h-14 px-5 bg-background border-2 border-primary/20 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold text-foreground transition-all"
-                placeholder="Masalan: 01 A 123 BC"
+                className="w-full h-10 px-3 bg-white/95 border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
+                placeholder="Mashina raqami"
               />
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="hidden lg:block h-10" />
+            )}
+          </div>
 
-        <div className="mt-10 flex flex-col sm:flex-row gap-4">
-          <button type="button" onClick={handleReset} className="flex-1 py-5 bg-muted rounded-2xl font-black uppercase">Tozalash</button>
-          <button
-            type="submit"
-            disabled={loading || isSaveDisabled}
-            className="flex-[2] py-5 bg-accent text-white rounded-2xl font-black text-xl hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-3 uppercase shadow-xl shadow-accent/20"
-          >
-            {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Saqlash"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="h-10 flex-1 bg-black text-white rounded-lg font-black text-sm hover:opacity-90 transition-all uppercase"
+            >
+              Tozalash
+            </button>
+            <button
+              type="submit"
+              disabled={loading || isSaveDisabled}
+              className="h-10 flex-[1.5] bg-accent text-white rounded-lg font-black text-sm hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase shadow-lg shadow-accent/20"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Saqlash"}
+            </button>
+          </div>
         </div>
       </div>
 

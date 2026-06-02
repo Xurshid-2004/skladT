@@ -1,5 +1,3 @@
-import { logAction } from '@/lib/firebase/audit-service';
-
 const BOT_TOKEN = process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.NEXT_PUBLIC_TELEGRAM_ADMIN_CHAT_ID;
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
@@ -39,35 +37,6 @@ export async function sendTelegramMessage(text: string, chatId?: string): Promis
   }
 }
 
-// Tugmalar bilan xabar yuborish (callback button)
-export async function sendTelegramMessageWithButtons(
-  text: string,
-  buttons: Array<{ text: string; callback_data: string }>,
-  chatId?: string
-) {
-  const targetChatId = chatId || ADMIN_CHAT_ID;
-  
-  try {
-    const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: targetChatId,
-        text,
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [buttons],
-        },
-      }),
-    });
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Telegram xato:', error);
-    return null;
-  }
-}
-
 // Maxsus xabar turlari
 
 export async function notifyDeviceLocked(deviceId: string, code: string, ip?: string) {
@@ -77,26 +46,6 @@ export async function notifyDeviceLocked(deviceId: string, code: string, ip?: st
     (ip ? `🌐 IP: <code>${ip}</code>\n` : '') +
     `⏰ Vaqt: ${new Date().toLocaleString('uz-UZ')}\n\n` +
     `💡 Ochish uchun: Dasturchi panel → Bloklangan qurilmalar`;
-  
-  return sendTelegramMessage(message);
-}
-
-export async function notifyLimitRequest(
-  type: 'lokomotiv' | 'korxona',
-  details: string,
-  staffName: string,
-  station: string,
-  messageId?: string
-) {
-  const emoji = type === 'lokomotiv' ? '🚂' : '🏭';
-  const typeName = type === 'lokomotiv' ? 'LOKOMOTIV' : 'KORXONA';
-  
-  const message = `${emoji} <b>YANGI LIMIT SO'ROVI</b>\n\n` +
-    `📋 Bo'lim: ${typeName}\n` +
-    `🏭 Stansiya: ${station}\n` +
-    `👤 Ishchi: ${staffName}\n\n` +
-    `📝 Tafsilot:\n${details}\n\n` +
-    `⚡ Sayt orqali HA/YO'Q javob bering`;
   
   return sendTelegramMessage(message);
 }

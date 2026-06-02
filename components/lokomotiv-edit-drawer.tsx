@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Drawer } from "vaul";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase/config";
 import type { LokomotivSubmission } from "@/lib/types";
 import { Loader2, X, Save, Train, CheckCircle2 } from "lucide-react";
+import { updateSubmissionWithSummary } from "@/lib/firebase/submission-mutations";
 
 const RUSUMI_LIST = ["TEM2", "CHME-3", "2TE10M", "3TE10M", "4TE10M", "TEP70", "UZTE16M2", "UZTE16M3", "UZTE16M4"];
 const HARAKAT_LIST = [
@@ -56,8 +55,8 @@ export function LokomotivEditDrawer({ open, onClose, submission, onSaved }: Prop
       const { id: _id, category: _c, staffCode: _sc, staffName: _sn,
               stationId: _sid, nodeId: _nid, timestamp: _ts, createdAt: _ca, ...editable } = form as any;
       const changes = { ...editable, isEdited: true, editedAt: Date.now() };
-      await updateDoc(doc(db, "submissions", submission.id), changes);
-      onSaved({ ...submission, ...changes } as LokomotivSubmission);
+      const updated = await updateSubmissionWithSummary(submission as any, changes);
+      onSaved(updated as LokomotivSubmission);
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 900);
     } catch (e) {

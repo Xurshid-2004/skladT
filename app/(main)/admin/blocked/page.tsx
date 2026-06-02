@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/admin-layout";
 import StaffVaultModal from "@/components/admin/staff-vault-modal";
-import { ShieldOff, Trash2, Users } from "lucide-react";
+import AdminVaultModal from "@/components/admin/admin-vault-modal";
+import { ShieldOff, Trash2, UserCog, Users } from "lucide-react";
 import {
   subscribeBlockedCodes,
   blockCode,
@@ -13,10 +14,13 @@ import {
 import { getSession } from "@/lib/utils/session";
 import { format } from "date-fns";
 
+const ADMIN_VAULT_PASSWORD = "20042004";
+
 export default function AdminBlockedPage() {
   const [rows, setRows] = useState<BlockedCodeDoc[]>([]);
   const [busy, setBusy] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
+  const [adminVaultOpen, setAdminVaultOpen] = useState(false);
 
   const blockedSet = useMemo(
     () => new Set(rows.map((r) => r.code.trim())),
@@ -66,6 +70,18 @@ export default function AdminBlockedPage() {
     }
   }
 
+  function handleOpenAdminVault() {
+    const password = window.prompt("Admin qo'shish parolini kiriting:");
+    if (password === null) return;
+
+    if (password.trim() !== ADMIN_VAULT_PASSWORD) {
+      window.alert("Parol xato. Admin qo'shish bo'limi ochilmadi.");
+      return;
+    }
+
+    setAdminVaultOpen(true);
+  }
+
   return (
     <AdminLayout>
       <div className="max-w-3xl space-y-8 pb-12">
@@ -80,14 +96,24 @@ export default function AdminBlockedPage() {
               taʼsir qilmaydi.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setVaultOpen(true)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-6 py-3.5 text-xs font-black uppercase text-white shadow-[0_0_20px_rgba(34,197,94,0.55)]"
-          >
-            <Users className="w-5 h-5" />
-            Xodim qo'shish
-          </button>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setVaultOpen(true)}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3.5 text-xs font-black uppercase text-white shadow-[0_0_20px_rgba(34,197,94,0.55)]"
+            >
+              <Users className="w-5 h-5" />
+              Xodim qo'shish
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenAdminVault}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3.5 text-xs font-black uppercase text-white shadow-[0_0_20px_rgba(124,58,237,0.5)]"
+            >
+              <UserCog className="w-5 h-5" />
+              Admin qo'shish
+            </button>
+          </div>
         </div>
 
         <StaffVaultModal
@@ -96,6 +122,11 @@ export default function AdminBlockedPage() {
           blockedCodes={blockedSet}
           onBlockByTabel={blockByTabel}
           onUnblockByTabel={unblockByTabel}
+        />
+        <AdminVaultModal
+          open={adminVaultOpen}
+          onClose={() => setAdminVaultOpen(false)}
+          blockedCodes={blockedSet}
         />
 
         <div className="bg-background rounded-[28px] border-2 border-primary/5 overflow-hidden">
