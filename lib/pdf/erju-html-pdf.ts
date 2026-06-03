@@ -1,3 +1,5 @@
+import { formatPdfNonZeroNumber, parsePdfNumber } from '@/lib/utils/pdf-number';
+
 export interface FuelRecord {
   id: string;
   date: string;
@@ -27,15 +29,13 @@ export interface FuelRecord {
   mashinaRaqami?: string;
 }
 
-// ─── raqamni minglik bo'shliq bilan formatlash ───────────────────────────────
+// ─── PDF raqam formati: minglik ajratgichsiz, kasr bo'lsa kasr qismi bilan ───
 const fmt = (val: any): string => {
-  const n = parseFloat(String(val ?? '').replace(/\s/g, '').replace(',', '.'));
-  if (isNaN(n) || n === 0) return '';
-  return n.toLocaleString('ru-RU', { maximumFractionDigits: 3 });
+  return formatPdfNonZeroNumber(val);
 };
 
 const toNum = (val: any): number =>
-  parseFloat(String(val ?? '').replace(/\s/g, '').replace(',', '.')) || 0;
+  parsePdfNumber(val);
 
 // ─── asosiy generator ────────────────────────────────────────────────────────
 export function generateErjuHtmlPdf(records: FuelRecord[], date: string): void {

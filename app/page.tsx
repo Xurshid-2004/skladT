@@ -2,14 +2,21 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { isSessionValid } from "@/lib/utils/session";
+import { getSession, isSessionValid } from "@/lib/utils/session";
 
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
     if (isSessionValid()) {
-      router.push("/uzellar");
+      const session = getSession();
+      if (session?.role === "worker" && session.stationId) {
+        router.push(`/zapravka/${session.stationId}/lokomotiv`);
+      } else if (session?.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/login");
+      }
     } else {
       router.push("/login");
     }

@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { History, Loader2, Pencil, Download } from "lucide-react";
 import { Submission } from "@/lib/types";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
+import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -67,8 +68,8 @@ function exportTamirlashPdf(rows: TamirlashSubmission[]) {
       sub.seriya,
       sub.raqami,
       TAMIR_LABEL[sub.tamirlashTuri] ?? sub.tamirlashTuri,
-      String(sub.qanchaBerildi),
-      sub.dizMasla ? String(sub.dizMasla) : "—",
+      formatPdfNonZeroNumber(sub.qanchaBerildi, "—"),
+      formatPdfNonZeroNumber(sub.dizMasla, "—"),
       sub.masulShaxs,
       mashinaStr,
     ];
@@ -94,14 +95,14 @@ function exportTamirlashPdf(rows: TamirlashSubmission[]) {
     },
   });
 
-  const totalFuel = rows.reduce((s, r) => s + Number(r.qanchaBerildi ?? 0), 0);
-  const totalMasla = rows.reduce((s, r) => s + Number(r.dizMasla ?? 0), 0);
+  const totalFuel = rows.reduce((s, r) => s + parsePdfNumber(r.qanchaBerildi ?? 0), 0);
+  const totalMasla = rows.reduce((s, r) => s + parsePdfNumber(r.dizMasla ?? 0), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text(`Jami yoqilg'i: ${totalFuel.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.text(`Jami yoqilg'i: ${formatPdfNumber(totalFuel)} kg`, 14, fY + 8);
   if (totalMasla > 0) {
-    doc.text(`Jami diz masla: ${totalMasla.toLocaleString("uz-UZ")} kg`, 14, fY + 14);
+    doc.text(`Jami diz masla: ${formatPdfNumber(totalMasla)} kg`, 14, fY + 14);
   }
   doc.save(`tamirlash_${dateStr}.pdf`);
 }

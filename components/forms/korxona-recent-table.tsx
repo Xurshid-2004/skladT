@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { History, Loader2, Pencil, Download } from "lucide-react";
 import { Submission } from "@/lib/types";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
+import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -62,9 +63,9 @@ function exportKorxonaPdf(rows: KorxonaSubmission[]) {
       sub.korxonaNomi,
       sub.poyezdNumber ?? "—",
       sub.ruxsatIndeksi ?? "—",
-      String(sub.qancha),
+      formatPdfNumber(sub.qancha),
       String(sub.nechaSutkalik),
-      sub.limit ? String(sub.limit) : "—",
+      formatPdfNonZeroNumber(sub.limit, "—"),
       mashinaStr,
       sub.staffName ?? "—",
     ];
@@ -91,11 +92,11 @@ function exportKorxonaPdf(rows: KorxonaSubmission[]) {
     },
   });
 
-  const total = rows.reduce((s, r) => s + Number(r.qancha ?? 0), 0);
+  const total = rows.reduce((s, r) => s + parsePdfNumber(r.qancha ?? 0), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.text(`Jami berildi: ${formatPdfNumber(total)} kg`, 14, fY + 8);
   doc.save(`korxona_${dateStr}.pdf`);
 }
 

@@ -252,7 +252,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
           <div className="flex shrink-0 items-center gap-2">
             <Link
-              href="/uzellar"
+              href="/admin"
               className="flex items-center gap-2 rounded-[13px] bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-violet-500/22 transition-all hover:scale-[1.03] hover:shadow-violet-500/32"
             >
               <Home className="h-4 w-4" />

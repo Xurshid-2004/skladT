@@ -5,6 +5,7 @@ import { subscribeToLimits, checkQurulishLimit, LimitsSettings } from "@/lib/fir
 import { addSubmission } from "@/lib/firebase/submissions-service";
 import { appendFuelRecordForErjuJu } from "@/lib/firebase/fuel-record-writer";
 import { getSession } from "@/lib/utils/session";
+import { parsePdfNumber } from "@/lib/utils/pdf-number";
 import { notifyOverLimitEntry } from "@/lib/telegram/bot-service";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
 import { Loader2 } from "lucide-react";
@@ -36,7 +37,7 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
   }, []);
 
   const limitInfo = useMemo(() => {
-    return checkQurulishLimit("", Number(formData.qanchaBerildi), limits);
+    return checkQurulishLimit("", parsePdfNumber(formData.qanchaBerildi), limits);
   }, [formData.qanchaBerildi, limits]);
 
   const handleInputChange = (field: string, value: any) => {
@@ -60,7 +61,7 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
     }
 
     try {
-      const qanchaBerildi = Number(formData.qanchaBerildi);
+      const qanchaBerildi = parsePdfNumber(formData.qanchaBerildi);
       const submissionData = {
         staffCode: session.code,
         staffName: session.displayName,
@@ -71,8 +72,8 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
         raqami: formData.raqami.trim(),
         poyezdNumber: formData.poyezdNumber.trim(),
         ruxsatIndeksi: formData.ruxsatIndeksi.trim(),
-        qoldiq: Number(formData.qoldiq),
-        poyezdVazni: Number(formData.poyezdVazni),
+        qoldiq: parsePdfNumber(formData.qoldiq),
+        poyezdVazni: parsePdfNumber(formData.poyezdVazni),
         qanchaBerildi,
         qanchaOlindi: qanchaBerildi,
         mashinadaYetkazildi: false,
@@ -224,21 +225,10 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
           <div className="space-y-1">
             <label className="text-xs font-black uppercase tracking-widest text-primary">5. Bak qoldig'i (kg)</label>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={formData.qoldiq}
-              onChange={(e) => handleInputChange("qoldiq", e.target.value)}
-              onKeyDown={handleKeyDown}
-              className={inputClass}
-              placeholder="0"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-black uppercase tracking-widest text-primary">6. Poyezd vazni</label>
-            <input
-              type="number"
-              value={formData.poyezdVazni}
-              onChange={(e) => handleInputChange("poyezdVazni", e.target.value)}
+              onChange={(e) => handleInputChange("qoldiq", e.target.value.replace(/[^0-9.,]/g, ""))}
               onKeyDown={handleKeyDown}
               className={inputClass}
               placeholder="0"
@@ -247,12 +237,26 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
 
           <div className="space-y-1">
             <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
-              7. Berilgan yoqilg'i (kg)
+              6. Berilgan yoqilg'i (kg)
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={formData.qanchaBerildi}
-              onChange={(e) => handleInputChange("qanchaBerildi", e.target.value)}
+              onChange={(e) => handleInputChange("qanchaBerildi", e.target.value.replace(/[^0-9.,]/g, ""))}
+              onKeyDown={handleKeyDown}
+              className={inputClass}
+              placeholder="0"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-black uppercase tracking-widest text-primary">7. Poyezd vazni</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={formData.poyezdVazni}
+              onChange={(e) => handleInputChange("poyezdVazni", e.target.value.replace(/[^0-9.,]/g, ""))}
               onKeyDown={handleKeyDown}
               className={inputClass}
               placeholder="0"

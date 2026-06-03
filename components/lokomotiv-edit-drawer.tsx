@@ -10,6 +10,7 @@ import {
 } from "@/lib/firebase/lokomotiv-rusum-service";
 import { Loader2, X, Save, Train, CheckCircle2 } from "lucide-react";
 import { updateSubmissionWithSummary } from "@/lib/firebase/submission-mutations";
+import { parsePdfNumber } from "@/lib/utils/pdf-number";
 
 const HARAKAT_LIST = [
   { value: "yuk",      label: "Yuk" },
@@ -67,7 +68,15 @@ export function LokomotivEditDrawer({ open, onClose, submission, onSaved }: Prop
     try {
       const { id: _id, category: _c, staffCode: _sc, staffName: _sn,
               stationId: _sid, nodeId: _nid, timestamp: _ts, createdAt: _ca, ...editable } = form as any;
-      const changes = { ...editable, isEdited: true, editedAt: Date.now() };
+      const changes = {
+        ...editable,
+        poyezdVazni: editable.poyezdVazni === '' || editable.poyezdVazni == null ? undefined : parsePdfNumber(editable.poyezdVazni),
+        qoldiq: parsePdfNumber(editable.qoldiq),
+        qanchaBerildi: parsePdfNumber(editable.qanchaBerildi),
+        dizMasla: parsePdfNumber(editable.dizMasla),
+        isEdited: true,
+        editedAt: Date.now(),
+      };
       const updated = await updateSubmissionWithSummary(submission as any, changes);
       onSaved(updated as LokomotivSubmission);
       setSaved(true);
@@ -189,7 +198,7 @@ export function LokomotivEditDrawer({ open, onClose, submission, onSaved }: Prop
 
               {/* Poyezd vazni */}
               <Field label="Poyezd vazni (tonna)">
-                <input className={inp} type="number" value={f.poyezdVazni ?? ""} onChange={e => set("poyezdVazni", Number(e.target.value))} />
+                <input className={inp} type="text" inputMode="decimal" value={f.poyezdVazni ?? ""} onChange={e => set("poyezdVazni", e.target.value.replace(/[^0-9.,]/g, ""))} />
               </Field>
 
               {/* Manyovr → stansiya */}
@@ -212,15 +221,15 @@ export function LokomotivEditDrawer({ open, onClose, submission, onSaved }: Prop
               {/* Miqdorlar */}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Qoldiq (kg)">
-                  <input className={inp} type="number" value={f.qoldiq ?? ""} onChange={e => set("qoldiq", Number(e.target.value))} />
+                  <input className={inp} type="text" inputMode="decimal" value={f.qoldiq ?? ""} onChange={e => set("qoldiq", e.target.value.replace(/[^0-9.,]/g, ""))} />
                 </Field>
                 <Field label="Berildi (kg)">
-                  <input className={inp} type="number" value={f.qanchaBerildi ?? ""} onChange={e => set("qanchaBerildi", Number(e.target.value))} />
+                  <input className={inp} type="text" inputMode="decimal" value={f.qanchaBerildi ?? ""} onChange={e => set("qanchaBerildi", e.target.value.replace(/[^0-9.,]/g, ""))} />
                 </Field>
               </div>
 
               <Field label="Diz. masla (kg)">
-                <input className={inp} type="number" value={f.dizMasla ?? ""} onChange={e => set("dizMasla", Number(e.target.value))} />
+                <input className={inp} type="text" inputMode="decimal" value={f.dizMasla ?? ""} onChange={e => set("dizMasla", e.target.value.replace(/[^0-9.,]/g, ""))} />
               </Field>
 
               {/* Olib borish */}

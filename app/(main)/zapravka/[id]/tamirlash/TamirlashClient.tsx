@@ -23,7 +23,14 @@ export default function TamirlashClient() {
     if (!s) { router.push("/login"); return; }
     setSession(s);
     const z = ZAPRAVKALAR.find((z) => z.id === params.id);
-    if (!z) { router.push("/uzellar"); return; }
+    if (!z) {
+      if (s.role === "worker" && s.stationId) {
+        router.push(`/zapravka/${s.stationId}/lokomotiv`);
+      } else {
+        router.push(s.role === "admin" ? "/admin" : "/login");
+      }
+      return;
+    }
     setZapravka(z);
   }, [router, params.id]);
 

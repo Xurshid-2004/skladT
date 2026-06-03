@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf'; 
 import autoTable from 'jspdf-autotable'; 
 import type { ReportData } from '@/lib/types'; 
+import { formatPdfNumber } from '@/lib/utils/pdf-number';
  
 export function generateSvodPDF(data: ReportData, language: 'uz' | 'ru' = 'uz'): jsPDF { 
   const doc = new jsPDF('landscape', 'mm', 'a4'); 
@@ -40,18 +41,18 @@ export function generateSvodPDF(data: ReportData, language: 'uz' | 'ru' = 'uz'):
       body.push([ 
         counter++, 
         zap.zapravkaName, 
-        zap.sutkaTotal.toFixed(2), 
-        zap.teplovozTotal.toFixed(2), 
-        zap.yuk.toFixed(2), 
-        zap.yolovchi.toFixed(2), 
-        zap.manyovr.toFixed(2), 
-        zap.xojalik.toFixed(2), 
-        zap.ijara.toFixed(2), 
-        zap.tamirlash.toFixed(2), 
-        zap.refSeksiya.toFixed(2), 
-        zap.korxonaTotal.toFixed(2), 
-        zap.qurulishTotal.toFixed(2), 
-        zap.dizMasla.toFixed(2), 
+        formatPdfNumber(zap.sutkaTotal), 
+        formatPdfNumber(zap.teplovozTotal), 
+        formatPdfNumber(zap.yuk), 
+        formatPdfNumber(zap.yolovchi), 
+        formatPdfNumber(zap.manyovr), 
+        formatPdfNumber(zap.xojalik), 
+        formatPdfNumber(zap.ijara), 
+        formatPdfNumber(zap.tamirlash), 
+        formatPdfNumber(zap.refSeksiya), 
+        formatPdfNumber(zap.korxonaTotal), 
+        formatPdfNumber(zap.qurulishTotal), 
+        formatPdfNumber(zap.dizMasla), 
       ]); 
     } 
     
@@ -59,18 +60,18 @@ export function generateSvodPDF(data: ReportData, language: 'uz' | 'ru' = 'uz'):
     const t = node.totals; 
     body.push([ 
       { content: node.nodeName, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }, 
-      t.sutkaTotal.toFixed(2), 
-      t.teplovozTotal.toFixed(2), 
-      t.yuk.toFixed(2), 
-      t.yolovchi.toFixed(2), 
-      t.manyovr.toFixed(2), 
-      t.xojalik.toFixed(2), 
-      t.ijara.toFixed(2), 
-      t.tamirlash.toFixed(2), 
-      t.refSeksiya.toFixed(2), 
-      t.korxonaTotal.toFixed(2), 
-      t.qurulishTotal.toFixed(2), 
-      t.dizMasla.toFixed(2), 
+      formatPdfNumber(t.sutkaTotal), 
+      formatPdfNumber(t.teplovozTotal), 
+      formatPdfNumber(t.yuk), 
+      formatPdfNumber(t.yolovchi), 
+      formatPdfNumber(t.manyovr), 
+      formatPdfNumber(t.xojalik), 
+      formatPdfNumber(t.ijara), 
+      formatPdfNumber(t.tamirlash), 
+      formatPdfNumber(t.refSeksiya), 
+      formatPdfNumber(t.korxonaTotal), 
+      formatPdfNumber(t.qurulishTotal), 
+      formatPdfNumber(t.dizMasla), 
     ].map(v => typeof v === 'object' ? v : { content: v, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } })); 
   } 
   
@@ -79,7 +80,7 @@ export function generateSvodPDF(data: ReportData, language: 'uz' | 'ru' = 'uz'):
   body.push([ 
     { content: '"O\'TY" AJ', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [200, 230, 255] } }, 
     ...[r.sutkaTotal, r.teplovozTotal, r.yuk, r.yolovchi, r.manyovr, r.xojalik, r.ijara, r.tamirlash, r.refSeksiya, r.korxonaTotal, r.qurulishTotal, r.dizMasla] 
-      .map(v => ({ content: v.toFixed(2), styles: { fontStyle: 'bold', fillColor: [200, 230, 255] } })) 
+      .map(v => ({ content: formatPdfNumber(v), styles: { fontStyle: 'bold', fillColor: [200, 230, 255] } })) 
   ]); 
   
   autoTable(doc, { 

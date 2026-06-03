@@ -6,6 +6,7 @@
 import type { FuelRecord } from '@/lib/pdf/erju-html-pdf';
 import { ERJU_DATA } from '@/lib/data/erju-data';
 import { ZAPRAVKALAR } from '@/lib/data/uzellar';
+import { formatPdfNonZeroNumber, parsePdfNumber } from '@/lib/utils/pdf-number';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -31,17 +32,11 @@ const NOMA_KEY = '__noma__';
 
 /** Jadvalda 0 qiymatlarni boʻsh chiqaradi */
 export function fmt(val: unknown): string {
-  const n =
-    typeof val === 'number'
-      ? val
-      : parseFloat(String(val ?? '').replace(/\s/g, '').replace(',', '.'));
-  if (Number.isNaN(n) || n === 0) return '';
-  return n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatPdfNonZeroNumber(val);
 }
 
 function toNum(v: unknown): number {
-  const n = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.'));
-  return Number.isNaN(n) ? 0 : n;
+  return parsePdfNumber(v);
 }
 
 const ZAGRANITSA_KEY = 'zagranitsa';
@@ -469,6 +464,7 @@ ${ucells}
   .zr td { font-size: 8px; }
   .rjami { font-style: italic; }
   .jsum { font-weight: 600; background: #f2f6f2; }
+  .sum.grand td { background: #dc2626; color: #fff; font-weight: 700; }
   table.pivot thead th { background: #e8ebe8; }
   .jf { font-weight: 700; }
   table.pivot .psum td { font-weight: 700; background: #e8ebe8; }
@@ -606,6 +602,8 @@ export function downloadErjuYpdf(
   const GREENFG: [number, number, number] = [30, 60, 30];
   const SUM:     [number, number, number] = [235, 245, 235];
   const GRAND:   [number, number, number] = [200, 220, 200];
+  const GRAND_ROW:    [number, number, number] = [220, 38, 38];
+  const GRAND_ROW_FG: [number, number, number] = [255, 255, 255];
 
   // Jadval sarlavhasi — barcha kunlar uchun bir xil
   const head: any[][] = [[
@@ -764,23 +762,16 @@ export function downloadErjuYpdf(
     }
 
     body.push([
-      { content: 'UMUMIY JAMI', colSpan: 2, styles: { fontStyle: 'bold', fillColor: GRAND, halign: 'left' } },
-      { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } },
-      { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } },
-      ...activeCols.map((c) => ({ content: fmt(grandByMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } })),
+      { content: 'UMUMIY JAMI', colSpan: 2, styles: { fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG, halign: 'left' } },
+      { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
+      { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
+      ...activeCols.map((c) => ({ content: fmt(grandByMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } })),
     ]);
 
     // ── Yangi sahifa (birinchi sana uchun emas) ───────────────────────────
     if (!isFirstDate) doc.addPage();
 
-    // Sana sarlavhasi — har sahifada qaysi kun ekanligi ko'rinsin
-    const [dy, dm, dd] = dateKey.split('-');
-    const dateLabelStr = `${dd}.${dm}.${dy} - sana`;
-    const tableStartY: number = isFirstDate ? titleEndY + 10 : 15;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text(dateLabelStr, W / 2, isFirstDate ? titleEndY + 4 : 8, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
+    const tableStartY: number = isFirstDate ? titleEndY + 1.5 : 15;
     isFirstDate = false;
 
     // ── Asosiy jadval ─────────────────────────────────────────────────────
@@ -858,19 +849,27 @@ export function downloadErjuYpdf(
       }
       for (const key of rowMoveKeys) moveCount.set(key, (moveCount.get(key) ?? 0) + 1);
     }
+    const visibleMoveCounts = activeCols
+      .map((mc) => ({
+        label: SHORT_MOVE[mc.id] ?? mc.id,
+        count: moveCount.get(mc.id) ?? 0,
+      }))
+      .filter((row) => row.count > 0);
     const afterPivot = (doc as any).lastAutoTable?.finalY ?? afterMain + 6;
     let cy = afterPivot + 5;
     const pageH = doc.internal.pageSize.height;
-    if (cy + activeCols.length * 3.8 > pageH - MARGIN) { doc.addPage(); cy = MARGIN + 4; }
+    const lineHeight = 3.8;
+    const neededHeight = Math.max(0, (visibleMoveCounts.length - 1) * lineHeight) + 2;
+    if (visibleMoveCounts.length > 0 && cy + neededHeight > pageH - MARGIN) {
+      doc.addPage();
+      cy = MARGIN + 4;
+    }
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(70, 70, 70);
-    for (const mc of activeCols) {
-      const cnt = moveCount.get(mc.id) ?? 0;
-      if (cnt === 0) continue;
-      const lbl = SHORT_MOVE[mc.id] ?? mc.id;
-      doc.text(`${lbl}: ${cnt}`, MARGIN, cy);
-      cy += 3.8;
+    for (const row of visibleMoveCounts) {
+      doc.text(`${row.label}: ${row.count}`, MARGIN, cy);
+      cy += lineHeight;
     }
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');

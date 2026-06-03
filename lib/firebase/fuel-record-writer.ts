@@ -8,6 +8,7 @@ import { db } from './config';
 import { sanitizeForFirestore } from './sanitize';
 import { ZAPRAVKALAR } from '@/lib/data/uzellar';
 import { toLocalDateISO } from './summary-service';
+import { parsePdfNumber } from '@/lib/utils/pdf-number';
 
 /** Y.PDF ustunlari bilan mos keladigan moveType qiymati */
 export type ErjuFuelMoveType =
@@ -42,7 +43,10 @@ export async function appendFuelRecordForErjuJu(
     dateISO?: string;
   },
 ): Promise<void> {
-  if (!Number(base.fuelAmountKg) || base.fuelAmountKg <= 0) return;
+  const fuelAmountKg = parsePdfNumber(base.fuelAmountKg);
+  const balanceBeforeKg = parsePdfNumber(base.balanceBeforeKg);
+  const dizMaslaKg = base.dizMaslaKg == null ? 0 : parsePdfNumber(base.dizMaslaKg);
+  if (fuelAmountKg <= 0) return;
 
   const now = new Date();
   const localDate = toLocalDateISO(now);
@@ -73,13 +77,13 @@ export async function appendFuelRecordForErjuJu(
     trainNumber: '',
     weight: base.weight ?? '',
     balanceBefore:
-      base.balanceBeforeKg == null || base.balanceBeforeKg === 0
+      base.balanceBeforeKg == null || balanceBeforeKg === 0
         ? ''
-        : String(base.balanceBeforeKg),
-    fuelAmount: String(base.fuelAmountKg),
+        : String(balanceBeforeKg),
+    fuelAmount: String(fuelAmountKg),
     maslaAmount:
-      base.dizMaslaKg != null && !Number.isNaN(Number(base.dizMaslaKg))
-        ? String(base.dizMaslaKg)
+      base.dizMaslaKg != null && dizMaslaKg !== 0
+        ? String(dizMaslaKg)
         : '',
   });
 

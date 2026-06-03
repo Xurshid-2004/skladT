@@ -4,6 +4,7 @@ import { useState } from "react";
 import { addSubmission } from "@/lib/firebase/submissions-service";
 import { appendFuelRecordForErjuJu } from "@/lib/firebase/fuel-record-writer";
 import { getSession } from "@/lib/utils/session";
+import { parsePdfNumber } from "@/lib/utils/pdf-number";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
 import { SERIYA_LIST, TAMIRLASH_TURI_LIST } from "@/lib/data/sections-config";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
@@ -58,8 +59,8 @@ export default function TamirlashForm({ stationId, onSaved }: TamirlashFormProps
         seriya: formData.seriya,
         raqami: formData.raqami,
         tamirlashTuri: formData.tamirlashTuri,
-        qanchaBerildi: Number(formData.qanchaBerildi),
-        dizMasla: formData.dizMasla ? Number(formData.dizMasla) : undefined,
+        qanchaBerildi: parsePdfNumber(formData.qanchaBerildi),
+        dizMasla: formData.dizMasla ? parsePdfNumber(formData.dizMasla) : undefined,
         masulShaxs: formData.masulShaxs,
         mashinadaYetkazildi: formData.mashinadaYetkazildi,
         mashinaRaqami: formData.mashinaRaqami || undefined,
@@ -184,9 +185,10 @@ export default function TamirlashForm({ stationId, onSaved }: TamirlashFormProps
           <div className="space-y-1">
             <label className="text-xs font-black uppercase tracking-widest text-primary">4. Qancha berildi (kg)</label>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={formData.qanchaBerildi}
-              onChange={(e) => handleInputChange("qanchaBerildi", e.target.value)}
+              onChange={(e) => handleInputChange("qanchaBerildi", e.target.value.replace(/[^0-9.,]/g, ""))}
               onKeyDown={handleKeyDown}
               className="w-full h-10 px-3 bg-white/95 border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
               placeholder="0"
@@ -196,9 +198,10 @@ export default function TamirlashForm({ stationId, onSaved }: TamirlashFormProps
           <div className="space-y-1">
             <label className="text-xs font-black uppercase tracking-widest text-primary">5. Diz masla (kg)</label>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={formData.dizMasla}
-              onChange={(e) => handleInputChange("dizMasla", e.target.value)}
+              onChange={(e) => handleInputChange("dizMasla", e.target.value.replace(/[^0-9.,]/g, ""))}
               onKeyDown={handleKeyDown}
               className="w-full h-10 px-3 bg-white/95 border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
               placeholder="0"

@@ -58,9 +58,9 @@ if (TGM_RUSUMI) {
 
 // Qaysi maydonlar qaysi harakat turida ko'rinadi 
 export const FIELDS_VISIBILITY: Record<HarakatTuri, string[]> = {
-  yuk:      ['jadval', 'zagranitsa', 'lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'poyezdVazni', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
-  yolovchi: ['jadval', 'zagranitsa', 'lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
-  manyovr:  ['jadval', 'zagranitsa', 'lokomotivNumber', 'stansiya', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla'],
+  yuk:      ['lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'poyezdVazni', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'zagranitsa'],
+  yolovchi: ['lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'zagranitsa'],
+  manyovr:  ['lokomotivNumber', 'stansiya', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'zagranitsa'],
   xojalik:  ['lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'tashkilot'],
-  ijara:    ['lokomotivNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'ijarachi'],
+  ijara:    ['lokomotivNumber', 'poyezdNumber', 'ruxsatIndeksi', 'qoldiq', 'qanchaBerildi', 'dizMasla', 'ijarachi'],
 };

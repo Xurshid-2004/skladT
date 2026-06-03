@@ -25,7 +25,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       }
 
       if (pathname.startsWith("/admin") && s.role !== "admin") {
-        router.replace("/uzellar");
+        if (s.role === "worker" && s.stationId) {
+          router.replace(`/zapravka/${s.stationId}/lokomotiv`);
+        } else {
+          router.replace("/login");
+        }
         return;
       }
 

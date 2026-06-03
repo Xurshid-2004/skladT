@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { History, Loader2, Pencil, Download } from "lucide-react";
 import { Submission } from "@/lib/types";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
+import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -29,11 +30,11 @@ function formatTimestamp(ts: any): string {
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 
 function getFuel(sub: any): number {
-  return Number(sub.qanchaBerildi ?? sub.qanchaOlindi ?? 0);
+  return parsePdfNumber(sub.qanchaBerildi ?? sub.qanchaOlindi ?? 0);
 }
 
 function getQoldiq(sub: any): number {
-  return Number(sub.qoldiq ?? 0);
+  return parsePdfNumber(sub.qoldiq ?? 0);
 }
 
 function val(raw: unknown, fallback = "-"): string {
@@ -84,9 +85,9 @@ function exportQurulishPdf(rows: QurulishSubmission[]) {
       val((sub as any).poyezdNumber),
       val((sub as any).ruxsatIndeksi),
       val((sub as any).poyezdVazni),
-      qoldiq ? qoldiq.toLocaleString("uz-UZ") : "-",
-      fuel ? fuel.toLocaleString("uz-UZ") : "-",
-      (qoldiq + fuel).toLocaleString("uz-UZ"),
+      formatPdfNonZeroNumber(qoldiq, "-"),
+      formatPdfNonZeroNumber(fuel, "-"),
+      formatPdfNumber(qoldiq + fuel),
     ];
   });
 
@@ -116,7 +117,7 @@ function exportQurulishPdf(rows: QurulishSubmission[]) {
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.text(`Jami berildi: ${formatPdfNumber(total)} kg`, 14, fY + 8);
   doc.save(`qurulish_${dateStr}.pdf`);
 }
 

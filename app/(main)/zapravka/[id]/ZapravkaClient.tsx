@@ -66,7 +66,11 @@ export default function ZapravkaClient() {
 
     const z = ZAPRAVKALAR.find((z) => z.id === params.id);
     if (!z) {
-      router.push("/uzellar");
+      if (s.role === "worker" && s.stationId) {
+        router.push(`/zapravka/${s.stationId}/lokomotiv`);
+      } else {
+        router.push(s.role === "admin" ? "/admin" : "/login");
+      }
       return;
     }
     setZapravka(z);
@@ -113,7 +117,7 @@ export default function ZapravkaClient() {
         {/* Back and Title */}
         <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
           <Link
-            href="/uzellar"
+            href={`/zapravka/${zapravka.id}/lokomotiv`}
             className="flex items-center gap-2 px-5 py-3 bg-background border-2 border-primary/10 rounded-2xl font-black text-primary hover:bg-primary/5 transition-all shadow-sm w-fit"
           >
             <ChevronLeft className="w-6 h-6" />

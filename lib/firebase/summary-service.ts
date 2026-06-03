@@ -6,6 +6,7 @@ import {
 } from "firebase/firestore";
 import type { Category, Submission } from "@/lib/types";
 import { db } from "./config";
+import { parsePdfNumber } from "@/lib/utils/pdf-number";
 
 type SubmissionLike = Partial<Submission> & {
   id?: string;
@@ -100,13 +101,11 @@ export function fuelKgForSubmission(submission: SubmissionLike): number {
       : submission.category === "qurulish"
         ? submission.qanchaOlindi
         : submission.qanchaBerildi;
-  const n = Number(raw ?? 0);
-  return Number.isFinite(n) ? n : 0;
+  return parsePdfNumber(raw ?? 0);
 }
 
 export function maslaKgForSubmission(submission: SubmissionLike): number {
-  const n = Number(submission.dizMasla ?? 0);
-  return Number.isFinite(n) ? n : 0;
+  return parsePdfNumber(submission.dizMasla ?? 0);
 }
 
 function cleanDocId(value: string): string {

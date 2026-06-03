@@ -8,6 +8,7 @@ import { subDays } from "date-fns";
 import { format } from "date-fns";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { parsePdfNumber } from "@/lib/utils/pdf-number";
 
 export default function AdminOverlimitPage() {
   const [rows, setRows] = useState<any[]>([]);
@@ -61,7 +62,7 @@ export default function AdminOverlimitPage() {
   }
 
   function kg(s: any): number {
-    return Number(s?.qanchaBerildi ?? s?.qancha ?? s?.qanchaOlindi ?? 0);
+    return parsePdfNumber(s?.qanchaBerildi ?? s?.qancha ?? s?.qanchaOlindi ?? 0);
   }
 
   return (

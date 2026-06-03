@@ -10,6 +10,7 @@ import {
 } from '@/lib/firebase/lokomotiv-rusum-service';
 import { Loader2, X, Save, FileEdit } from 'lucide-react';
 import { updateSubmissionWithSummary } from '@/lib/firebase/submission-mutations';
+import { parsePdfNumber } from '@/lib/utils/pdf-number';
 
 const HARAKAT_LIST = ['yuk', 'yolovchi', 'manyovr', 'xojalik', 'ijara'];
 const HARAKAT_LABEL: Record<string, string> = {
@@ -80,8 +81,25 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
         ...editable
       } = form as any;
       const editableData = { ...editable };
+      if (submission.category === 'lokomotiv') {
+        editableData.poyezdVazni = editableData.poyezdVazni === '' || editableData.poyezdVazni == null ? undefined : parsePdfNumber(editableData.poyezdVazni);
+        editableData.qoldiq = parsePdfNumber(editableData.qoldiq);
+        editableData.qanchaBerildi = parsePdfNumber(editableData.qanchaBerildi);
+        editableData.dizMasla = parsePdfNumber(editableData.dizMasla);
+      }
+      if (submission.category === 'korxona') {
+        editableData.qancha = parsePdfNumber(editableData.qancha);
+        editableData.limit = editableData.limit === '' || editableData.limit == null ? editableData.limit : parsePdfNumber(editableData.limit);
+      }
       if (submission.category === 'qurulish') {
-        editableData.qanchaOlindi = Number(editableData.qanchaBerildi ?? editableData.qanchaOlindi ?? 0);
+        editableData.qoldiq = parsePdfNumber(editableData.qoldiq);
+        editableData.poyezdVazni = editableData.poyezdVazni === '' || editableData.poyezdVazni == null ? undefined : parsePdfNumber(editableData.poyezdVazni);
+        editableData.qanchaBerildi = parsePdfNumber(editableData.qanchaBerildi ?? editableData.qanchaOlindi ?? 0);
+        editableData.qanchaOlindi = editableData.qanchaBerildi;
+      }
+      if (submission.category === 'tamirlash') {
+        editableData.qanchaBerildi = parsePdfNumber(editableData.qanchaBerildi);
+        editableData.dizMasla = editableData.dizMasla === '' || editableData.dizMasla == null ? undefined : parsePdfNumber(editableData.dizMasla);
       }
       const changes = { ...editableData, isEdited: true, editedAt: Date.now() };
       const updated = await updateSubmissionWithSummary(submission, changes);
@@ -144,7 +162,7 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
           <input className={inputCls} value={f.ruxsatIndeksi ?? ''} onChange={(e) => set('ruxsatIndeksi', e.target.value)} />
         </FieldRow>
         <FieldRow label="Poyezd vazni">
-          <input className={inputCls} type="number" value={f.poyezdVazni ?? ''} onChange={(e) => set('poyezdVazni', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.poyezdVazni ?? ''} onChange={(e) => set('poyezdVazni', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
         {f.harakatTuri === 'manyovr' && (
           <FieldRow label="Stansiya">
@@ -162,13 +180,13 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
           </FieldRow>
         )}
         <FieldRow label="Qoldiq (kg)">
-          <input className={inputCls} type="number" value={f.qoldiq ?? ''} onChange={(e) => set('qoldiq', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.qoldiq ?? ''} onChange={(e) => set('qoldiq', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
         <FieldRow label="Berilgan yoqilg'i (kg)">
-          <input className={inputCls} type="number" value={f.qanchaBerildi ?? ''} onChange={(e) => set('qanchaBerildi', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.qanchaBerildi ?? ''} onChange={(e) => set('qanchaBerildi', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
         <FieldRow label="Diz. masla (kg)">
-          <input className={inputCls} type="number" value={f.dizMasla ?? ''} onChange={(e) => set('dizMasla', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.dizMasla ?? ''} onChange={(e) => set('dizMasla', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
       </>
     );
@@ -185,7 +203,7 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
           <input className={inputCls} value={f.ruxsatIndeksi ?? ''} onChange={(e) => set('ruxsatIndeksi', e.target.value)} />
         </FieldRow>
         <FieldRow label="Berilgan yoqilg'i (kg)">
-          <input className={inputCls} type="number" value={f.qancha ?? ''} onChange={(e) => set('qancha', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.qancha ?? ''} onChange={(e) => set('qancha', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
         <FieldRow label="Necha sutkalik">
           <input className={inputCls} type="number" value={f.nechaSutkalik ?? ''} onChange={(e) => set('nechaSutkalik', Number(e.target.value))} />
@@ -208,18 +226,19 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
           <input className={inputCls} value={f.ruxsatIndeksi ?? ''} onChange={(e) => set('ruxsatIndeksi', e.target.value)} />
         </FieldRow>
         <FieldRow label="Bak qoldig'i (kg)">
-          <input className={inputCls} type="number" value={f.qoldiq ?? ''} onChange={(e) => set('qoldiq', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.qoldiq ?? ''} onChange={(e) => set('qoldiq', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
         <FieldRow label="Poyezd vazni">
-          <input className={inputCls} type="number" value={f.poyezdVazni ?? ''} onChange={(e) => set('poyezdVazni', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.poyezdVazni ?? ''} onChange={(e) => set('poyezdVazni', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
         <FieldRow label="Berilgan yoqilg'i (kg)">
           <input
             className={inputCls}
-            type="number"
+            type="text"
+            inputMode="decimal"
             value={f.qanchaBerildi ?? f.qanchaOlindi ?? ''}
             onChange={(e) => {
-              const value = Number(e.target.value);
+              const value = e.target.value.replace(/[^0-9.,]/g, '');
               setForm((prev) => ({ ...prev, qanchaBerildi: value, qanchaOlindi: value }));
             }}
           />
@@ -243,10 +262,10 @@ export function SubmissionEditDrawer({ open, onClose, submission, onSaved }: Pro
           </select>
         </FieldRow>
         <FieldRow label="Berilgan yoqilg'i (kg)">
-          <input className={inputCls} type="number" value={f.qanchaBerildi ?? ''} onChange={(e) => set('qanchaBerildi', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.qanchaBerildi ?? ''} onChange={(e) => set('qanchaBerildi', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
         <FieldRow label="Diz. masla (kg)">
-          <input className={inputCls} type="number" value={f.dizMasla ?? ''} onChange={(e) => set('dizMasla', Number(e.target.value))} />
+          <input className={inputCls} type="text" inputMode="decimal" value={f.dizMasla ?? ''} onChange={(e) => set('dizMasla', e.target.value.replace(/[^0-9.,]/g, ''))} />
         </FieldRow>
         <FieldRow label="Mas'ul shaxs">
           <input className={inputCls} value={f.masulShaxs ?? ''} onChange={(e) => set('masulShaxs', e.target.value)} />

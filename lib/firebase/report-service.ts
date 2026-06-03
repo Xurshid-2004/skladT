@@ -2,6 +2,7 @@ import { db } from './config';
 import { collection, query, where, getDocs, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore'; 
 import type { ReportFilter, ReportData, ZapravkaSummary, NodeSummary } from '@/lib/types'; 
 import { UZELLAR, ZAPRAVKALAR } from '@/lib/data/uzellar'; 
+import { parsePdfNumber } from '@/lib/utils/pdf-number'; 
  
 export async function generateReport(filter: ReportFilter): Promise<ReportData> { 
   const { period, groupType, nodeId, stationId } = filter; 
@@ -72,7 +73,7 @@ function calculateZapravkaSummary(zap: any, submissions: any[]): ZapravkaSummary
   const tamirlash = submissions.filter(s => s.category === 'tamirlash'); 
   
   const sumField = (arr: any[], field: string) => 
-    arr.reduce((sum, item) => sum + (Number(item[field]) || 0), 0); 
+    arr.reduce((sum, item) => sum + parsePdfNumber(item[field]), 0); 
   
   const lokomotivByType = (type: string) => 
     sumField(lokomotiv.filter(l => l.harakatTuri === type), 'qanchaBerildi'); 

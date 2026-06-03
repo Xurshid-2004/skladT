@@ -28,7 +28,11 @@ export default function LokomotivClient() {
 
     const z = ZAPRAVKALAR.find((z) => z.id === params.id);
     if (!z) {
-      router.push("/uzellar");
+      if (s.role === "worker" && s.stationId) {
+        router.push(`/zapravka/${s.stationId}/lokomotiv`);
+      } else {
+        router.push(s.role === "admin" ? "/admin" : "/login");
+      }
       return;
     }
     setZapravka(z);

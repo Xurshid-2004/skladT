@@ -15,6 +15,34 @@ import { collection, query, where, limit, getDocs, doc, getDoc } from "firebase/
 import { db } from "@/lib/firebase/config";
 import { KeyRound, ShieldCheck } from "lucide-react";
 
+function normalizeZapravkaKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s*zapravka\s*$/i, "")
+    .replace(/[`'‘’ʻʼ]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const ZAPRAVKA_KEY_ALIASES: Record<string, string> = {
+  margilon: "marglon",
+  qumqorgon: "qumqurgon",
+  termiz: "termez",
+};
+
+function canonicalZapravkaKey(value: string): string {
+  const key = normalizeZapravkaKey(value);
+  return ZAPRAVKA_KEY_ALIASES[key] ?? key;
+}
+
+function resolveZapravka(rawZapravka: string) {
+  const staffKey = canonicalZapravkaKey(rawZapravka);
+  return ZAPRAVKALAR.find((z) => {
+    const keys = [z.id, z.slug, z.name].map(canonicalZapravkaKey);
+    return keys.includes(staffKey);
+  });
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [code, setCode] = useState(["", "", "", ""]);
@@ -70,18 +98,7 @@ export default function LoginPage() {
         return null;
       }
 
-      const zapKey = staffZapravka
-        .replace(/\s*zapravka\s*$/i, "")
-        .replace(/'/g, "'")
-        .trim()
-        .toLowerCase();
-
-      const zap = ZAPRAVKALAR.find(
-        (z) =>
-          z.name.toLowerCase().replace(/'/g, "'") === zapKey ||
-          z.id.toLowerCase() === zapKey ||
-          z.slug.toLowerCase() === zapKey,
-      );
+      const zap = resolveZapravka(staffZapravka);
 
       if (!zap) return null;
 
@@ -137,7 +154,7 @@ export default function LoginPage() {
       } else if (session.role === "admin") {
         router.push("/admin");
       } else {
-        router.push("/uzellar");
+        router.push("/login");
       }
     } catch {
       try {

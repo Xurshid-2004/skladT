@@ -13,6 +13,7 @@ import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 import { downloadErjuYpdf } from "@/lib/pdf/erju-malumotnoma-html";
 import type { FuelRecord } from "@/lib/pdf/erju-html-pdf";
 import { pdfText } from "@/lib/utils/pdf-text";
+import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -95,7 +96,7 @@ function toIsoDateLocal(d: Date) {
 }
 
 function getAmount(s: any): number {
-  return Number(s.qanchaBerildi ?? s.qancha ?? s.qanchaOlindi ?? 0);
+  return parsePdfNumber(s.qanchaBerildi ?? s.qancha ?? s.qanchaOlindi ?? 0);
 }
 
 function cellVal(raw: unknown, fallback = "—"): string {
@@ -142,11 +143,13 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
   const sortedRows = sortRowsOldestFirst(rows);
   const doc = new jsPDF("landscape", "mm", "a4");
   const W   = doc.internal.pageSize.width;
-  doc.setFontSize(10);
+  const tableWidth = 214;
+  const tableMarginX = (W - tableWidth) / 2;
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  const lines = doc.splitTextToSize(pdfText(titleLine), W - 28);
-  let y = 10;
-  lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
+  const lines = doc.splitTextToSize(pdfText(titleLine), tableWidth);
+  let y = 8.5;
+  lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 4.2; });
   doc.setFont("helvetica", "normal");
 
   const groups = new Map<string, any[]>();
@@ -181,7 +184,7 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
     const tot = stRows.reduce((a, r) => a + getAmount(r), 0);
     const hBg: [number,number,number] = [210,220,210];
     const hFg: [number,number,number] = [30,60,30];
-    const hp = { top:1.4, bottom:1.4, left:3, right:2.5 };
+    const hp = { top:0.8, bottom:0.8, left:2.2, right:2 };
 
     // Shu guruh uchun xodim ism familyalarini yig'ish
     const staffNames = [...new Set(
@@ -191,11 +194,11 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
 
     body.push([
       { content: pdfText(headerLabel), colSpan: 5, styles: { halign:"left" as const, fontStyle:"bold" as const, fontSize:8, fillColor:hBg, textColor:hFg, cellPadding:hp } },
-      { content: `jami: ${tot.toLocaleString("uz-UZ")} kg`, colSpan: 5, styles: { halign:"right" as const, fontStyle:"italic" as const, fontSize:7, fillColor:hBg, textColor:hFg, cellPadding:hp } },
+      { content: `jami: ${formatPdfNumber(tot)} kg`, colSpan: 5, styles: { halign:"right" as const, fontStyle:"italic" as const, fontSize:7, fillColor:hBg, textColor:hFg, cellPadding:hp } },
     ]);
     for (const s of stRows) {
       const amount = getAmount(s);
-      const qoldiq = Number(s.qoldiq ?? 0);
+      const qoldiq = parsePdfNumber(s.qoldiq ?? 0);
       const hisob  = qoldiq + amount;
       const pn = s.harakatTuri === "manyovr"
         ? String(s.stansiya ?? "—")
@@ -211,18 +214,18 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
         pdfText(pn),
         pdfText(indexVal),
         s.poyezdVazni != null && String(s.poyezdVazni) !== "" ? String(s.poyezdVazni) : "—",
-        qoldiq ? qoldiq.toLocaleString("uz-UZ") : "—",
-        amount ? amount.toLocaleString("uz-UZ") : "—",
-        hisob.toLocaleString("uz-UZ"),
+        formatPdfNonZeroNumber(qoldiq, "—"),
+        formatPdfNonZeroNumber(amount, "—"),
+        formatPdfNumber(hisob),
       ]);
     }
   }
 
   autoTable(doc, {
-    head, body, startY: y + 4,
+    head, body, startY: y + 1,
     theme: "grid",
-    styles:             { fontSize:7, cellPadding:1.15, valign:"middle", lineColor:[0,0,0], lineWidth:0.2 },
-    headStyles:         { fillColor:[255,255,255], textColor:[0,0,0], fontStyle:"bold", fontSize:7, lineColor:[0,0,0], lineWidth:0.3, cellPadding:1 },
+    styles:             { fontSize:6.1, cellPadding:0.55, valign:"middle", lineColor:[0,0,0], lineWidth:0.18 },
+    headStyles:         { fillColor:[255,255,255], textColor:[0,0,0], fontStyle:"bold", fontSize:6.1, lineColor:[0,0,0], lineWidth:0.25, cellPadding:0.55 },
     alternateRowStyles: { fillColor:[250,250,250] },
     columnStyles: {
       0:{cellWidth:14}, 1:{cellWidth:20}, 2:{cellWidth:18},
@@ -230,13 +233,15 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
       6:{cellWidth:20}, 7:{cellWidth:26,halign:"right" as const},
       8:{cellWidth:22,halign:"right" as const}, 9:{cellWidth:22,halign:"right" as const},
     },
+    tableWidth,
+    margin: { left: tableMarginX, right: tableMarginX },
   });
 
   const grand = sortedRows.reduce((s:number,r:any)=>s+getAmount(r),0);
-  const mg=14, fY=(doc as any).lastAutoTable?.finalY??100, pH=doc.internal.pageSize.height;
+  const mg=tableMarginX, fY=(doc as any).lastAutoTable?.finalY??100, pH=doc.internal.pageSize.height;
   let gY=fY+10; if(gY>pH-mg){doc.addPage();gY=mg;}
   doc.setFontSize(8); doc.setFont("helvetica","bold");
-  doc.text(`Umumiy jami yoqilg'i: ${grand.toLocaleString()} kg`, mg, gY, {align:"left"});
+  doc.text(`Umumiy jami yoqilg'i: ${formatPdfNumber(grand)} kg`, mg, gY, {align:"left"});
   doc.save(`hisobot_${fileSlug}.pdf`);
 }
 
@@ -267,9 +272,9 @@ function exportKorxonaCatPdf(rows: any[]) {
       sub.korxonaNomi,
       sub.poyezdNumber ?? "—",
       sub.ruxsatIndeksi ?? "—",
-      String(sub.qancha ?? 0),
+      formatPdfNumber(sub.qancha ?? 0),
       String(sub.nechaSutkalik ?? "—"),
-      sub.limit ? String(sub.limit) : "—",
+      formatPdfNonZeroNumber(sub.limit, "—"),
       mashinaStr,
       sub.staffName ?? "—",
     ];
@@ -287,10 +292,10 @@ function exportKorxonaCatPdf(rows: any[]) {
     },
   });
 
-  const total = sortedRows.reduce((s, r) => s + Number(r.qancha ?? 0), 0);
+  const total = sortedRows.reduce((s, r) => s + parsePdfNumber(r.qancha ?? 0), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont("helvetica", "bold");
-  doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.text(`Jami berildi: ${formatPdfNumber(total)} kg`, 14, fY + 8);
   doc.save(`korxona_${dateStr}.pdf`);
 }
 
@@ -331,7 +336,7 @@ function exportQurulishCatPdf(rows: any[]) {
 
   const body = sortedRows.map((sub) => {
     const amount = getAmount(sub);
-    const qoldiq = Number(sub.qoldiq ?? 0);
+    const qoldiq = parsePdfNumber(sub.qoldiq ?? 0);
     const hisob = qoldiq + amount;
     return [
       fmtTime(sub.timestamp),
@@ -341,9 +346,9 @@ function exportQurulishCatPdf(rows: any[]) {
       cellVal(sub.poyezdNumber),
       cellVal(sub.ruxsatIndeksi),
       cellVal(sub.poyezdVazni),
-      qoldiq ? qoldiq.toLocaleString("uz-UZ") : "—",
-      amount ? amount.toLocaleString("uz-UZ") : "—",
-      hisob.toLocaleString("uz-UZ"),
+      formatPdfNonZeroNumber(qoldiq, "—"),
+      formatPdfNonZeroNumber(amount, "—"),
+      formatPdfNumber(hisob),
     ];
   });
 
@@ -363,7 +368,7 @@ function exportQurulishCatPdf(rows: any[]) {
   const total = sortedRows.reduce((s, r) => s + getAmount(r), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont("helvetica", "bold");
-  doc.text(`Jami berildi: ${total.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.text(`Jami berildi: ${formatPdfNumber(total)} kg`, 14, fY + 8);
   doc.save(`qurulish_${dateStr}.pdf`);
 }
 
@@ -400,8 +405,8 @@ function exportTamirlashCatPdf(rows: any[]) {
       sub.seriya,
       sub.raqami,
       TAMIR_LABEL[sub.tamirlashTuri] ?? sub.tamirlashTuri,
-      String(sub.qanchaBerildi),
-      sub.dizMasla ? String(sub.dizMasla) : "—",
+      formatPdfNonZeroNumber(sub.qanchaBerildi, "—"),
+      formatPdfNonZeroNumber(sub.dizMasla, "—"),
       sub.masulShaxs,
       mashinaStr,
     ];
@@ -419,13 +424,13 @@ function exportTamirlashCatPdf(rows: any[]) {
     },
   });
 
-  const totalFuel = sortedRows.reduce((s, r) => s + Number(r.qanchaBerildi ?? 0), 0);
-  const totalMasla = sortedRows.reduce((s, r) => s + Number(r.dizMasla ?? 0), 0);
+  const totalFuel = sortedRows.reduce((s, r) => s + parsePdfNumber(r.qanchaBerildi ?? 0), 0);
+  const totalMasla = sortedRows.reduce((s, r) => s + parsePdfNumber(r.dizMasla ?? 0), 0);
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont("helvetica", "bold");
-  doc.text(`Jami yoqilg'i: ${totalFuel.toLocaleString("uz-UZ")} kg`, 14, fY + 8);
+  doc.text(`Jami yoqilg'i: ${formatPdfNumber(totalFuel)} kg`, 14, fY + 8);
   if (totalMasla > 0) {
-    doc.text(`Jami diz masla: ${totalMasla.toLocaleString("uz-UZ")} kg`, 14, fY + 14);
+    doc.text(`Jami diz masla: ${formatPdfNumber(totalMasla)} kg`, 14, fY + 14);
   }
   doc.save(`tamirlash_${dateStr}.pdf`);
 }
@@ -659,7 +664,7 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                     const s = sub as any;
                     const rowNum = (page-1)*PAGE_SIZE + i + 1;
                     const rowBg = i%2===0 ? "#111c11" : "#0f190f";
-                    const amount = Number(s.qancha ?? 0);
+                    const amount = parsePdfNumber(s.qancha ?? 0);
                     const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
                       <td className="px-1.5 py-2 align-middle overflow-hidden"
                         style={{ borderLeft:idx>0?"1px solid rgba(255,255,255,0.07)":undefined, textAlign:align }}>
@@ -730,7 +735,7 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                     const rowNum = (page-1)*PAGE_SIZE + i + 1;
                     const rowBg = i%2===0 ? "#111c11" : "#0f190f";
                     const amount = getAmount(s);
-                    const qoldiq = Number(s.qoldiq ?? 0);
+                    const qoldiq = parsePdfNumber(s.qoldiq ?? 0);
                     const hisob = qoldiq + amount;
                     const poyezdDisplay = s.harakatTuri === "manyovr"
                       ? (s.stansiya ?? "—")
@@ -806,8 +811,8 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                     const s = sub as any;
                     const rowNum = (page-1)*PAGE_SIZE + i + 1;
                     const rowBg = i%2===0 ? "#111c11" : "#0f190f";
-                    const amount = Number(s.qanchaBerildi ?? 0);
-                    const masla = Number(s.dizMasla ?? 0);
+                    const amount = parsePdfNumber(s.qanchaBerildi ?? 0);
+                    const masla = parsePdfNumber(s.dizMasla ?? 0);
                     const td = (content: React.ReactNode, align:"left"|"right"|"center"="left", idx=0) => (
                       <td className="px-1.5 py-2 align-middle overflow-hidden"
                         style={{ borderLeft:idx>0?"1px solid rgba(255,255,255,0.07)":undefined, textAlign:align }}>
@@ -877,8 +882,8 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                     const s      = sub as any;
                     const time   = fmtTime(s.timestamp);
                     const amount = getAmount(s);
-                    const qoldiq = Number(s.qoldiq ?? 0);
-                    const masla  = Number(s.dizMasla ?? 0);
+                    const qoldiq = parsePdfNumber(s.qoldiq ?? 0);
+                    const masla  = parsePdfNumber(s.dizMasla ?? 0);
                     const hisob  = qoldiq + amount;
                     const rowNum = (page-1)*PAGE_SIZE + i + 1;
                     const rowBg  = i%2===0 ? "#111c11" : "#0f190f";

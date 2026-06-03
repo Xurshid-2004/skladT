@@ -15,6 +15,7 @@ import {
 } from "@/lib/firebase/lokomotiv-rusum-service";
 import { subscribeToActiveApprovals } from "@/lib/firebase/approval-service";
 import { getSession } from "@/lib/utils/session";
+import { parsePdfNumber } from "@/lib/utils/pdf-number";
 import { notifyOverLimitEntry } from "@/lib/telegram/bot-service";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
 import { HarakatTuri, Rusumi, Approval, LokomotivSubmission } from "@/lib/types";
@@ -44,6 +45,7 @@ const HARAKAT_TURI_CARD_COLOR: Record<string, string> = {
 };
 
 const OPTIONAL_LOKOMOTIV_FIELDS = new Set(["poyezdNumber", "jadval", "zagranitsa"]);
+const DECIMAL_LOKOMOTIV_FIELDS = new Set(["zagranitsa", "poyezdVazni", "qoldiq", "qanchaBerildi", "dizMasla"]);
 
 export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps) {
   const [loading, setLoading] = useState(false);
@@ -211,13 +213,13 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
       rusumi: formData.rusumi as Rusumi,
       lokomotivNumber: formData.lokomotivNumber,
       jadval: formData.jadval || undefined,
-      zagranitsa: formData.zagranitsa ? Number(formData.zagranitsa) : undefined,
+      zagranitsa: formData.zagranitsa ? parsePdfNumber(formData.zagranitsa) : undefined,
       poyezdNumber: formData.poyezdNumber || undefined,
       ruxsatIndeksi: formData.ruxsatIndeksi || undefined,
-      poyezdVazni: formData.poyezdVazni ? Number(formData.poyezdVazni) : undefined,
-      qoldiq: Number(formData.qoldiq),
-      qanchaBerildi: Number(formData.qanchaBerildi),
-      dizMasla: Number(formData.dizMasla),
+      poyezdVazni: formData.poyezdVazni ? parsePdfNumber(formData.poyezdVazni) : undefined,
+      qoldiq: parsePdfNumber(formData.qoldiq),
+      qanchaBerildi: parsePdfNumber(formData.qanchaBerildi),
+      dizMasla: parsePdfNumber(formData.dizMasla),
       stansiya: formData.stansiya || undefined,
       tashkilot: formData.tashkilot || undefined,
       ijarachi: formData.ijarachi || undefined,
@@ -237,7 +239,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
             'lokomotiv',
             session.displayName,
             stationId,
-            Number(formData.qanchaBerildi),
+            parsePdfNumber(formData.qanchaBerildi),
             0
           );
         }
@@ -500,11 +502,16 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                       </select>
                     ) : (
                       <input
-                        type={type}
+                        type={isNumberField ? "text" : type}
                         inputMode={isNumberField ? "decimal" : undefined}
                         step={isNumberField ? "any" : undefined}
                         value={formData[field as keyof typeof formData] as string}
-                        onChange={(e) => handleInputChange(field, e.target.value)}
+                        onChange={(e) => {
+                          const value = DECIMAL_LOKOMOTIV_FIELDS.has(field)
+                            ? e.target.value.replace(/[^0-9.,]/g, "")
+                            : e.target.value;
+                          handleInputChange(field, value);
+                        }}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
                         list={listId}

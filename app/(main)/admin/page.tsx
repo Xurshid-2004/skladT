@@ -14,6 +14,7 @@ import {
   isPresenceTableVisible,
   type PresenceSessionDoc,
 } from "@/lib/firebase/presence-service";
+import { parsePdfNumber } from "@/lib/utils/pdf-number";
 
 const PRESENCE_UI_TICK_MS = 5_000;
 import {
@@ -35,7 +36,7 @@ function formatKgThousands(kg: number): string {
 }
 
 function fuelKg(d: Record<string, unknown>): number {
-  return Number(d.qanchaBerildi ?? d.qancha ?? d.qanchaOlindi ?? 0);
+  return parsePdfNumber(d.qanchaBerildi ?? d.qancha ?? d.qanchaOlindi ?? 0);
 }
 
 function submissionTs(sub: Record<string, unknown>): number {
@@ -255,17 +256,6 @@ export default function AdminDashboard() {
   return (
     <AdminLayout>
       <div className="flex flex-col space-y-10 max-w-5xl mx-auto">
-        <div>
-          <p className="text-red-500 font-bold uppercase text-[10px] tracking-widest">
-            Bugun vs kecha — barcha ERJ bo&apos;yicha yig&apos;ma sarflanma
-          </p>
-          <p className="text-[11px] font-bold text-red-500 mt-2">
-            Ishchilar vaultdagi tabel = kirish kodi bo&apos;lsa, F.I.Sh chiqadi. Login real-time;
-            saytdan chiqqan ishchi bugun ishlagan bo&apos;lsa &quot;Oflayn&quot; holatida soat 00:00 gacha
-            jadvalda qoladi.
-          </p>
-        </div>
-
         {/* Ulangan foydalanuvchilar — premium jadval */}
         <div className="order-2 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-xl shadow-slate-300/40">
           <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
@@ -383,46 +373,46 @@ export default function AdminDashboard() {
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-emerald-300/25 backdrop-blur-sm">
-                <p className="text-[9px] font-black uppercase text-emerald-100/70">Bugun</p>
-                <p className="text-2xl font-black tabular-nums text-white">
+              <div className="rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 px-5 py-5 shadow-xl shadow-blue-950/35 ring-1 ring-white/25">
+                <p className="text-[10px] font-black uppercase tracking-wider text-blue-50/80">Bugun</p>
+                <p className="mt-2 text-4xl font-black leading-none tabular-nums text-white sm:text-5xl">
                   {formatKgThousands(todayKg)}
-                  <span className="ml-1 text-sm text-white/50">kg</span>
+                  <span className="ml-2 text-xl text-blue-50/70 sm:text-2xl">kg</span>
                 </p>
               </div>
-              <div className="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-emerald-300/25 backdrop-blur-sm">
-                <p className="text-[9px] font-black uppercase text-emerald-100/70">Kecha</p>
-                <p className="text-2xl font-black tabular-nums text-emerald-50">
+              <div className="rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-slate-900 px-5 py-5 shadow-xl shadow-violet-950/35 ring-1 ring-white/25">
+                <p className="text-[10px] font-black uppercase tracking-wider text-violet-50/80">Kecha</p>
+                <p className="mt-2 text-4xl font-black leading-none tabular-nums text-white sm:text-5xl">
                   {formatKgThousands(yesterdayKg)}
-                  <span className="ml-1 text-sm text-white/50">kg</span>
+                  <span className="ml-2 text-xl text-violet-50/70 sm:text-2xl">kg</span>
                 </p>
               </div>
               <div
-                className={`rounded-xl px-4 py-3 ring-2 backdrop-blur-sm ${
+                className={`rounded-2xl px-5 py-5 shadow-xl ring-2 backdrop-blur-sm ${
                   more
-                    ? "bg-amber-950/40 ring-amber-400/45"
+                    ? "bg-gradient-to-br from-amber-400 via-orange-500 to-rose-700 shadow-orange-950/30 ring-amber-200/55"
                     : diffR === 0
-                      ? "bg-white/10 ring-emerald-300/30"
-                      : "bg-emerald-800/50 ring-emerald-300/50"
+                      ? "bg-gradient-to-br from-slate-600 via-slate-700 to-slate-950 shadow-slate-950/30 ring-slate-300/40"
+                      : "bg-gradient-to-br from-emerald-400 via-teal-600 to-cyan-800 shadow-emerald-950/30 ring-emerald-200/55"
                 }`}
               >
-                <p className="text-[9px] font-black uppercase text-white/55">Farq</p>
+                <p className="text-[10px] font-black uppercase tracking-wider text-white/75">Farq</p>
                 <div className="flex items-center gap-2">
                   {diffR !== 0 &&
                     (more ? (
-                      <TrendingUp className="h-5 w-5 shrink-0 text-orange-400" />
+                      <TrendingUp className="h-6 w-6 shrink-0 text-white/90" />
                     ) : (
-                      <TrendingDown className="h-5 w-5 shrink-0 text-emerald-400" />
+                      <TrendingDown className="h-6 w-6 shrink-0 text-white/90" />
                     ))}
                   <p
-                    className={`text-2xl font-black tabular-nums ${
-                      more ? "text-orange-400" : diffR === 0 ? "text-slate-300" : "text-emerald-400"
+                    className={`mt-2 text-4xl font-black leading-none tabular-nums sm:text-5xl ${
+                      more ? "text-white" : diffR === 0 ? "text-slate-100" : "text-white"
                     }`}
                   >
                     {diffR === 0
                       ? "0"
                       : (more ? "+" : "−") + diffAbs.toLocaleString("uz-UZ")}
-                    <span className="ml-1 text-sm">kg</span>
+                    <span className="ml-2 text-xl text-white/70 sm:text-2xl">kg</span>
                   </p>
                 </div>
                 {yesterdayR > 0 && diffR !== 0 && (
@@ -516,7 +506,7 @@ export default function AdminDashboard() {
                             dataKey="kg"
                             position="top"
                             formatter={(v) =>
-                              `${Number(v ?? 0).toLocaleString("uz-UZ")} kg`
+                              `${parsePdfNumber(v ?? 0).toLocaleString("uz-UZ")} kg`
                             }
                             style={{ fill: "#fff", fontWeight: 800, fontSize: 11 }}
                           />
