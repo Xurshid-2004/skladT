@@ -254,8 +254,8 @@ export default function AdminDashboard() {
             : `Kechagiga nisbatan ${diffAbs.toLocaleString("uz-UZ")} kg (${pctVsYesterday}%) kam`;
 
   return (
-    <AdminLayout>
-      <div className="flex flex-col space-y-10 max-w-5xl mx-auto">
+    <AdminLayout hideHeader>
+      <div className="mx-auto flex max-w-5xl flex-col space-y-8">
         {/* Ulangan foydalanuvchilar — premium jadval */}
         <div className="order-2 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-xl shadow-slate-300/40">
           <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
@@ -373,22 +373,22 @@ export default function AdminDashboard() {
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 px-5 py-5 shadow-xl shadow-blue-950/35 ring-1 ring-white/25">
+              <div className="rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 px-4 py-4 shadow-xl shadow-blue-950/35 ring-1 ring-white/25 sm:px-5">
                 <p className="text-[10px] font-black uppercase tracking-wider text-blue-50/80">Bugun</p>
-                <p className="mt-2 text-4xl font-black leading-none tabular-nums text-white sm:text-5xl">
+                <p className="mt-1.5 text-3xl font-black leading-none tabular-nums text-white sm:text-4xl">
                   {formatKgThousands(todayKg)}
-                  <span className="ml-2 text-xl text-blue-50/70 sm:text-2xl">kg</span>
+                  <span className="ml-1.5 text-base text-blue-50/70 sm:text-xl">kg</span>
                 </p>
               </div>
-              <div className="rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-slate-900 px-5 py-5 shadow-xl shadow-violet-950/35 ring-1 ring-white/25">
+              <div className="rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-slate-900 px-4 py-4 shadow-xl shadow-violet-950/35 ring-1 ring-white/25 sm:px-5">
                 <p className="text-[10px] font-black uppercase tracking-wider text-violet-50/80">Kecha</p>
-                <p className="mt-2 text-4xl font-black leading-none tabular-nums text-white sm:text-5xl">
+                <p className="mt-1.5 text-3xl font-black leading-none tabular-nums text-white sm:text-4xl">
                   {formatKgThousands(yesterdayKg)}
-                  <span className="ml-2 text-xl text-violet-50/70 sm:text-2xl">kg</span>
+                  <span className="ml-1.5 text-base text-violet-50/70 sm:text-xl">kg</span>
                 </p>
               </div>
               <div
-                className={`rounded-2xl px-5 py-5 shadow-xl ring-2 backdrop-blur-sm ${
+                className={`rounded-2xl px-4 py-4 shadow-xl ring-2 backdrop-blur-sm sm:px-5 ${
                   more
                     ? "bg-gradient-to-br from-amber-400 via-orange-500 to-rose-700 shadow-orange-950/30 ring-amber-200/55"
                     : diffR === 0
@@ -400,19 +400,19 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-2">
                   {diffR !== 0 &&
                     (more ? (
-                      <TrendingUp className="h-6 w-6 shrink-0 text-white/90" />
+                      <TrendingUp className="h-5 w-5 shrink-0 text-white/90" />
                     ) : (
-                      <TrendingDown className="h-6 w-6 shrink-0 text-white/90" />
+                      <TrendingDown className="h-5 w-5 shrink-0 text-white/90" />
                     ))}
                   <p
-                    className={`mt-2 text-4xl font-black leading-none tabular-nums sm:text-5xl ${
+                    className={`mt-1.5 text-3xl font-black leading-none tabular-nums sm:text-4xl ${
                       more ? "text-white" : diffR === 0 ? "text-slate-100" : "text-white"
                     }`}
                   >
                     {diffR === 0
                       ? "0"
                       : (more ? "+" : "−") + diffAbs.toLocaleString("uz-UZ")}
-                    <span className="ml-2 text-xl text-white/70 sm:text-2xl">kg</span>
+                    <span className="ml-1.5 text-base text-white/70 sm:text-xl">kg</span>
                   </p>
                 </div>
                 {yesterdayR > 0 && diffR !== 0 && (

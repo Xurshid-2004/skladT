@@ -13,6 +13,7 @@ import { Session } from '@/lib/types';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+  hideHeader?: boolean;
 }
 
 type MenuColor = {
@@ -31,7 +32,7 @@ type MenuItem = {
   color?: MenuColor;
 };
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function AdminLayout({ children, hideHeader = false }: AdminLayoutProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -229,46 +230,48 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </aside>
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className={[
-          'flex h-16 flex-shrink-0 items-center justify-between gap-4 px-4 sm:px-6',
-          'border-b border-white/60 dark:border-white/8',
-          'bg-white/80 dark:bg-slate-950/76',
-          'shadow-[0_1px_0_rgba(255,255,255,0.6),0_4px_16px_rgba(15,23,42,0.05)]',
-          'backdrop-blur-2xl z-10',
-        ].join(' ')}>
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden grid h-9 w-9 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-500 shadow-sm hover:bg-primary/10 hover:border-primary/40 hover:text-primary dark:border-white/15 dark:bg-white/6"
-            >
-              <Menu className="h-4.5 w-4.5" style={{ width: '1.1rem', height: '1.1rem' }} />
-            </button>
+        {!hideHeader && (
+          <header className={[
+            'flex h-16 flex-shrink-0 items-center justify-between gap-4 px-4 sm:px-6',
+            'border-b border-white/60 dark:border-white/8',
+            'bg-white/80 dark:bg-slate-950/76',
+            'shadow-[0_1px_0_rgba(255,255,255,0.6),0_4px_16px_rgba(15,23,42,0.05)]',
+            'backdrop-blur-2xl z-10',
+          ].join(' ')}>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="md:hidden grid h-9 w-9 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-500 shadow-sm hover:bg-primary/10 hover:border-primary/40 hover:text-primary dark:border-white/15 dark:bg-white/6"
+              >
+                <Menu className="h-4.5 w-4.5" style={{ width: '1.1rem', height: '1.1rem' }} />
+              </button>
 
-            <div className="min-w-0">
-              <p className="text-[9.5px] font-black uppercase tracking-[0.22em] text-slate-400 leading-none">Xush kelibsiz</p>
-              <p className="mt-0.5 whitespace-normal break-words font-black tracking-tight text-slate-900 dark:text-white leading-tight">{session.displayName}</p>
+              <div className="min-w-0">
+                <p className="text-[9.5px] font-black uppercase tracking-[0.22em] text-slate-400 leading-none">Xush kelibsiz</p>
+                <p className="mt-0.5 whitespace-normal break-words font-black tracking-tight text-slate-900 dark:text-white leading-tight">{session.displayName}</p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 rounded-[13px] bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-violet-500/22 transition-all hover:scale-[1.03] hover:shadow-violet-500/32"
-            >
-              <Home className="h-4 w-4" />
-              <span className="hidden sm:inline">Bosh sahifa</span>
-            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 rounded-[13px] bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-violet-500/22 transition-all hover:scale-[1.03] hover:shadow-violet-500/32"
+              >
+                <Home className="h-4 w-4" />
+                <span className="hidden sm:inline">Bosh sahifa</span>
+              </Link>
 
-            <button className="relative grid h-9 w-9 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-400 shadow-sm transition-all hover:bg-amber-50 hover:border-amber-300 hover:text-amber-500 dark:border-white/15 dark:bg-white/6">
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-400 ring-1 ring-white dark:ring-slate-950" />
-            </button>
+              <button className="relative grid h-9 w-9 place-items-center rounded-xl border-2 border-slate-200 bg-white/80 text-slate-400 shadow-sm transition-all hover:bg-amber-50 hover:border-amber-300 hover:text-amber-500 dark:border-white/15 dark:bg-white/6">
+                <Bell className="h-4 w-4" />
+                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-400 ring-1 ring-white dark:ring-slate-950" />
+              </button>
 
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-[13px] font-black text-white shadow-lg shadow-orange-500/22">
-              {session.displayName.charAt(0)}
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-[13px] font-black text-white shadow-lg shadow-orange-500/22">
+                {session.displayName.charAt(0)}
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        )}
 
         <main className="admin-content w-full p-4 pb-16 sm:p-6 sm:pb-20 md:p-8 md:pb-24">
           {children}
