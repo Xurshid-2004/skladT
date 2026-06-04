@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { History, Loader2, Pencil, Download } from "lucide-react";
 import { Submission } from "@/lib/types";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
+import { buildCategoryDetailPdfTitle, exportCategoryDetailPdf } from "@/lib/pdf/lokomotiv-detail-pdf";
 import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -139,7 +140,15 @@ export default function TamirlashRecentTable({ stationId }: TamirlashRecentTable
     if (!todaySubmissions.length) return;
     setPdfLoading(true);
     setTimeout(() => {
-      try { exportTamirlashPdf(todaySubmissions); }
+      try {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        exportCategoryDetailPdf(todaySubmissions, {
+          category: "tamirlash",
+          fileSlug: `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`,
+          titleLine: buildCategoryDetailPdfTitle("tamirlash", now),
+        });
+      }
       finally { setPdfLoading(false); }
     }, 50);
   }, [todaySubmissions]);

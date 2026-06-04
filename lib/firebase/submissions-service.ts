@@ -1,7 +1,7 @@
 import { db } from './config';
 import {
   collection, addDoc, query, where, orderBy, limit,
-  getDocs, onSnapshot, serverTimestamp
+  getDocs, onSnapshot, serverTimestamp, Timestamp
 } from 'firebase/firestore';
 import { Submission, Category } from '@/lib/types';
 import { sanitizeForFirestore } from './sanitize';
@@ -10,17 +10,20 @@ import {
   submissionWithStandardDateFields,
 } from './summary-service';
 import { updateSubmissionByIdWithSummary } from './submission-mutations';
+import { buildReportDate, getReportDateOverride } from '@/lib/utils/report-date-override';
 
 const COLLECTION = 'submissions';
 
 // Yangi yozuv qo'shish
 export async function addSubmission(category: Category, data: any) {
-  const now = new Date();
+  const now = buildReportDate();
   const datedData = submissionWithStandardDateFields(data, now);
+  const hasDateOverride = !!getReportDateOverride();
+  const createdTime = hasDateOverride ? Timestamp.fromDate(now) : serverTimestamp();
   const payload = sanitizeForFirestore({
     ...datedData,
-    timestamp: serverTimestamp(),
-    createdAt: serverTimestamp(),
+    timestamp: createdTime,
+    createdAt: createdTime,
     category: category,
   });
   const docRef = await addDoc(collection(db, COLLECTION), payload);

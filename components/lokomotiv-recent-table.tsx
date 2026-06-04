@@ -11,9 +11,16 @@ import { db } from "@/lib/firebase/config";
 import { Submission, LokomotivSubmission, Category } from "@/lib/types";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 import { downloadErjuYpdf } from "@/lib/pdf/erju-malumotnoma-html";
+import {
+  buildCategoryDetailPdfTitle,
+  buildLokomotivDetailPdfTitle,
+  exportCategoryDetailPdf,
+  exportLokomotivDetailPdf,
+} from "@/lib/pdf/lokomotiv-detail-pdf";
 import type { FuelRecord } from "@/lib/pdf/erju-html-pdf";
 import { pdfText } from "@/lib/utils/pdf-text";
 import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
+import { PDF_CYRILLIC_FONT, useCyrillicPdfFont } from "@/lib/pdf/cyrillic-font";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -43,11 +50,11 @@ const CAT_COLOR: Record<string, string> = {
 };
 
 const RECENT_FILTER_LABEL: Record<string, string> = {
-  all:       "БАРЧАСИ",
+  all:       "ВСЕ",
   lokomotiv: "ЛОКОМОТИВ",
-  korxona:   "КОРХОНА",
-  qurulish:  "КУРИЛИШ",
-  tamirlash: "ТАЪМИРЛАШ",
+  korxona:   "ПРЕДПРИЯТИЕ",
+  qurulish:  "СТРОИТЕЛЬСТВО",
+  tamirlash: "РЕМОНТ",
 };
 
 const RECENT_FILTER_BG: Record<string, string> = {
@@ -56,6 +63,14 @@ const RECENT_FILTER_BG: Record<string, string> = {
   korxona:   "#059669",
   qurulish:  "#f59e0b",
   tamirlash: "#e11d48",
+};
+
+const RECENT_PDF_LABEL: Record<string, string> = {
+  all: "PDF",
+  lokomotiv: "LOK PDF",
+  korxona: "PRED PDF",
+  qurulish: "STROY PDF",
+  tamirlash: "REM PDF",
 };
 
 const HARAKAT_LABEL: Record<string, string> = {
@@ -134,7 +149,7 @@ function buildPdfTitle(d: Date): string {
 }
 
 function buildErjuTitle(d: Date): string {
-  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} sutkasi mobaynida dizel yoqilg'isi tarqatilishi haqida MA'LUMOTNOMA`;
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} сведения о распределении дизельного топлива за сутки`;
 }
 
 // ── PDF export ─────────────────────────────────────────────────────────────────
@@ -142,15 +157,16 @@ function buildErjuTitle(d: Date): string {
 function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: Map<string, string>) {
   const sortedRows = sortRowsOldestFirst(rows);
   const doc = new jsPDF("landscape", "mm", "a4");
+  useCyrillicPdfFont(doc);
   const W   = doc.internal.pageSize.width;
   const tableWidth = 214;
   const tableMarginX = (W - tableWidth) / 2;
   doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  const lines = doc.splitTextToSize(pdfText(titleLine), tableWidth);
+  doc.setFont(PDF_CYRILLIC_FONT, "bold");
+  const lines = doc.splitTextToSize(titleLine, tableWidth);
   let y = 8.5;
   lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 4.2; });
-  doc.setFont("helvetica", "normal");
+  doc.setFont(PDF_CYRILLIC_FONT, "normal");
 
   const groups = new Map<string, any[]>();
   for (const row of sortedRows) {
@@ -161,20 +177,20 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
 
   const head = [
     [
-      { content: "Vaqt\n1",    rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
-      { content: "Teplovozlar bo'yicha ma'lumot",               colSpan: 2, styles: { halign: "center" as const } },
+      { content: "Vaqt\n1", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
+      { content: "Teplovozlar bo'yicha ma'lumot", colSpan: 2, styles: { halign: "center" as const } },
       { content: "Poyezdlar va tashkilotlar bo'yicha ma'lumot", colSpan: 4, styles: { halign: "center" as const } },
       { content: "Diz.Yoqilg'i berishdan\noldingi bakdagi\nqoldiq\n8", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
       { content: "Berilgan diz\nyoqilg'i miqdori\n9", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
-      { content: "Umumiy miqdor, kg\n10",              rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
+      { content: "Umumiy miqdor,\nkg\n10", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
     ],
     [
-      { content: "Seriya\n2",        styles: { halign: "center" as const } },
-      { content: "Raqami\n3",        styles: { halign: "center" as const } },
-      { content: "Yo'nalish\n4",     styles: { halign: "center" as const } },
+      { content: "Seriya\n2", styles: { halign: "center" as const } },
+      { content: "Raqami\n3", styles: { halign: "center" as const } },
+      { content: "Yo'nalish\n4", styles: { halign: "center" as const } },
       { content: "Poyezd raqami\n5", styles: { halign: "center" as const } },
-      { content: "Indeksi\n6",       styles: { halign: "center" as const } },
-      { content: "Poyezd vazni\n7",  styles: { halign: "center" as const } },
+      { content: "Indeksi\n6", styles: { halign: "center" as const } },
+      { content: "Poyezd vazni\n7", styles: { halign: "center" as const } },
     ],
   ];
 
@@ -194,7 +210,7 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
 
     body.push([
       { content: pdfText(headerLabel), colSpan: 5, styles: { halign:"left" as const, fontStyle:"bold" as const, fontSize:8, fillColor:hBg, textColor:hFg, cellPadding:hp } },
-      { content: `jami: ${formatPdfNumber(tot)} kg`, colSpan: 5, styles: { halign:"right" as const, fontStyle:"italic" as const, fontSize:7, fillColor:hBg, textColor:hFg, cellPadding:hp } },
+      { content: `итого: ${formatPdfNumber(tot)} кг`, colSpan: 5, styles: { halign:"right" as const, fontStyle:"italic" as const, fontSize:7, fillColor:hBg, textColor:hFg, cellPadding:hp } },
     ]);
     for (const s of stRows) {
       const amount = getAmount(s);
@@ -224,8 +240,8 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
   autoTable(doc, {
     head, body, startY: y + 1,
     theme: "grid",
-    styles:             { fontSize:6.1, cellPadding:0.55, valign:"middle", lineColor:[0,0,0], lineWidth:0.18 },
-    headStyles:         { fillColor:[255,255,255], textColor:[0,0,0], fontStyle:"bold", fontSize:6.1, lineColor:[0,0,0], lineWidth:0.25, cellPadding:0.55 },
+    styles:             { font: PDF_CYRILLIC_FONT, fontSize:6.1, cellPadding:0.55, valign:"middle", lineColor:[0,0,0], lineWidth:0.18 },
+    headStyles:         { font: PDF_CYRILLIC_FONT, fillColor:[255,255,255], textColor:[0,0,0], fontStyle:"bold", fontSize:6.1, lineColor:[0,0,0], lineWidth:0.25, cellPadding:0.55 },
     alternateRowStyles: { fillColor:[250,250,250] },
     columnStyles: {
       0:{cellWidth:14}, 1:{cellWidth:20}, 2:{cellWidth:18},
@@ -240,8 +256,8 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
   const grand = sortedRows.reduce((s:number,r:any)=>s+getAmount(r),0);
   const mg=tableMarginX, fY=(doc as any).lastAutoTable?.finalY??100, pH=doc.internal.pageSize.height;
   let gY=fY+10; if(gY>pH-mg){doc.addPage();gY=mg;}
-  doc.setFontSize(8); doc.setFont("helvetica","bold");
-  doc.text(`Umumiy jami yoqilg'i: ${formatPdfNumber(grand)} kg`, mg, gY, {align:"left"});
+  doc.setFontSize(8); doc.setFont(PDF_CYRILLIC_FONT,"bold");
+  doc.text(`Общий итог топлива: ${formatPdfNumber(grand)} кг`, mg, gY, {align:"left"});
   doc.save(`hisobot_${fileSlug}.pdf`);
 }
 
@@ -506,11 +522,36 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
     setTimeout(() => {
       try {
         if (category === "korxona") {
-          exportKorxonaCatPdf(filtered);
+          const now = new Date(); now.setHours(0,0,0,0);
+          exportCategoryDetailPdf(filtered, {
+            category: "korxona",
+            fileSlug: toIsoDateLocal(now),
+            titleLine: buildCategoryDetailPdfTitle("korxona", now),
+            staffMap,
+          });
         } else if (category === "qurulish") {
-          exportQurulishCatPdf(filtered);
+          const now = new Date(); now.setHours(0,0,0,0);
+          exportCategoryDetailPdf(filtered, {
+            category: "qurulish",
+            fileSlug: toIsoDateLocal(now),
+            titleLine: buildCategoryDetailPdfTitle("qurulish", now),
+            staffMap,
+          });
         } else if (category === "tamirlash") {
-          exportTamirlashCatPdf(filtered);
+          const now = new Date(); now.setHours(0,0,0,0);
+          exportCategoryDetailPdf(filtered, {
+            category: "tamirlash",
+            fileSlug: toIsoDateLocal(now),
+            titleLine: buildCategoryDetailPdfTitle("tamirlash", now),
+            staffMap,
+          });
+        } else if (category === "lokomotiv") {
+          const now = new Date(); now.setHours(0,0,0,0);
+          exportLokomotivDetailPdf(filtered, {
+            fileSlug: toIsoDateLocal(now),
+            titleLine: buildLokomotivDetailPdfTitle(now),
+            staffMap,
+          });
         } else {
           const now = new Date(); now.setHours(0,0,0,0);
           exportPDF(filtered, toIsoDateLocal(now), buildPdfTitle(now), staffMap);
@@ -607,9 +648,9 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all disabled:opacity-40 text-white"
               style={{ background: "#059669" }}>
               {pdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              PDF
+              {RECENT_PDF_LABEL[category] ?? "PDF"}
             </button>
-            {(category === "all" || category === "lokomotiv") && (
+            {category === "all" && (
               <button onClick={handleYpdf} disabled={ypdfLoading}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all disabled:opacity-40 text-white"
                 style={{ background: "#9333ea" }}>

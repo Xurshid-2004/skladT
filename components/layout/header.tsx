@@ -7,14 +7,17 @@ import { clearSession, getSession } from "@/lib/utils/session";
 import { useEffect, useState } from "react";
 import { Session } from "@/lib/types";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
+import { getReportDateOverride, setReportDateOverride } from "@/lib/utils/report-date-override";
 
 export function Header() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [time, setTime] = useState("");
+  const [reportDate, setReportDate] = useState("");
 
   useEffect(() => {
     setSession(getSession());
+    setReportDate(getReportDateOverride());
   }, []);
 
   useEffect(() => {
@@ -44,6 +47,19 @@ export function Header() {
   const zapravkaName = session?.stationId
     ? ZAPRAVKALAR.find((z) => z.id === session.stationId)?.name ?? session.stationId
     : null;
+
+  const handleReportDateChange = (value: string) => {
+    setReportDate(value);
+    setReportDateOverride(value);
+  };
+
+  const todayIso = (() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  })();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/92 shadow-[0_8px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/88">
@@ -98,6 +114,22 @@ export function Header() {
           {time && (
             <div className="hidden items-center rounded-xl border-2 border-indigo-200 bg-white px-3 py-2 shadow-sm dark:border-indigo-400/25 dark:bg-slate-900 md:flex">
               <span className="text-sm font-black tracking-widest text-indigo-600 tabular-nums dark:text-indigo-300">{time}</span>
+            </div>
+          )}
+
+          {session?.role === "worker" && (
+            <div className="hidden items-center gap-1.5 rounded-xl border-2 border-amber-300 bg-amber-50 px-2.5 py-1.5 shadow-sm dark:border-amber-400/30 dark:bg-amber-950/30 lg:flex">
+              <span className="text-[10px] font-black uppercase tracking-wide text-amber-700 dark:text-amber-200">
+                Sana
+              </span>
+              <input
+                type="date"
+                value={reportDate}
+                max={todayIso}
+                onChange={(e) => handleReportDateChange(e.target.value)}
+                className="h-8 w-[138px] rounded-lg border border-amber-300 bg-white px-2 text-xs font-black text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-300/40 dark:border-amber-400/30 dark:bg-slate-900 dark:text-white"
+                title="Test sanasi"
+              />
             </div>
           )}
 

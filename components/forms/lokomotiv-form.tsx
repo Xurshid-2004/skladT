@@ -46,6 +46,106 @@ const HARAKAT_TURI_CARD_COLOR: Record<string, string> = {
 
 const OPTIONAL_LOKOMOTIV_FIELDS = new Set(["poyezdNumber", "jadval", "zagranitsa"]);
 const DECIMAL_LOKOMOTIV_FIELDS = new Set(["zagranitsa", "poyezdVazni", "qoldiq", "qanchaBerildi", "dizMasla"]);
+const INPUT_TONE_BY_FIELD: Record<string, { idle: string; filled: string; active: string; badge: string; activeBadge: string }> = {
+  lokomotivNumber: {
+    idle: "border-blue-300/80 bg-blue-50/70 text-blue-950 hover:border-blue-500 dark:border-blue-400/40 dark:bg-blue-500/10 dark:text-blue-50",
+    filled: "border-blue-500/80 bg-blue-100/80 text-blue-950 shadow-sm shadow-blue-500/10 dark:border-blue-300/60 dark:bg-blue-500/15 dark:text-blue-50",
+    active: "border-blue-600 bg-blue-100 text-blue-950 ring-4 ring-blue-500/20 shadow-md shadow-blue-500/15 dark:border-blue-300 dark:bg-blue-500/20 dark:text-blue-50",
+    badge: "bg-blue-600 shadow-blue-500/20",
+    activeBadge: "bg-blue-500 ring-2 ring-blue-200 shadow-blue-500/40",
+  },
+  jadval: {
+    idle: "border-violet-300/80 bg-violet-50/70 text-violet-950 hover:border-violet-500 dark:border-violet-400/40 dark:bg-violet-500/10 dark:text-violet-50",
+    filled: "border-violet-500/80 bg-violet-100/80 text-violet-950 shadow-sm shadow-violet-500/10 dark:border-violet-300/60 dark:bg-violet-500/15 dark:text-violet-50",
+    active: "border-violet-600 bg-violet-100 text-violet-950 ring-4 ring-violet-500/20 shadow-md shadow-violet-500/15 dark:border-violet-300 dark:bg-violet-500/20 dark:text-violet-50",
+    badge: "bg-violet-600 shadow-violet-500/20",
+    activeBadge: "bg-violet-500 ring-2 ring-violet-200 shadow-violet-500/40",
+  },
+  zagranitsa: {
+    idle: "border-sky-300/80 bg-sky-50/70 text-sky-950 hover:border-sky-500 dark:border-sky-400/40 dark:bg-sky-500/10 dark:text-sky-50",
+    filled: "border-sky-500/80 bg-sky-100/80 text-sky-950 shadow-sm shadow-sky-500/10 dark:border-sky-300/60 dark:bg-sky-500/15 dark:text-sky-50",
+    active: "border-sky-600 bg-sky-100 text-sky-950 ring-4 ring-sky-500/20 shadow-md shadow-sky-500/15 dark:border-sky-300 dark:bg-sky-500/20 dark:text-sky-50",
+    badge: "bg-sky-600 shadow-sky-500/20",
+    activeBadge: "bg-sky-500 ring-2 ring-sky-200 shadow-sky-500/40",
+  },
+  poyezdNumber: {
+    idle: "border-fuchsia-300/80 bg-fuchsia-50/70 text-fuchsia-950 hover:border-fuchsia-500 dark:border-fuchsia-400/40 dark:bg-fuchsia-500/10 dark:text-fuchsia-50",
+    filled: "border-fuchsia-500/80 bg-fuchsia-100/80 text-fuchsia-950 shadow-sm shadow-fuchsia-500/10 dark:border-fuchsia-300/60 dark:bg-fuchsia-500/15 dark:text-fuchsia-50",
+    active: "border-fuchsia-600 bg-fuchsia-100 text-fuchsia-950 ring-4 ring-fuchsia-500/20 shadow-md shadow-fuchsia-500/15 dark:border-fuchsia-300 dark:bg-fuchsia-500/20 dark:text-fuchsia-50",
+    badge: "bg-fuchsia-600 shadow-fuchsia-500/20",
+    activeBadge: "bg-fuchsia-500 ring-2 ring-fuchsia-200 shadow-fuchsia-500/40",
+  },
+  ruxsatIndeksi: {
+    idle: "border-indigo-300/80 bg-indigo-50/70 text-indigo-950 hover:border-indigo-500 dark:border-indigo-400/40 dark:bg-indigo-500/10 dark:text-indigo-50",
+    filled: "border-indigo-500/80 bg-indigo-100/80 text-indigo-950 shadow-sm shadow-indigo-500/10 dark:border-indigo-300/60 dark:bg-indigo-500/15 dark:text-indigo-50",
+    active: "border-indigo-600 bg-indigo-100 text-indigo-950 ring-4 ring-indigo-500/20 shadow-md shadow-indigo-500/15 dark:border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-50",
+    badge: "bg-indigo-600 shadow-indigo-500/20",
+    activeBadge: "bg-indigo-500 ring-2 ring-indigo-200 shadow-indigo-500/40",
+  },
+  poyezdVazni: {
+    idle: "border-cyan-300/80 bg-cyan-50/70 text-cyan-950 hover:border-cyan-500 dark:border-cyan-400/40 dark:bg-cyan-500/10 dark:text-cyan-50",
+    filled: "border-cyan-500/80 bg-cyan-100/80 text-cyan-950 shadow-sm shadow-cyan-500/10 dark:border-cyan-300/60 dark:bg-cyan-500/15 dark:text-cyan-50",
+    active: "border-cyan-600 bg-cyan-100 text-cyan-950 ring-4 ring-cyan-500/20 shadow-md shadow-cyan-500/15 dark:border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-50",
+    badge: "bg-cyan-600 shadow-cyan-500/20",
+    activeBadge: "bg-cyan-500 ring-2 ring-cyan-200 shadow-cyan-500/40",
+  },
+  qoldiq: {
+    idle: "border-amber-300/90 bg-amber-50/80 text-amber-950 hover:border-amber-500 dark:border-amber-400/50 dark:bg-amber-500/10 dark:text-amber-100",
+    filled: "border-amber-500/90 bg-amber-100/90 text-amber-950 shadow-sm shadow-amber-500/10 dark:border-amber-300/60 dark:bg-amber-500/15 dark:text-amber-100",
+    active: "border-amber-600 bg-amber-100 text-amber-950 ring-4 ring-amber-500/25 shadow-md shadow-amber-500/15 dark:border-amber-300 dark:bg-amber-500/20 dark:text-amber-100",
+    badge: "bg-amber-500 shadow-amber-500/20",
+    activeBadge: "bg-amber-500 ring-2 ring-amber-200 shadow-amber-500/40",
+  },
+  qanchaBerildi: {
+    idle: "border-teal-300/90 bg-teal-50/80 text-teal-950 hover:border-teal-500 dark:border-teal-400/50 dark:bg-teal-500/10 dark:text-teal-100",
+    filled: "border-teal-500/90 bg-teal-100/90 text-teal-950 shadow-sm shadow-teal-500/10 dark:border-teal-300/60 dark:bg-teal-500/15 dark:text-teal-100",
+    active: "border-teal-600 bg-teal-100 text-teal-950 ring-4 ring-teal-500/25 shadow-md shadow-teal-500/15 dark:border-teal-300 dark:bg-teal-500/20 dark:text-teal-100",
+    badge: "bg-teal-600 shadow-teal-500/20",
+    activeBadge: "bg-teal-500 ring-2 ring-teal-200 shadow-teal-500/40",
+  },
+  dizMasla: {
+    idle: "border-orange-300/80 bg-orange-50/70 text-orange-950 hover:border-orange-500 dark:border-orange-400/40 dark:bg-orange-500/10 dark:text-orange-50",
+    filled: "border-orange-500/80 bg-orange-100/80 text-orange-950 shadow-sm shadow-orange-500/10 dark:border-orange-300/60 dark:bg-orange-500/15 dark:text-orange-50",
+    active: "border-orange-600 bg-orange-100 text-orange-950 ring-4 ring-orange-500/20 shadow-md shadow-orange-500/15 dark:border-orange-300 dark:bg-orange-500/20 dark:text-orange-50",
+    badge: "bg-orange-600 shadow-orange-500/20",
+    activeBadge: "bg-orange-500 ring-2 ring-orange-200 shadow-orange-500/40",
+  },
+  stansiya: {
+    idle: "border-emerald-300/80 bg-emerald-50/70 text-emerald-950 hover:border-emerald-500 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-50",
+    filled: "border-emerald-500/80 bg-emerald-100/80 text-emerald-950 shadow-sm shadow-emerald-500/10 dark:border-emerald-300/60 dark:bg-emerald-500/15 dark:text-emerald-50",
+    active: "border-emerald-600 bg-emerald-100 text-emerald-950 ring-4 ring-emerald-500/20 shadow-md shadow-emerald-500/15 dark:border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-50",
+    badge: "bg-emerald-600 shadow-emerald-500/20",
+    activeBadge: "bg-emerald-500 ring-2 ring-emerald-200 shadow-emerald-500/40",
+  },
+  tashkilot: {
+    idle: "border-lime-300/80 bg-lime-50/70 text-lime-950 hover:border-lime-500 dark:border-lime-400/40 dark:bg-lime-500/10 dark:text-lime-50",
+    filled: "border-lime-500/80 bg-lime-100/80 text-lime-950 shadow-sm shadow-lime-500/10 dark:border-lime-300/60 dark:bg-lime-500/15 dark:text-lime-50",
+    active: "border-lime-600 bg-lime-100 text-lime-950 ring-4 ring-lime-500/20 shadow-md shadow-lime-500/15 dark:border-lime-300 dark:bg-lime-500/20 dark:text-lime-50",
+    badge: "bg-lime-600 shadow-lime-500/20",
+    activeBadge: "bg-lime-500 ring-2 ring-lime-200 shadow-lime-500/40",
+  },
+  ijarachi: {
+    idle: "border-rose-300/80 bg-rose-50/70 text-rose-950 hover:border-rose-500 dark:border-rose-400/40 dark:bg-rose-500/10 dark:text-rose-50",
+    filled: "border-rose-500/80 bg-rose-100/80 text-rose-950 shadow-sm shadow-rose-500/10 dark:border-rose-300/60 dark:bg-rose-500/15 dark:text-rose-50",
+    active: "border-rose-600 bg-rose-100 text-rose-950 ring-4 ring-rose-500/20 shadow-md shadow-rose-500/15 dark:border-rose-300 dark:bg-rose-500/20 dark:text-rose-50",
+    badge: "bg-rose-600 shadow-rose-500/20",
+    activeBadge: "bg-rose-500 ring-2 ring-rose-200 shadow-rose-500/40",
+  },
+  mashinaRaqami: {
+    idle: "border-slate-300/80 bg-slate-50 text-slate-800 hover:border-indigo-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100",
+    filled: "border-indigo-500/70 bg-indigo-50 text-indigo-950 shadow-sm shadow-indigo-500/10 dark:border-indigo-300/50 dark:bg-indigo-500/15 dark:text-indigo-50",
+    active: "border-indigo-600 bg-indigo-100 text-indigo-950 ring-4 ring-indigo-500/20 shadow-md shadow-indigo-500/15 dark:border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-50",
+    badge: "bg-indigo-600 shadow-indigo-500/20",
+    activeBadge: "bg-indigo-500 ring-2 ring-indigo-200 shadow-indigo-500/40",
+  },
+  default: {
+    idle: "border-slate-300/80 bg-slate-50 text-slate-900 hover:border-indigo-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100",
+    filled: "border-emerald-500/70 bg-emerald-50 text-emerald-950 shadow-sm shadow-emerald-500/10 dark:border-emerald-300/50 dark:bg-emerald-500/15 dark:text-emerald-50",
+    active: "border-indigo-600 bg-indigo-100 text-indigo-950 ring-4 ring-indigo-500/20 shadow-md shadow-indigo-500/15 dark:border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-50",
+    badge: "bg-indigo-600 shadow-indigo-500/20",
+    activeBadge: "bg-indigo-500 ring-2 ring-indigo-200 shadow-indigo-500/40",
+  },
+};
 
 export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps) {
   const [loading, setLoading] = useState(false);
@@ -75,6 +175,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     mashinadaYetkazildi: false,
     mashinaRaqami: "",
   });
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const [options, setOptions] = useState<{
     stansiyalar: string[];
@@ -314,7 +415,19 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
       mashinaRaqami: "",
     });
     setError("");
+    setFocusedField(null);
   };
+
+  const handleFieldBlur = (field: string) => {
+    setFocusedField((current) => (current === field ? null : current));
+  };
+
+  const machineInputTone = INPUT_TONE_BY_FIELD.mashinaRaqami;
+  const machineInputColorClass = focusedField === "mashinaRaqami"
+    ? machineInputTone.active
+    : formData.mashinaRaqami
+      ? machineInputTone.filled
+      : machineInputTone.idle;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 animate-in fade-in duration-500">
@@ -459,22 +572,25 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                 }
 
                 const filled = !!formData[field as keyof typeof formData];
+                const isFocused = focusedField === field;
                 const isJadvalSelect = field === "jadval";
                 const isNumberField = type === "number";
                 const isQoldiqField = field === "qoldiq";
                 const isQanchaBerildiField = field === "qanchaBerildi";
-                const inputColorClass = isQoldiqField
-                  ? "border-amber-400/80 bg-amber-50 text-amber-950 focus:border-amber-500 focus:ring-amber-500/20 dark:border-amber-400/50 dark:bg-amber-500/10 dark:text-amber-100"
-                  : isQanchaBerildiField
-                    ? "border-teal-500/80 bg-teal-50 text-teal-950 focus:border-teal-600 focus:ring-teal-500/20 dark:border-teal-400/50 dark:bg-teal-500/10 dark:text-teal-100"
-                    : filled
-                      ? "border-emerald-500/60 bg-emerald-50/60 text-slate-900 dark:bg-emerald-500/10 dark:text-slate-100"
-                      : "border-black/10 bg-white text-slate-900 hover:border-indigo-400/40 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100";
+                const tone = INPUT_TONE_BY_FIELD[field] ?? INPUT_TONE_BY_FIELD.default;
+                const inputColorClass = isFocused ? tone.active : filled ? tone.filled : tone.idle;
+                const badgeColorClass = isFocused ? tone.activeBadge : tone.badge;
 
                 return (
                   <div key={field} className="flex min-w-0 flex-col">
-                    <label className="mb-1 flex items-center gap-1.5 text-[11px] font-black text-slate-700 dark:text-slate-300 tracking-wide uppercase">
-                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-lg bg-indigo-600 text-[10px] text-white shadow-sm shadow-indigo-500/20">
+                    <label
+                      className={`mb-1 flex items-center gap-1.5 text-[11px] font-black tracking-wide uppercase transition-colors ${
+                        isFocused ? "text-slate-950 dark:text-white" : "text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`grid h-5 w-5 shrink-0 place-items-center rounded-lg text-[10px] text-white shadow-sm transition-all ${badgeColorClass}`}
+                      >
                         {n}
                       </span>
                       <span className="truncate">{label}</span>
@@ -484,11 +600,9 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                         value={formData.jadval}
                         onChange={(e) => handleInputChange("jadval", e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className={`h-12 w-full rounded-xl border bg-white px-3.5 py-3 text-base font-black text-slate-900 transition-all focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 disabled:cursor-not-allowed disabled:text-slate-400 dark:bg-white/[0.04] dark:text-slate-100 ${
-                          filled
-                            ? "border-emerald-500/60 bg-emerald-50/60 dark:bg-emerald-500/10"
-                            : "border-black/10 dark:border-white/10 hover:border-indigo-400/40"
-                        }`}
+                        onFocus={() => setFocusedField(field)}
+                        onBlur={() => handleFieldBlur(field)}
+                        className={`h-12 w-full rounded-xl border px-3.5 py-3 text-base font-black transition-all focus:outline-none disabled:cursor-not-allowed disabled:text-slate-400 ${inputColorClass}`}
                         disabled={jadvalOptions.length === 0}
                       >
                         <option value="">
@@ -513,10 +627,12 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                           handleInputChange(field, value);
                         }}
                         onKeyDown={handleKeyDown}
+                        onFocus={() => setFocusedField(field)}
+                        onBlur={() => handleFieldBlur(field)}
                         placeholder={placeholder}
                         list={listId}
-                        className={`h-12 w-full rounded-xl border px-3.5 py-3 text-base font-black transition-all placeholder:text-slate-400 placeholder:font-bold focus:outline-none focus:ring-4 ${inputColorClass} ${
-                          isQoldiqField || isQanchaBerildiField ? "text-right tabular-nums" : "text-slate-900"
+                        className={`h-12 w-full rounded-xl border px-3.5 py-3 text-base font-black transition-all placeholder:text-slate-400 placeholder:font-bold focus:outline-none ${inputColorClass} ${
+                          isQoldiqField || isQanchaBerildiField ? "text-right tabular-nums" : ""
                         }`}
                       />
                     )}
@@ -573,8 +689,10 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                       value={formData.mashinaRaqami}
                       onChange={(e) => handleInputChange("mashinaRaqami", e.target.value)}
                       onKeyDown={handleKeyDown}
+                      onFocus={() => setFocusedField("mashinaRaqami")}
+                      onBlur={() => handleFieldBlur("mashinaRaqami")}
                       placeholder="MASHINA RAQAMI"
-                      className="h-10 w-full max-w-[340px] rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-black text-slate-800 transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100"
+                      className={`h-10 w-full max-w-[340px] rounded-xl border px-3 py-2 text-sm font-black transition-all placeholder:text-slate-400 focus:outline-none ${machineInputColorClass}`}
                     />
                   )}
 

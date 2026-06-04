@@ -6,7 +6,9 @@
 import type { FuelRecord } from '@/lib/pdf/erju-html-pdf';
 import { ERJU_DATA } from '@/lib/data/erju-data';
 import { ZAPRAVKALAR } from '@/lib/data/uzellar';
+import { PDF_CYRILLIC_FONT, useCyrillicPdfFont } from '@/lib/pdf/cyrillic-font';
 import { formatPdfNonZeroNumber, parsePdfNumber } from '@/lib/utils/pdf-number';
+import { pdfText } from '@/lib/utils/pdf-text';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -131,7 +133,7 @@ const MISC_AGG = '__misc_agg__';
 const MISC_OPTION: IndexedOption = {
   index: 998,
   id: MISC_AGG,
-  label: 'Boshqa harakat',
+  label: 'Прочие',
 };
 
 /** Tanlangan harakat ustunlari (NOMA ustunisiz moslash) — bo‘sh harakat uchun NOMA_KEY */
@@ -169,33 +171,33 @@ function rowNeedsMiscRow(r: FuelRecord, staffByCode: Map<string, Staff>, matchCo
 }
 
 const DEFAULT_MOVES: readonly IndexedOption[] = Object.freeze([
-  { index: 0, id: 'yuk', label: "Yuk poyezdlari uchun", aliases: ['yuk', 'грузовой', 'gruz'] },
-  { index: 1, id: 'yolovchi', label: "Yo'lovchi poyezdlari uchun", aliases: ['yolovchi', "yo'lovchi", 'yoʻlovchi', 'пасс', 'pass'] },
-  { index: 2, id: 'manyovr', label: 'Manyovr ishlari uchun', aliases: ['manyovr', 'manevr', 'маневр', 'manyevr'] },
-  { index: 3, id: 'xojalik', label: "Xo'jalik ishlari uchun", aliases: ['xojalik', "xo'jalik", 'хоз', 'hojalik'] },
-  { index: 4, id: 'ijara', label: 'Ijara', aliases: ['ijara', 'ижара', 'arena', 'arenda', 'аренда'] },
+  { index: 0, id: 'yuk', label: 'Для грузовых поездов', aliases: ['yuk', 'грузовой', 'gruz'] },
+  { index: 1, id: 'yolovchi', label: 'Для пассажирских поездов', aliases: ['yolovchi', "yo'lovchi", 'yoʻlovchi', 'пасс', 'pass'] },
+  { index: 2, id: 'manyovr', label: 'Для маневровых работ', aliases: ['manyovr', 'manevr', 'маневр', 'manyevr'] },
+  { index: 3, id: 'xojalik', label: 'Для хозяйственных работ', aliases: ['xojalik', "xo'jalik", 'хоз', 'hojalik'] },
+  { index: 4, id: 'ijara', label: 'Аренда', aliases: ['ijara', 'ижара', 'arena', 'arenda', 'аренда'] },
   {
     index: 5,
     id: 'tamirlash',
-    label: 'Teplovozlarni tamirlash uchun',
+    label: 'Для ремонта тепловозов',
     aliases: ['tamirlash', 'tamir', 'tamlash', 'repair'],
   },
   {
     index: 6,
     id: ZAGRANITSA_KEY,
-    label: 'zagranitsa',
+    label: 'Заграница',
     aliases: ['zagranitsa', 'zagranisa', 'zagranintsa', 'ref', 'refrigerat', 'seksiya'],
   },
   {
     index: 7,
     id: 'korxona',
-    label: 'Korxonalarga',
+    label: 'Предприятиям',
     aliases: ['korxona', 'kompensatsiya', 'компенс', 'компенсация', 'organisation'],
   },
   {
     index: 8,
     id: 'qurulish',
-    label: 'Qurilish ishlariga',
+    label: 'Строительным работам',
     aliases: ['qurulish', 'ombor', 'ombor ehtiyoji', 'склад', 'warehouse', 'qurilish ishlari'],
   },
 ]);
@@ -204,7 +206,7 @@ const DEFAULT_MOVES: readonly IndexedOption[] = Object.freeze([
 const NOMA_OPTION: IndexedOption = {
   index: 999,
   id: NOMA_KEY,
-  label: 'Noma',
+  label: 'Без вида',
 };
 
 function esc(s: string): string {
@@ -608,31 +610,32 @@ export function downloadErjuYpdf(
   // Jadval sarlavhasi — barcha kunlar uchun bir xil
   const head: any[][] = [[
     { content: '№',                                  rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: "Yoqilg'i quyish shoxobchalari",      rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: '1 sutkada tarqatilgan',               rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Jami teplovozlarga topshirilgan',    rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Заправочные пункты',                 rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Роздано за сутки',                   rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Итого передано тепловозам',          rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
     ...(activeCols.length > 0
-      ? [{ content: 'shu jumladan', colSpan: activeCols.length, styles: { halign: 'center' } }]
+      ? [{ content: 'в том числе', colSpan: activeCols.length, styles: { halign: 'center' } }]
       : []),
   ]];
   if (activeCols.length > 0) {
-    head.push(activeCols.map((c) => ({ content: c.label, styles: { halign: 'center', fontSize: 6.5 } })));
+    head.push(activeCols.map((c) => ({ content: pdfText(c.label), styles: { halign: 'center', fontSize: 6.5 } })));
   }
 
   const doc = new jsPDF('landscape', 'mm', 'a4');
+  useCyrillicPdfFont(doc);
   const W      = doc.internal.pageSize.width;
   const MARGIN = 14;
 
   // 1-sahifaga umumiy sarlavha
   doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'bold');
-  const mainTitleLines = doc.splitTextToSize(cyrToLat(reportTitle), W - MARGIN * 2);
+  doc.setFont(PDF_CYRILLIC_FONT, 'bold');
+  const mainTitleLines = doc.splitTextToSize(pdfText(reportTitle), W - MARGIN * 2);
   let titleEndY = 9;
   for (const ln of mainTitleLines) {
     doc.text(ln, W / 2, titleEndY, { align: 'center' });
     titleEndY += 4.5;
   }
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(PDF_CYRILLIC_FONT, 'normal');
 
   // ── Har bir sana uchun tsikl ──────────────────────────────────────────────
   let isFirstDate = true;
@@ -645,8 +648,8 @@ export function downloadErjuYpdf(
     for (const er of ERJU_DATA) {
       bucketMap.set(er.id, {
         bucketId:    er.id,
-        bucketTitle: cyrToLat(er.name),
-        pivotShort:  cyrToLat(erjuPivotColTitle(er.name)),
+        bucketTitle: pdfText(er.name),
+        pivotShort:  pdfText(erjuPivotColTitle(er.name)),
         zaps:        new Map(),
       });
     }
@@ -740,9 +743,9 @@ export function downloadErjuYpdf(
           }
         }
 
-        body.push([
-          { content: String(rowNum), styles: { halign: 'center' } },
-          za.label,
+      body.push([
+        { content: String(rowNum), styles: { halign: 'center' } },
+          pdfText(za.label),
           { content: fmt(za.totalFuel), styles: { halign: 'right' } },
           { content: fmt(za.totalFuel), styles: { halign: 'right' } },
           ...activeCols.map((c) => ({ content: fmt(za.byMove.get(c.id) ?? 0), styles: { halign: 'right' } })),
@@ -754,7 +757,7 @@ export function downloadErjuYpdf(
       }
 
       body.push([
-        { content: `Jami ${b.bucketTitle}`, colSpan: 2, styles: { fontStyle: 'italic', fillColor: SUM, halign: 'left' } },
+        { content: `Итого ${b.bucketTitle}`, colSpan: 2, styles: { fontStyle: 'italic', fillColor: SUM, halign: 'left' } },
         { content: fmt(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
         { content: fmt(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
         ...activeCols.map((c) => ({ content: fmt(bucketMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } })),
@@ -762,7 +765,7 @@ export function downloadErjuYpdf(
     }
 
     body.push([
-      { content: 'UMUMIY JAMI', colSpan: 2, styles: { fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG, halign: 'left' } },
+      { content: 'ОБЩИЙ ИТОГ', colSpan: 2, styles: { fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG, halign: 'left' } },
       { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
       { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
       ...activeCols.map((c) => ({ content: fmt(grandByMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } })),
@@ -780,8 +783,8 @@ export function downloadErjuYpdf(
       body,
       startY: tableStartY,
       theme: 'grid',
-      styles:     { fontSize: 7, cellPadding: 1.2, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.2 },
-      headStyles: { fillColor: [232, 235, 232], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, lineColor: [0, 0, 0], lineWidth: 0.3 },
+      styles:     { font: PDF_CYRILLIC_FONT, fontSize: 7, cellPadding: 1.2, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.2 },
+      headStyles: { font: PDF_CYRILLIC_FONT, fillColor: [232, 235, 232], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, lineColor: [0, 0, 0], lineWidth: 0.3 },
       columnStyles: (() => {
         const cs: Record<number, any> = { 0: { cellWidth: 8 }, 1: { cellWidth: 52 }, 2: { cellWidth: 20 }, 3: { cellWidth: 20 } };
         const ijaraIdx = activeCols.findIndex(c => c.id === 'ijara');
@@ -796,7 +799,7 @@ export function downloadErjuYpdf(
     const pivotHead: any[][] = [[
       '',
       ...allPivotBuckets.map((b) => ({ content: b.pivotShort, styles: { halign: 'center' } })),
-      { content: 'Itogo', styles: { halign: 'center' } },
+      { content: 'Итого', styles: { halign: 'center' } },
     ]];
 
     const pivotBody: any[][] = [];
@@ -804,7 +807,7 @@ export function downloadErjuYpdf(
       const rowTot = allPivotBuckets.reduce((s, bb) => s + (pivotTotals.get(bb.bucketId)?.get(mv.id) ?? 0), 0);
       if (rowTot <= 0) continue;
       pivotBody.push([
-        mv.label,
+        pdfText(mv.label),
         ...allPivotBuckets.map((b) => ({ content: fmt(pivotTotals.get(b.bucketId)?.get(mv.id) ?? 0), styles: { halign: 'right' } })),
         { content: fmt(rowTot), styles: { halign: 'right' } },
       ]);
@@ -814,7 +817,7 @@ export function downloadErjuYpdf(
       return { content: fmt(sub), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } };
     });
     pivotBody.push([
-      { content: 'Jami', styles: { fontStyle: 'bold', fillColor: GRAND } },
+      { content: 'Итого', styles: { fontStyle: 'bold', fillColor: GRAND } },
       ...pfooter,
       { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } },
     ]);
@@ -825,16 +828,16 @@ export function downloadErjuYpdf(
       body: pivotBody,
       startY: afterMain + 6,
       theme: 'grid',
-      styles:     { fontSize: 7, cellPadding: 1.2, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.2 },
-      headStyles: { fillColor: [232, 235, 232], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, lineColor: [0, 0, 0], lineWidth: 0.3 },
+      styles:     { font: PDF_CYRILLIC_FONT, fontSize: 7, cellPadding: 1.2, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.2 },
+      headStyles: { font: PDF_CYRILLIC_FONT, fillColor: [232, 235, 232], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, lineColor: [0, 0, 0], lineWidth: 0.3 },
       margin: { left: MARGIN, right: MARGIN },
     });
 
     // ── Harakat turi hisobi (jadval ostidan, chap tarafda) ────────────────
     const SHORT_MOVE: Record<string, string> = {
-      yuk: 'Yuk', yolovchi: "Yo'lovchi", manyovr: 'Manyovr',
-      xojalik: "Xo'jalik", ijara: 'Ijara', arenda: 'Ijara', tamirlash: "Ta'mirlash",
-      ref: 'Zagranitsa', zagranitsa: 'Zagranitsa', korxona: 'Korxona', qurulish: 'Qurulish',
+      yuk: 'Груз', yolovchi: 'Пасс', manyovr: 'Маневр',
+      xojalik: 'Хоз', ijara: 'Аренда', arenda: 'Аренда', tamirlash: 'Ремонт',
+      ref: 'Заграница', zagranitsa: 'Заграница', korxona: 'Предпр.', qurulish: 'Строит-во',
     };
     const moveCount = new Map<string, number>();
     for (const r of dayRows) {
@@ -865,14 +868,14 @@ export function downloadErjuYpdf(
       cy = MARGIN + 4;
     }
     doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(PDF_CYRILLIC_FONT, 'normal');
     doc.setTextColor(70, 70, 70);
     for (const row of visibleMoveCounts) {
       doc.text(`${row.label}: ${row.count}`, MARGIN, cy);
       cy += lineHeight;
     }
     doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(PDF_CYRILLIC_FONT, 'normal');
   }
 
   const slug = cyrToLat(reportTitle).slice(0, 40).replace(/[^\w\s]/g, '').replace(/\s+/g, '_');

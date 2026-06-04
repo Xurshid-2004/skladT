@@ -15,6 +15,12 @@ import { ZAPRAVKALAR } from '@/lib/data/uzellar';
 import { Submission, Category, Session } from '@/lib/types';
 import { collection, query, where, orderBy, getDocs, onSnapshot, limit, startAfter, Timestamp } from 'firebase/firestore';
 import { downloadErjuYpdf } from '@/lib/pdf/erju-malumotnoma-html';
+import {
+  buildCategoryDetailPdfTitle,
+  buildLokomotivDetailPdfTitle,
+  exportCategoryDetailPdf,
+  exportLokomotivDetailPdf,
+} from '@/lib/pdf/lokomotiv-detail-pdf';
 import type { FuelRecord } from '@/lib/pdf/erju-html-pdf';
 import { db } from '@/lib/firebase/config';
 import { deleteSubmissionWithSummary } from '@/lib/firebase/submission-mutations';
@@ -23,6 +29,7 @@ import { SubmissionEditDrawer } from '@/components/admin/submission-edit-drawer'
 import { clearSession, getSession } from '@/lib/utils/session';
 import { pdfText } from '@/lib/utils/pdf-text';
 import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from '@/lib/utils/pdf-number';
+import { PDF_CYRILLIC_FONT, useCyrillicPdfFont } from '@/lib/pdf/cyrillic-font';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -140,19 +147,27 @@ const HARAKAT_LABEL: Record<string, string> = {
 };
 
 const CAT_COLOR: Record<string, string> = {
-  lokomotiv: 'text-primary bg-primary/10',
-  korxona:   'text-accent bg-accent/10',
-  qurulish:  'text-warning bg-warning/10',
-  tamirlash: 'text-slate-500 bg-slate-100 dark:bg-slate-800',
+  lokomotiv: 'text-cyan-300',
+  korxona:   'text-emerald-300',
+  qurulish:  'text-amber-300',
+  tamirlash: 'text-rose-300',
 };
 
 /** Hisobotlar navbar — kirill (o‘zbekcha) */
 const CAT_TAB_LABEL: Record<string, string> = {
-  all: 'БАРЧАСИ',
+  all: 'ВСЕ',
   lokomotiv: 'ЛОКОМОТИВ',
-  korxona: 'КОРХОНА',
-  qurulish: 'ҚУРУЛИШ',
-  tamirlash: 'ТАЪМИРЛАШ',
+  korxona: 'ПРЕДПРИЯТИЕ',
+  qurulish: 'СТРОИТЕЛЬСТВО',
+  tamirlash: 'РЕМОНТ',
+};
+
+const CATEGORY_PDF_LABEL: Record<string, string> = {
+  all: 'PDF',
+  lokomotiv: 'LOK PDF',
+  korxona: 'PRED PDF',
+  qurulish: 'STROY PDF',
+  tamirlash: 'REM PDF',
 };
 
 const CAT_TAB_STYLE: Record<string, { base: string; active: string }> = {
@@ -269,7 +284,7 @@ function buildOperationalPdfTitle(start: Date, end: Date): string {
   }
   const startUz = start.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const endUz = end.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  return `${startUz} dan ${endUz} gacha tarqatilgan dizel yoqilg'isi tarqatilishi haqida ma'lumot`;
+  return `${startUz} - ${endUz} oralig'ida tarqatilgan dizel yoqilg'isi tarqatilishi haqida ma'lumot`;
 }
 
 /** Y.PDF / ERJU MAʼLUMOTNOMA sarlavhasi */
@@ -280,11 +295,11 @@ function buildErjuReportTitle(start: Date, end: Date): string {
   b.setHours(0, 0, 0, 0);
   const same = a.getTime() === b.getTime();
   if (same) {
-    return `${pad2(a.getDate())}.${pad2(a.getMonth() + 1)}.${a.getFullYear()} sutkasi mobaynida dizel yoqilg'isi tarqatilishi haqida MA'LUMOTNOMA`;
+    return `${pad2(a.getDate())}.${pad2(a.getMonth() + 1)}.${a.getFullYear()} сведения о распределении дизельного топлива за сутки`;
   }
   const startUz = start.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const endUz = end.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  return `${startUz} dan ${endUz} gacha dizel yoqilg'isi tarqatilishi haqida MA'LUMOTNOMA`;
+  return `${startUz} - ${endUz} сведения о распределении дизельного топлива`;
 }
 
 // ─── Barcha yozuvlarni cursor-pagination bilan olish ─────────────────────────
@@ -689,19 +704,20 @@ function exportQurulishPDF(rows: any[], fileSlug: string, reportTitleLine: strin
 function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
   const sortedRows = sortRowsOldestFirst(rows);
   const doc  = new jsPDF('landscape', 'mm', 'a4');
+  useCyrillicPdfFont(doc);
   const W    = doc.internal.pageSize.width;
   const tableWidth = 214;
   const tableMarginX = (W - tableWidth) / 2;
 
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  const lines = doc.splitTextToSize(pdfText(reportTitleLine), tableWidth);
+  doc.setFont(PDF_CYRILLIC_FONT, 'bold');
+  const lines = doc.splitTextToSize(reportTitleLine, tableWidth);
   let yTitle = 8.5;
   lines.forEach((ln: string) => {
     doc.text(ln, W / 2, yTitle, { align: 'center' });
     yTitle += 4.2;
   });
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(PDF_CYRILLIC_FONT, 'normal');
 
   const tableStartY = yTitle + 1;
 
@@ -724,12 +740,12 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
 
   const head = [
     [
-      { content: 'Vaqt\n1',                                            rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
-      { content: "Teplovozlar bo'yicha ma'lumot",                       colSpan: 2, styles: { halign: 'center' as const } },
-      { content: "Poyezdlar va tashkilotlar bo'yicha ma'lumot",         colSpan: 4, styles: { halign: 'center' as const } },
+      { content: 'Vaqt\n1',                                           rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+      { content: "Teplovozlar bo'yicha ma'lumot",                     colSpan: 2, styles: { halign: 'center' as const } },
+      { content: "Poyezdlar va tashkilotlar bo'yicha ma'lumot",       colSpan: 4, styles: { halign: 'center' as const } },
       { content: "Diz.Yoqilg'i berishdan\noldingi bakdagi\nqoldiq\n8", rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
-      { content: "Berilgan diz\nyoqilg'i miqdori\n9",                   rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
-      { content: "Umumiy miqdor, kg\n10",                              rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+      { content: "Berilgan diz\nyoqilg'i miqdori\n9",                 rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
+      { content: "Umumiy miqdor,\nkg\n10",                            rowSpan: 2, styles: { halign: 'center' as const, valign: 'middle' as const } },
     ],
     [
       { content: 'Seriya\n2',        styles: { halign: 'center' as const } },
@@ -797,7 +813,7 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
           styles: { halign: 'left' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: zapBg, textColor: zapFg, cellPadding: hdrPad },
         },
         {
-          content: `jami: ${formatPdfNumber(zapTotal)} kg`,
+          content: `итого: ${formatPdfNumber(zapTotal)} кг`,
           colSpan: 5,
           styles: { halign: 'right' as const, fontStyle: 'italic' as const, fontSize: 7, fillColor: zapBg, textColor: zapFg, cellPadding: hdrPad },
         },
@@ -841,8 +857,8 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
     head, body,
     startY: tableStartY,
     theme:             'grid',
-    styles:            { fontSize: 6.1, cellPadding: 0.55, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.18 },
-    headStyles:        { fillColor: [255,255,255], textColor: [0,0,0], fontStyle: 'bold', fontSize: 6.1, lineColor: [0,0,0], lineWidth: 0.25, cellPadding: 0.55 },
+    styles:            { font: PDF_CYRILLIC_FONT, fontSize: 6.1, cellPadding: 0.55, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.18 },
+    headStyles:        { font: PDF_CYRILLIC_FONT, fillColor: [255,255,255], textColor: [0,0,0], fontStyle: 'bold', fontSize: 6.1, lineColor: [0,0,0], lineWidth: 0.25, cellPadding: 0.55 },
     alternateRowStyles: { fillColor: [250,250,250] },
     columnStyles: {
       0: { cellWidth: 14 },
@@ -872,8 +888,8 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
     grandY = margin;
   }
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Umumiy jami yoqilg'i: ${formatPdfNumber(grandTotal)} kg`, margin, grandY, { align: 'left' });
+  doc.setFont(PDF_CYRILLIC_FONT, 'bold');
+  doc.text(`Общий итог топлива: ${formatPdfNumber(grandTotal)} кг`, margin, grandY, { align: 'left' });
 
   doc.save(`hisobot_${fileSlug.replace(/[^\w.—]+/g, '_')}.pdf`);
 }
@@ -1012,16 +1028,41 @@ export default function HisobotlarPage() {
         s.setHours(0, 0, 0, 0);
         const eDay = new Date(rawE);
         eDay.setHours(0, 0, 0, 0);
-        const titleLine = buildOperationalPdfTitle(s, eDay);
+        const titleLine = globalCategory === 'lokomotiv'
+          ? buildLokomotivDetailPdfTitle(s, eDay)
+          : globalCategory === 'korxona' || globalCategory === 'qurulish' || globalCategory === 'tamirlash'
+            ? buildCategoryDetailPdfTitle(globalCategory, s, eDay)
+            : buildOperationalPdfTitle(s, eDay);
         const fileSlug = globalDateRange
           ? `${toIsoDateLocal(s)}_${toIsoDateLocal(eDay)}`
           : `bugun_${toIsoDateLocal(s)}`;
         if (globalCategory === 'tamirlash') {
-          exportTamirlashPDF(globalFiltered, fileSlug, titleLine, staffMap);
+          exportCategoryDetailPdf(globalFiltered, {
+            category: 'tamirlash',
+            fileSlug,
+            titleLine,
+            staffMap,
+          });
         } else if (globalCategory === 'korxona') {
-          exportKorxonaPDF(globalFiltered, fileSlug, titleLine, staffMap);
+          exportCategoryDetailPdf(globalFiltered, {
+            category: 'korxona',
+            fileSlug,
+            titleLine,
+            staffMap,
+          });
         } else if (globalCategory === 'qurulish') {
-          exportQurulishPDF(globalFiltered, fileSlug, titleLine, staffMap);
+          exportCategoryDetailPdf(globalFiltered, {
+            category: 'qurulish',
+            fileSlug,
+            titleLine,
+            staffMap,
+          });
+        } else if (globalCategory === 'lokomotiv') {
+          exportLokomotivDetailPdf(globalFiltered, {
+            fileSlug,
+            titleLine,
+            staffMap,
+          });
         } else {
           exportPDF(globalFiltered, fileSlug, titleLine, staffMap);
         }
@@ -1029,7 +1070,7 @@ export default function HisobotlarPage() {
         setGlobalPdfLoading(false);
       }
     }, 50);
-  }, [globalFiltered, globalDateRange, staffMap]);
+  }, [globalFiltered, globalDateRange, globalCategory, staffMap]);
 
   /** Taqvimdan: tanlangan davr bo'yicha submissions + xuddi jadvaldagi filtrlarga mos PDF */
   const exportPdfForDateRange = useCallback(async (start: Date, endDay: Date) => {
@@ -1048,14 +1089,43 @@ export default function HisobotlarPage() {
       }
       const endForTitle = new Date(endDay);
       endForTitle.setHours(0, 0, 0, 0);
-      const titleLine = buildOperationalPdfTitle(s, endForTitle);
+      const titleLine = globalCategory === 'lokomotiv'
+        ? buildLokomotivDetailPdfTitle(s, endForTitle)
+        : globalCategory === 'korxona' || globalCategory === 'qurulish' || globalCategory === 'tamirlash'
+          ? buildCategoryDetailPdfTitle(globalCategory, s, endForTitle)
+          : buildOperationalPdfTitle(s, endForTitle);
       const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
       if (globalCategory === 'tamirlash') {
-        exportTamirlashPDF(rows, fileSlug, titleLine, staffMap, true);
+        exportCategoryDetailPdf(rows, {
+          category: 'tamirlash',
+          fileSlug,
+          titleLine,
+          staffMap,
+          showDateGroups: true,
+        });
       } else if (globalCategory === 'korxona') {
-        exportKorxonaPDF(rows, fileSlug, titleLine, staffMap, true);
+        exportCategoryDetailPdf(rows, {
+          category: 'korxona',
+          fileSlug,
+          titleLine,
+          staffMap,
+          showDateGroups: true,
+        });
       } else if (globalCategory === 'qurulish') {
-        exportQurulishPDF(rows, fileSlug, titleLine, staffMap, true);
+        exportCategoryDetailPdf(rows, {
+          category: 'qurulish',
+          fileSlug,
+          titleLine,
+          staffMap,
+          showDateGroups: true,
+        });
+      } else if (globalCategory === 'lokomotiv') {
+        exportLokomotivDetailPdf(rows, {
+          fileSlug,
+          titleLine,
+          staffMap,
+          showDateGroups: true,
+        });
       } else {
         exportPDF(rows, fileSlug, titleLine, staffMap, true);
       }
@@ -1066,6 +1136,39 @@ export default function HisobotlarPage() {
       setGlobalPdfLoading(false);
     }
   }, [globalCategory, staffMap]);
+
+  /** Taqvimdagi L.PDF: tanlangan davr bo'yicha faqat lokomotiv yozuvlari */
+  const exportLokomotivPdfForDateRange = useCallback(async (start: Date, endDay: Date) => {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(endDay);
+    e.setHours(23, 59, 59, 999);
+    setGlobalDateRange({ start: s, end: e });
+    setGlobalPdfLoading(true);
+    try {
+      const allRows = await fetchAllSubmissionsInRange(s, e);
+      const rows = allRows.filter((row) => row.category === 'lokomotiv');
+      if (!rows.length) {
+        window.alert("Tanlangan davr uchun lokomotiv ma'lumoti yo'q.");
+        return;
+      }
+      const endForTitle = new Date(endDay);
+      endForTitle.setHours(0, 0, 0, 0);
+      const titleLine = buildLokomotivDetailPdfTitle(s, endForTitle);
+      const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
+      exportLokomotivDetailPdf(rows, {
+        fileSlug,
+        titleLine,
+        staffMap,
+        showDateGroups: true,
+      });
+    } catch (err) {
+      console.error(err);
+      window.alert("L.PDF tayyorlashda xato. Firestore indeksini tekshiring.");
+    } finally {
+      setGlobalPdfLoading(false);
+    }
+  }, [staffMap]);
 
   const runErjuYpdfExport = useCallback(async (rangeStart: Date, rangeEnd: Date) => {
     setGlobalErjuPdfLoading(true);
@@ -1169,9 +1272,9 @@ export default function HisobotlarPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-[10px] font-black uppercase transition-all disabled:opacity-40 shadow-lg shadow-emerald-900/40"
               >
                 {globalPdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                {globalPdfLoading ? 'Tayyorlanmoqda...' : 'PDF'}
+                {globalPdfLoading ? 'Tayyorlanmoqda...' : CATEGORY_PDF_LABEL[globalCategory] ?? 'PDF'}
               </button>
-              {globalCategory === 'korxona' || globalCategory === 'qurulish' || globalCategory === 'tamirlash' ? null : (
+              {globalCategory === 'all' ? (
                 <button
                   onClick={() => {
                     const start = globalDateRange?.start ?? (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
@@ -1184,7 +1287,7 @@ export default function HisobotlarPage() {
                   {globalErjuPdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                   {globalErjuPdfLoading ? 'Y.PDF…' : 'Y.PDF'}
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -1280,7 +1383,7 @@ export default function HisobotlarPage() {
                             <span className="text-gray-300 font-bold text-[10px] sm:text-[10px] leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full block">{zap?.name ?? s.stationId ?? '—'}</span>
                           </td>
                           <td className={`px-1.5 sm:px-2 py-2 align-top border-solid ${hisobotlarDividerLeftClass(3, 'body')}`}>
-                            <span className={`inline-block max-w-full text-[8px] sm:text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full leading-tight break-words ${CAT_COLOR[s.category]}`}>
+                            <span className={`inline-block max-w-full text-[9px] sm:text-[10px] font-black uppercase leading-tight break-words ${CAT_COLOR[s.category] ?? 'text-gray-300'}`}>
                               {CAT_LABEL[s.category] ?? s.category}
                             </span>
                           </td>
@@ -1634,9 +1737,15 @@ export default function HisobotlarPage() {
       <RentCalendar
         isOpen={showGlobalCal}
         onClose={() => setShowGlobalCal(false)}
+        pdfLabel={CATEGORY_PDF_LABEL[globalCategory] ?? 'PDF'}
+        showErjuPdf={globalCategory === 'all'}
         onExportPdf={async (start, endDay) => {
           if (!start || !endDay) return;
           await exportPdfForDateRange(start, endDay);
+        }}
+        onExportLokomotivPdf={async (start, endDay) => {
+          if (!start || !endDay) return;
+          await exportLokomotivPdfForDateRange(start, endDay);
         }}
         onExportErjuPdf={async (start, endDay) => {
           if (!start || !endDay) return;

@@ -199,7 +199,7 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-black uppercase tracking-widest text-primary">3. Poyezd raqami</label>
+            <label className="text-xs font-black uppercase tracking-widest text-primary">3. Stansya va P.raqami</label>
             <input
               type="text"
               value={formData.poyezdNumber}

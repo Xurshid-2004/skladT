@@ -9,6 +9,7 @@ import { sanitizeForFirestore } from './sanitize';
 import { ZAPRAVKALAR } from '@/lib/data/uzellar';
 import { toLocalDateISO } from './summary-service';
 import { parsePdfNumber } from '@/lib/utils/pdf-number';
+import { buildReportDate } from '@/lib/utils/report-date-override';
 
 /** Y.PDF ustunlari bilan mos keladigan moveType qiymati */
 export type ErjuFuelMoveType =
@@ -48,7 +49,7 @@ export async function appendFuelRecordForErjuJu(
   const dizMaslaKg = base.dizMaslaKg == null ? 0 : parsePdfNumber(base.dizMaslaKg);
   if (fuelAmountKg <= 0) return;
 
-  const now = new Date();
+  const now = buildReportDate();
   const localDate = toLocalDateISO(now);
   const date = base.dateISO ?? localDate;
   const hh = String(now.getHours()).padStart(2, '0');

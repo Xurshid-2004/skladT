@@ -18,6 +18,14 @@ export function sanitizeForFirestore<T>(value: T): T {
     return value;
   }
 
+  // Firestore Timestamp obyektlarini oddiy objectga aylantirib yubormaymiz.
+  if (
+    typeof value === "object" &&
+    (typeof (value as any).toDate === "function" || typeof (value as any).toMillis === "function")
+  ) {
+    return value;
+  }
+
   if (typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {

@@ -59,7 +59,9 @@ export default function SectionTabs() {
             role="tab"
             aria-selected={isActive}
             aria-label={section.label}
-            className={`section-tab-card relative flex min-h-[56px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-xl border px-2 py-1.5 text-white shadow-lg transition-none sm:min-h-[60px] ${section.card} ${
+            className={`section-tab-card relative flex min-h-[56px] items-center justify-center gap-2 overflow-hidden rounded-xl border px-3 py-1.5 text-white shadow-lg transition-none sm:min-h-[60px] ${
+              isActive ? "pr-10" : ""
+            } ${section.card} ${
               isActive ? "ring-2 ring-white/70 ring-offset-2 ring-offset-background" : ""
             }`}
           >
@@ -73,12 +75,12 @@ export default function SectionTabs() {
             )}
 
             <span
-              className={`relative flex h-7 w-7 items-center justify-center rounded-xl ring-1 sm:h-8 sm:w-8 ${section.iconBox}`}
+              className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ring-1 sm:h-8 sm:w-8 ${section.iconBox}`}
             >
               <Icon className="h-4 w-4 stroke-[2.9] text-white sm:h-[18px] sm:w-[18px]" />
             </span>
 
-            <span className="relative text-center text-[12px] font-black uppercase leading-none tracking-wide text-white sm:text-[13px]">
+            <span className="relative min-w-0 truncate text-center text-[12px] font-black uppercase leading-none tracking-wide text-white sm:text-[13px] lg:text-sm">
               {section.label}
             </span>
 
