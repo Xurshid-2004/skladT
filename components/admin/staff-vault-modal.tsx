@@ -145,9 +145,11 @@ export default function StaffVaultModal({
     hiddenStaticValues: [],
   });
   const [newRusumName, setNewRusumName] = useState("");
+  const [newRusumCode, setNewRusumCode] = useState("");
   const [newRusumHarakat, setNewRusumHarakat] = useState<HarakatTuri[]>([]);
   const [editingRusumId, setEditingRusumId] = useState<string | null>(null);
   const [editRusumName, setEditRusumName] = useState("");
+  const [editRusumCode, setEditRusumCode] = useState("");
   const [editRusumHarakat, setEditRusumHarakat] = useState<HarakatTuri[]>([]);
   const [rusumBusy, setRusumBusy] = useState(false);
   const [rusumError, setRusumError] = useState("");
@@ -199,6 +201,7 @@ export default function StaffVaultModal({
       .map((rusum) => ({
         value: String(rusum.value),
         label: rusum.label,
+        code: String(rusum.number),
         harakatTurlari: HARAKAT_TURI_LIST
           .map((item) => item.value as HarakatTuri)
           .filter((harakat) => RUSUMI_FILTER[harakat].includes(rusum.value)),
@@ -214,9 +217,11 @@ export default function StaffVaultModal({
     setEditingStaffId(null);
     setRusumModalOpen(false);
     setNewRusumName("");
+    setNewRusumCode("");
     setNewRusumHarakat([]);
     setEditingRusumId(null);
     setEditRusumName("");
+    setEditRusumCode("");
     setEditRusumHarakat([]);
     setRusumError("");
   };
@@ -361,8 +366,13 @@ export default function StaffVaultModal({
 
   const saveRusum = async () => {
     const label = newRusumName.trim();
+    const code = newRusumCode.trim();
     if (!label) {
       setRusumError("Rusum nomini kiriting.");
+      return;
+    }
+    if (!code) {
+      setRusumError("Rusum raqamini kiriting.");
       return;
     }
     if (newRusumHarakat.length === 0) {
@@ -376,10 +386,12 @@ export default function StaffVaultModal({
       const session = getSession();
       await addLokomotivRusum({
         label,
+        code,
         harakatTurlari: newRusumHarakat,
         createdBy: session?.displayName ?? "Admin",
       });
       setNewRusumName("");
+      setNewRusumCode("");
       setNewRusumHarakat([]);
     } catch (err: any) {
       setRusumError(err?.message || "Rusumni saqlab bo'lmadi.");
@@ -391,13 +403,15 @@ export default function StaffVaultModal({
   const startEditRusum = (rusum: CustomLokomotivRusum) => {
     setEditingRusumId(rusum.id);
     setEditRusumName(rusum.label);
+    setEditRusumCode(rusum.code ?? "");
     setEditRusumHarakat(rusum.harakatTurlari);
     setRusumError("");
   };
 
-  const startEditStaticRusum = (rusum: { value: string; label: string; harakatTurlari: HarakatTuri[] }) => {
+  const startEditStaticRusum = (rusum: { value: string; label: string; code: string; harakatTurlari: HarakatTuri[] }) => {
     setEditingRusumId(staticRusumEditId(rusum.value));
     setEditRusumName(rusum.label);
+    setEditRusumCode(rusum.code);
     setEditRusumHarakat(rusum.harakatTurlari);
     setRusumError("");
   };
@@ -405,6 +419,7 @@ export default function StaffVaultModal({
   const cancelRusumEdit = () => {
     setEditingRusumId(null);
     setEditRusumName("");
+    setEditRusumCode("");
     setEditRusumHarakat([]);
     setRusumError("");
   };
@@ -412,8 +427,13 @@ export default function StaffVaultModal({
   const saveRusumEdit = async () => {
     if (!editingRusumId) return;
     const label = editRusumName.trim();
+    const code = editRusumCode.trim();
     if (!label) {
       setRusumError("Rusum nomini kiriting.");
+      return;
+    }
+    if (!code) {
+      setRusumError("Rusum raqamini kiriting.");
       return;
     }
     if (editRusumHarakat.length === 0) {
@@ -429,12 +449,14 @@ export default function StaffVaultModal({
         await updateStaticLokomotivRusum({
           originalValue: staticValueFromEditId(editingRusumId),
           label,
+          code,
           harakatTurlari: editRusumHarakat,
           createdBy: session?.displayName ?? "Admin",
         });
       } else {
         await updateLokomotivRusum(editingRusumId, {
           label,
+          code,
           harakatTurlari: editRusumHarakat,
         });
       }
@@ -787,18 +809,18 @@ export default function StaffVaultModal({
         </div>
 
         {rusumModalOpen && (
-          <div className="absolute inset-0 z-[520] flex items-center justify-center bg-black/72 p-3 backdrop-blur-sm sm:p-5">
-            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#101827] shadow-2xl shadow-black/40">
-              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-black px-4 py-3 sm:px-5">
+          <div className="absolute inset-0 z-[520] flex items-center justify-center bg-slate-950/78 p-3 backdrop-blur-sm sm:p-5">
+            <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-cyan-300/35 bg-gradient-to-br from-slate-950 via-[#082f49] to-[#064e3b] shadow-2xl shadow-cyan-950/50">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-cyan-300/25 bg-gradient-to-r from-cyan-700 via-emerald-600 to-blue-700 px-4 py-3 sm:px-5">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-900/25">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700 shadow-lg shadow-emerald-950/25">
                     <TrainFront className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
                     <h3 className="truncate text-sm font-black uppercase tracking-wide text-white">
                       Rusum qo&apos;shish
                     </h3>
-                    <p className="truncate text-[11px] font-semibold text-slate-400">
+                    <p className="truncate text-[11px] font-semibold text-cyan-50/85">
                       Rusum tanlangan harakat turlarida user panelda chiqadi
                     </p>
                   </div>
@@ -810,7 +832,7 @@ export default function StaffVaultModal({
                     cancelRusumEdit();
                     setRusumError("");
                   }}
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500 text-white hover:bg-red-600"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500 text-white shadow-lg shadow-red-950/25 hover:bg-red-600"
                   aria-label="Yopish"
                 >
                   <X className="h-5 w-5" />
@@ -818,31 +840,54 @@ export default function StaffVaultModal({
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        Rusum nomi
-                      </label>
-                      <input
-                        value={newRusumName}
-                        onChange={(e) => {
-                          setNewRusumName(e.target.value);
-                          setRusumError("");
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void saveRusum();
-                          }
-                        }}
-                        placeholder="Masalan: TEM18"
-                        className="h-12 w-full rounded-xl border border-white/10 bg-[#0d1424] px-3.5 text-base font-black uppercase text-white placeholder:text-slate-600 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/15"
-                      />
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                  <div className="space-y-4 rounded-2xl border border-cyan-300/20 bg-white/10 p-4 shadow-xl shadow-black/15">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                      <div>
+                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-cyan-100">
+                          Rusum nomi
+                        </label>
+                        <input
+                          value={newRusumName}
+                          onChange={(e) => {
+                            setNewRusumName(e.target.value);
+                            setRusumError("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void saveRusum();
+                            }
+                          }}
+                          placeholder="Masalan: TEM18"
+                          className="h-12 w-full rounded-xl border-2 border-cyan-200/45 bg-white px-3.5 text-base font-black uppercase text-slate-950 shadow-lg shadow-cyan-950/10 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-4 focus:ring-emerald-300/35"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-cyan-100">
+                          Rusum raqami
+                        </label>
+                        <input
+                          value={newRusumCode}
+                          inputMode="numeric"
+                          onChange={(e) => {
+                            setNewRusumCode(e.target.value.replace(/\D/g, ""));
+                            setRusumError("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void saveRusum();
+                            }
+                          }}
+                          placeholder="Masalan: 77"
+                          className="h-12 w-full rounded-xl border-2 border-emerald-200/55 bg-white px-3.5 text-base font-black text-slate-950 shadow-lg shadow-emerald-950/10 placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-300/35"
+                        />
+                      </div>
                     </div>
 
                     <div>
-                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-cyan-100">
                         Harakat turi
                       </p>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
@@ -876,7 +921,7 @@ export default function StaffVaultModal({
                     </div>
 
                     {rusumError && (
-                      <p className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300">
+                      <p className="rounded-xl border border-red-200/60 bg-red-500 px-3 py-2 text-xs font-black text-white shadow-lg shadow-red-950/20">
                         {rusumError}
                       </p>
                     )}
@@ -886,7 +931,7 @@ export default function StaffVaultModal({
                         type="button"
                         onClick={() => void saveRusum()}
                         disabled={rusumBusy}
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-black uppercase text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-45"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 text-sm font-black uppercase text-white shadow-lg shadow-emerald-950/25 hover:from-emerald-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         <PlusCircle className="h-4 w-4" />
                         Saqlash
@@ -895,19 +940,20 @@ export default function StaffVaultModal({
                         type="button"
                         onClick={() => {
                           setNewRusumName("");
+                          setNewRusumCode("");
                           setNewRusumHarakat([]);
                           setRusumError("");
                         }}
-                        className="h-11 rounded-xl border border-white/10 bg-white/5 px-5 text-sm font-bold text-slate-300 hover:bg-white/10"
+                        className="h-11 rounded-xl border border-white/30 bg-white/15 px-5 text-sm font-black text-white hover:bg-white/25"
                       >
                         Tozalash
                       </button>
                     </div>
                   </div>
 
-                  <div className="min-h-0 space-y-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                  <div className="min-h-0 space-y-3 rounded-2xl border border-cyan-300/20 bg-slate-950/45 p-3 shadow-xl shadow-black/20">
                     <div>
-                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-cyan-100">
                         Hozirgi rusumlar
                       </p>
                       <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
@@ -916,18 +962,29 @@ export default function StaffVaultModal({
                           return (
                             <div
                               key={rusum.value}
-                              className="rounded-xl border border-white/[0.08] bg-white/[0.05] px-3 py-2"
+                              className="rounded-xl border border-cyan-300/20 bg-white/[0.10] px-3 py-2 shadow-sm shadow-black/10"
                             >
                               {editing ? (
-                                <div className="space-y-2">
-                                  <input
-                                    value={editRusumName}
-                                    onChange={(e) => {
-                                      setEditRusumName(e.target.value);
-                                      setRusumError("");
-                                    }}
-                                    className="h-10 w-full rounded-lg border border-white/10 bg-[#0d1424] px-3 text-sm font-black uppercase text-white focus:border-emerald-400 focus:outline-none"
-                                  />
+                                  <div className="space-y-2">
+                                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                                      <input
+                                        value={editRusumName}
+                                        onChange={(e) => {
+                                          setEditRusumName(e.target.value);
+                                          setRusumError("");
+                                        }}
+                                        className="h-10 w-full rounded-lg border-2 border-cyan-200/45 bg-white px-3 text-sm font-black uppercase text-slate-950 focus:border-emerald-400 focus:outline-none"
+                                      />
+                                      <input
+                                        value={editRusumCode}
+                                        inputMode="numeric"
+                                        onChange={(e) => {
+                                          setEditRusumCode(e.target.value.replace(/\D/g, ""));
+                                          setRusumError("");
+                                        }}
+                                        className="h-10 w-full rounded-lg border-2 border-emerald-200/55 bg-white px-3 text-sm font-black text-slate-950 focus:border-cyan-400 focus:outline-none"
+                                      />
+                                    </div>
                                   <div className="grid grid-cols-2 gap-1.5">
                                     {HARAKAT_TURI_LIST.map((item) => {
                                       const value = item.value as HarakatTuri;
@@ -938,7 +995,7 @@ export default function StaffVaultModal({
                                           type="button"
                                           onClick={() => toggleEditRusumHarakat(value)}
                                           className={`rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-white ${
-                                            active ? HARAKAT_RUSUM_CARD[value] : "border border-white/10 bg-white/5 text-slate-400"
+                                            active ? HARAKAT_RUSUM_CARD[value] : "border border-cyan-200/20 bg-white/10 text-cyan-100"
                                           }`}
                                         >
                                           {HARAKAT_RUSUM_LABEL[value]}
@@ -951,14 +1008,14 @@ export default function StaffVaultModal({
                                       type="button"
                                       onClick={() => void saveRusumEdit()}
                                       disabled={rusumBusy}
-                                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+                                      className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-400 disabled:opacity-50"
                                     >
                                       Saqlash
                                     </button>
                                     <button
                                       type="button"
                                       onClick={cancelRusumEdit}
-                                      className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-white/15"
+                                      className="rounded-lg bg-white/20 px-3 py-1.5 text-xs font-black text-white hover:bg-white/30"
                                     >
                                       Bekor
                                     </button>
@@ -969,6 +1026,9 @@ export default function StaffVaultModal({
                                   <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
                                       <p className="break-words text-sm font-black text-white">{rusum.label}</p>
+                                      <span className="shrink-0 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-200">
+                                        # {rusum.code}
+                                      </span>
                                       <span className="shrink-0 rounded-full bg-slate-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-slate-300">
                                         Asosiy
                                       </span>
@@ -977,7 +1037,7 @@ export default function StaffVaultModal({
                                       {rusum.harakatTurlari.map((h) => (
                                         <span
                                           key={h}
-                                          className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase text-slate-200"
+                                          className="rounded-full bg-cyan-400/18 px-2 py-0.5 text-[9px] font-black uppercase text-cyan-50"
                                         >
                                           {HARAKAT_RUSUM_LABEL[h]}
                                         </span>
@@ -988,7 +1048,7 @@ export default function StaffVaultModal({
                                     <button
                                       type="button"
                                       onClick={() => startEditStaticRusum(rusum)}
-                                      className="rounded-lg p-1.5 text-blue-400 hover:bg-blue-400/10"
+                                      className="rounded-lg bg-blue-500/15 p-1.5 text-blue-200 hover:bg-blue-400/25"
                                       title="Tahrirlash"
                                     >
                                       <Pencil className="h-4 w-4" />
@@ -997,7 +1057,7 @@ export default function StaffVaultModal({
                                       type="button"
                                       onClick={() => void deleteStaticRusum(rusum)}
                                       disabled={rusumBusy}
-                                      className="rounded-lg p-1.5 text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+                                      className="rounded-lg bg-rose-500/15 p-1.5 text-rose-200 hover:bg-rose-500/25 disabled:opacity-50"
                                       title="O'chirish"
                                     >
                                       <Trash2 className="h-4 w-4" />
@@ -1011,8 +1071,8 @@ export default function StaffVaultModal({
                       </div>
                     </div>
 
-                    <div className="border-t border-white/10 pt-3">
-                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    <div className="border-t border-cyan-300/20 pt-3">
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-cyan-100">
                         Qo&apos;shilgan rusumlar
                       </p>
                       {customRusumlar.length === 0 ? (
@@ -1026,18 +1086,29 @@ export default function StaffVaultModal({
                             return (
                               <div
                                 key={rusum.id}
-                                className="rounded-xl border border-white/[0.08] bg-black/[0.16] px-3 py-2"
+                                className="rounded-xl border border-emerald-300/20 bg-emerald-950/35 px-3 py-2 shadow-sm shadow-black/10"
                               >
                                 {editing ? (
                                   <div className="space-y-2">
-                                    <input
-                                      value={editRusumName}
-                                      onChange={(e) => {
-                                        setEditRusumName(e.target.value);
-                                        setRusumError("");
-                                      }}
-                                      className="h-10 w-full rounded-lg border border-white/10 bg-[#0d1424] px-3 text-sm font-black uppercase text-white focus:border-emerald-400 focus:outline-none"
-                                    />
+                                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                                      <input
+                                        value={editRusumName}
+                                        onChange={(e) => {
+                                          setEditRusumName(e.target.value);
+                                          setRusumError("");
+                                        }}
+                                        className="h-10 w-full rounded-lg border-2 border-cyan-200/45 bg-white px-3 text-sm font-black uppercase text-slate-950 focus:border-emerald-400 focus:outline-none"
+                                      />
+                                      <input
+                                        value={editRusumCode}
+                                        inputMode="numeric"
+                                        onChange={(e) => {
+                                          setEditRusumCode(e.target.value.replace(/\D/g, ""));
+                                          setRusumError("");
+                                        }}
+                                        className="h-10 w-full rounded-lg border-2 border-emerald-200/55 bg-white px-3 text-sm font-black text-slate-950 focus:border-cyan-400 focus:outline-none"
+                                      />
+                                    </div>
                                     <div className="grid grid-cols-2 gap-1.5">
                                       {HARAKAT_TURI_LIST.map((item) => {
                                         const value = item.value as HarakatTuri;
@@ -1048,7 +1119,7 @@ export default function StaffVaultModal({
                                             type="button"
                                             onClick={() => toggleEditRusumHarakat(value)}
                                             className={`rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-white ${
-                                              active ? HARAKAT_RUSUM_CARD[value] : "border border-white/10 bg-white/5 text-slate-400"
+                                              active ? HARAKAT_RUSUM_CARD[value] : "border border-cyan-200/20 bg-white/10 text-cyan-100"
                                             }`}
                                           >
                                             {HARAKAT_RUSUM_LABEL[value]}
@@ -1061,14 +1132,14 @@ export default function StaffVaultModal({
                                         type="button"
                                         onClick={() => void saveRusumEdit()}
                                         disabled={rusumBusy}
-                                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+                                        className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-400 disabled:opacity-50"
                                       >
                                         Saqlash
                                       </button>
                                       <button
                                         type="button"
                                         onClick={cancelRusumEdit}
-                                        className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-white/15"
+                                        className="rounded-lg bg-white/20 px-3 py-1.5 text-xs font-black text-white hover:bg-white/30"
                                       >
                                         Bekor
                                       </button>
@@ -1077,12 +1148,17 @@ export default function StaffVaultModal({
                                 ) : (
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="min-w-0">
-                                      <p className="break-words text-sm font-black text-white">{rusum.label}</p>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="break-words text-sm font-black text-white">{rusum.label}</p>
+                                        <span className="shrink-0 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-200">
+                                          # {rusum.code ?? "-"}
+                                        </span>
+                                      </div>
                                       <div className="mt-1 flex flex-wrap gap-1">
                                         {rusum.harakatTurlari.map((h) => (
                                           <span
                                             key={h}
-                                            className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase text-slate-200"
+                                            className="rounded-full bg-cyan-400/18 px-2 py-0.5 text-[9px] font-black uppercase text-cyan-50"
                                           >
                                             {HARAKAT_RUSUM_LABEL[h]}
                                           </span>
@@ -1093,7 +1169,7 @@ export default function StaffVaultModal({
                                       <button
                                         type="button"
                                         onClick={() => startEditRusum(rusum)}
-                                        className="rounded-lg p-1.5 text-blue-400 hover:bg-blue-400/10"
+                                        className="rounded-lg bg-blue-500/15 p-1.5 text-blue-200 hover:bg-blue-400/25"
                                         title="Tahrirlash"
                                       >
                                         <Pencil className="h-4 w-4" />
@@ -1102,7 +1178,7 @@ export default function StaffVaultModal({
                                         type="button"
                                         onClick={() => void deleteRusum(rusum)}
                                         disabled={rusumBusy}
-                                        className="rounded-lg p-1.5 text-rose-400 hover:bg-rose-500/10 disabled:opacity-50"
+                                        className="rounded-lg bg-rose-500/15 p-1.5 text-rose-200 hover:bg-rose-500/25 disabled:opacity-50"
                                         title="O'chirish"
                                       >
                                         <Trash2 className="h-4 w-4" />

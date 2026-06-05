@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   HARAKAT_TURI_LIST,
   LOKOMOTIV_JADVAL_OPTIONS,
@@ -46,6 +46,27 @@ const HARAKAT_TURI_CARD_COLOR: Record<string, string> = {
 
 const OPTIONAL_LOKOMOTIV_FIELDS = new Set(["poyezdNumber", "jadval", "zagranitsa"]);
 const DECIMAL_LOKOMOTIV_FIELDS = new Set(["zagranitsa", "poyezdVazni", "qoldiq", "qanchaBerildi", "dizMasla"]);
+
+type RusumiOption = {
+  value: Rusumi;
+  label: string;
+  number: number;
+  code?: string;
+  custom?: boolean;
+};
+
+function rusumiOptionCode(item: RusumiOption): string {
+  return String(item.code ?? item.number);
+}
+
+function formatRusumiComboValue(item: RusumiOption): string {
+  return `${rusumiOptionCode(item)} - ${item.label}`;
+}
+
+function normalizeRusumiSearch(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 const INPUT_TONE_BY_FIELD: Record<string, { idle: string; filled: string; active: string; badge: string; activeBadge: string }> = {
   lokomotivNumber: {
     idle: "border-blue-300/80 bg-blue-50/70 text-blue-950 hover:border-blue-500 dark:border-blue-400/40 dark:bg-blue-500/10 dark:text-blue-50",
@@ -53,6 +74,13 @@ const INPUT_TONE_BY_FIELD: Record<string, { idle: string; filled: string; active
     active: "border-blue-600 bg-blue-100 text-blue-950 ring-4 ring-blue-500/20 shadow-md shadow-blue-500/15 dark:border-blue-300 dark:bg-blue-500/20 dark:text-blue-50",
     badge: "bg-blue-600 shadow-blue-500/20",
     activeBadge: "bg-blue-500 ring-2 ring-blue-200 shadow-blue-500/40",
+  },
+  rusumi: {
+    idle: "border-indigo-300/80 bg-indigo-50/70 text-indigo-950 hover:border-indigo-500 dark:border-indigo-400/40 dark:bg-indigo-500/10 dark:text-indigo-50",
+    filled: "border-indigo-500/80 bg-indigo-100/80 text-indigo-950 shadow-sm shadow-indigo-500/10 dark:border-indigo-300/60 dark:bg-indigo-500/15 dark:text-indigo-50",
+    active: "border-indigo-600 bg-indigo-100 text-indigo-950 ring-4 ring-indigo-500/20 shadow-md shadow-indigo-500/15 dark:border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-50",
+    badge: "bg-indigo-600 shadow-indigo-500/20",
+    activeBadge: "bg-indigo-500 ring-2 ring-indigo-200 shadow-indigo-500/40",
   },
   jadval: {
     idle: "border-violet-300/80 bg-violet-50/70 text-violet-950 hover:border-violet-500 dark:border-violet-400/40 dark:bg-violet-500/10 dark:text-violet-50",
@@ -176,6 +204,9 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     mashinaRaqami: "",
   });
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [rusumiQuery, setRusumiQuery] = useState("");
+  const [rusumiLookupError, setRusumiLookupError] = useState("");
+  const rusumiLookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [options, setOptions] = useState<{
     stansiyalar: string[];
@@ -228,9 +259,14 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     if (!formData.harakatTuri) return [];
     const allowed = RUSUMI_FILTER[formData.harakatTuri as HarakatTuri];
     const hiddenStatic = new Set(rusumSettings.hiddenStaticValues.map((value) => value.toLowerCase()));
-    const items = RUSUMI_LIST.filter(
+    const items: RusumiOption[] = RUSUMI_LIST.filter(
       (r) => allowed.includes(r.value) && !hiddenStatic.has(String(r.value).toLowerCase()),
-    );
+    ).map((r) => ({
+      value: r.value,
+      label: r.label,
+      number: r.number,
+      custom: r.custom,
+    }));
     const seen = new Set(items.map((r) => String(r.value).toLowerCase()));
     rusumSettings.items
       .filter((r) => r.harakatTurlari.includes(formData.harakatTuri as HarakatTuri))
@@ -241,20 +277,71 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
         items.push({
           value: r.value as Rusumi,
           label: r.label,
+          code: r.code,
           number: items.length + 1,
           custom: true,
         });
       });
-    return items;
+    return items.map((item, index) => ({
+      ...item,
+      number: item.custom && item.code ? item.number : index + 1,
+    }));
   }, [formData.harakatTuri, rusumSettings]);
+
+  const getRusumiMatches = (raw: string) => {
+    const q = normalizeRusumiSearch(raw);
+    if (!q) return filteredRusumlar;
+
+    return filteredRusumlar.filter((item) => {
+      const code = rusumiOptionCode(item);
+      const label = normalizeRusumiSearch(item.label);
+      const value = normalizeRusumiSearch(item.value);
+      const combo = normalizeRusumiSearch(formatRusumiComboValue(item));
+      return code.includes(q) || label.includes(q) || value.includes(q) || combo.includes(q);
+    });
+  };
+
+  const visibleRusumiOptions = useMemo(
+    () => getRusumiMatches(rusumiQuery),
+    [filteredRusumlar, rusumiQuery],
+  );
+
+  const findRusumiByComboText = (raw: string) => {
+    const q = normalizeRusumiSearch(raw);
+    if (!q) return undefined;
+
+    return filteredRusumlar.find((item) => {
+      const code = rusumiOptionCode(item);
+      return (
+        q === code ||
+        q === normalizeRusumiSearch(item.label) ||
+        q === normalizeRusumiSearch(item.value) ||
+        q === normalizeRusumiSearch(formatRusumiComboValue(item))
+      );
+    });
+  };
 
   const jadvalOptions = useMemo(() => {
     if (!formData.harakatTuri) return [];
     return LOKOMOTIV_JADVAL_OPTIONS[formData.harakatTuri as HarakatTuri] ?? [];
   }, [formData.harakatTuri]);
 
+  const clearRusumiLookupTimer = () => {
+    if (rusumiLookupTimer.current) {
+      clearTimeout(rusumiLookupTimer.current);
+      rusumiLookupTimer.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => clearRusumiLookupTimer();
+  }, []);
+
   const handleInputChange = (field: string, value: any) => {
     if (field === "harakatTuri") {
+      clearRusumiLookupTimer();
+      setRusumiQuery("");
+      setRusumiLookupError("");
       setFormData(prev => ({ ...prev, harakatTuri: value, rusumi: "", jadval: "", zagranitsa: "" }));
       return;
     }
@@ -262,9 +349,86 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const selectRusumiOption = (item: RusumiOption) => {
+    clearRusumiLookupTimer();
+    setRusumiQuery(formatRusumiComboValue(item));
+    setRusumiLookupError("");
+    handleInputChange("rusumi", item.value);
+  };
+
+  const handleRusumiComboChange = (value: string) => {
+    clearRusumiLookupTimer();
+    setRusumiQuery(value);
+    setRusumiLookupError("");
+
+    const raw = value.trim();
+    setFormData((prev) => ({ ...prev, rusumi: "" }));
+    if (!raw) return;
+
+    rusumiLookupTimer.current = setTimeout(() => {
+      const exact = findRusumiByComboText(raw);
+      if (exact) {
+        selectRusumiOption(exact);
+        return;
+      }
+
+      const matches = getRusumiMatches(raw);
+      if (matches.length === 1) {
+        selectRusumiOption(matches[0]);
+        return;
+      }
+
+      setRusumiLookupError("Bunday rusum topilmadi");
+    }, 1000);
+  };
+
+  const handleRusumiComboBlur = () => {
+    clearRusumiLookupTimer();
+    handleFieldBlur("rusumi");
+    const raw = rusumiQuery.trim();
+    if (!raw) {
+      setRusumiLookupError("");
+      setFormData((prev) => ({ ...prev, rusumi: "" }));
+      return;
+    }
+
+    const exact = findRusumiByComboText(raw);
+    if (exact) {
+      selectRusumiOption(exact);
+      return;
+    }
+
+    if (visibleRusumiOptions.length === 1) {
+      selectRusumiOption(visibleRusumiOptions[0]);
+      return;
+    }
+
+    setRusumiLookupError("Bunday rusum topilmadi");
+    setFormData((prev) => ({ ...prev, rusumi: "" }));
+  };
+
+  const handleRusumiComboKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      clearRusumiLookupTimer();
+      const exact = findRusumiByComboText(rusumiQuery);
+      if (exact) {
+        e.preventDefault();
+        selectRusumiOption(exact);
+        return;
+      }
+      if (visibleRusumiOptions.length === 1) {
+        e.preventDefault();
+        selectRusumiOption(visibleRusumiOptions[0]);
+        return;
+      }
+    }
+
+    handleKeyDown(e);
+  };
+
   const validate = () => {
     if (!formData.harakatTuri) return "Harakat turini tanlang";
-    if (!formData.rusumi) return "Rusumni tanlang";
+    if (!formData.rusumi) return rusumiQuery.trim() ? "Bunday rusum topilmadi" : "Rusumni tanlang";
     
     for (const field of visibleFields) {
       if (!formData[field as keyof typeof formData] && !OPTIONAL_LOKOMOTIV_FIELDS.has(field)) {
@@ -416,6 +580,8 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     });
     setError("");
     setFocusedField(null);
+    setRusumiQuery("");
+    setRusumiLookupError("");
   };
 
   const handleFieldBlur = (field: string) => {
@@ -504,40 +670,6 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
 
       {formData.harakatTuri && (
         <>
-          {/* Rusumi */}
-          <div className="bg-white/85 dark:bg-white/[0.06] backdrop-blur-md rounded-3xl border border-black/5 dark:border-white/10 shadow-xl overflow-hidden animate-in slide-in-from-top-4 duration-300">
-            <div className="flex items-center gap-2.5 px-4 sm:px-5 py-2.5 border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-indigo-500/10 to-transparent">
-              <span className="grid place-items-center h-7 w-7 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white text-xs font-black shadow-md shadow-indigo-500/30">
-                2
-              </span>
-              <h3 className="text-xs font-black text-slate-800 dark:text-slate-100 tracking-wide uppercase">
-                Rusumi
-              </h3>
-            </div>
-            <div className="p-3 sm:p-4">
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-1.5 sm:gap-2">
-                {filteredRusumlar.map((item) => {
-                  const active = formData.rusumi === item.value;
-                  return (
-                    <button
-                      key={item.value}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => handleInputChange("rusumi", item.value)}
-                      className={`px-2 py-2.5 rounded-xl text-center transition-all duration-200 border ${
-                        active
-                          ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-blue-700 border-white/20 text-white shadow-lg shadow-indigo-500/25 scale-[1.04]"
-                          : "bg-white dark:bg-white/[0.04] border-black/5 dark:border-white/10 hover:border-indigo-400/60 hover:bg-indigo-500/5 hover:scale-[1.03]"
-                      }`}
-                    >
-                      <span className={`text-sm font-black ${active ? "text-white drop-shadow-sm" : "text-slate-700 dark:text-slate-200"}`}>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
           {/* Dynamic Fields — yagona bo'lim ichida guruhlangan */}
           <div className="w-full bg-white/90 dark:bg-white/[0.06] backdrop-blur-md rounded-3xl border border-black/5 dark:border-white/10 shadow-xl overflow-hidden animate-in slide-in-from-top-8 duration-500">
             <div className="flex items-center gap-2.5 px-4 sm:px-5 py-2.5 border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-emerald-500/10 to-transparent">
@@ -549,6 +681,81 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
               </h3>
             </div>
             <div className="grid grid-cols-1 gap-2.5 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="flex min-w-0 flex-col">
+                <label
+                  className={`mb-1 flex items-center gap-1.5 text-[11px] font-black tracking-wide uppercase transition-colors ${
+                    focusedField === "rusumi" ? "text-slate-950 dark:text-white" : "text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-lg text-[10px] text-white shadow-sm transition-all ${
+                      focusedField === "rusumi"
+                        ? INPUT_TONE_BY_FIELD.rusumi.activeBadge
+                        : INPUT_TONE_BY_FIELD.rusumi.badge
+                    }`}
+                  >
+                    2
+                  </span>
+                  <span className="truncate">Rusumi</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="search"
+                    value={rusumiQuery}
+                    onChange={(e) => handleRusumiComboChange(e.target.value)}
+                    onKeyDown={handleRusumiComboKeyDown}
+                    onFocus={() => setFocusedField("rusumi")}
+                    onBlur={handleRusumiComboBlur}
+                    placeholder="Raqam yoki rusum nomi"
+                    className={`h-12 w-full rounded-xl border px-3.5 py-3 text-base font-black transition-all placeholder:text-slate-400 placeholder:font-bold focus:outline-none ${
+                      focusedField === "rusumi"
+                        ? INPUT_TONE_BY_FIELD.rusumi.active
+                        : formData.rusumi
+                          ? INPUT_TONE_BY_FIELD.rusumi.filled
+                          : INPUT_TONE_BY_FIELD.rusumi.idle
+                    }`}
+                  />
+                  {focusedField === "rusumi" && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 max-h-56 overflow-y-auto rounded-xl border border-indigo-200 bg-white p-1 shadow-2xl shadow-indigo-950/15 dark:border-indigo-400/30 dark:bg-slate-950">
+                      {visibleRusumiOptions.length > 0 ? (
+                        visibleRusumiOptions.slice(0, 10).map((item) => {
+                          const active = formData.rusumi === item.value;
+                          return (
+                            <button
+                              key={`${rusumiOptionCode(item)}-${item.value}`}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                selectRusumiOption(item);
+                              }}
+                              className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm font-black transition-colors ${
+                                active
+                                  ? "bg-indigo-600 text-white"
+                                  : "text-slate-800 hover:bg-indigo-50 dark:text-slate-100 dark:hover:bg-indigo-500/15"
+                              }`}
+                            >
+                              <span className="truncate">{item.label}</span>
+                              <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs ${active ? "bg-white/20" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"}`}>
+                                {rusumiOptionCode(item)}
+                              </span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="px-3 py-2 text-sm font-black text-rose-600 dark:text-rose-300">
+                          Bunday rusum topilmadi
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {rusumiLookupError && (
+                  <p className="mt-1 text-[11px] font-black text-rose-600 dark:text-rose-300">
+                    {rusumiLookupError}
+                  </p>
+                )}
+              </div>
               {visibleFields.map((field, idx) => {
                 const n = idx + 3;
                 let label = "";

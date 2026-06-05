@@ -94,6 +94,48 @@ function staffName(row: any, staffMap?: Map<string, string>) {
   return textVal((code && staffMap?.get(code)) || row?.staffName || code);
 }
 
+type StationStaffGroup = {
+  stationId: string;
+  staffName: string;
+  rows: any[];
+};
+
+function staffGroupName(row: any, staffMap?: Map<string, string>) {
+  const code = String(row?.staffCode ?? "").trim();
+  const byCode = code && staffMap ? staffMap.get(code) : undefined;
+  return String(byCode ?? row?.staffName ?? code ?? "").trim();
+}
+
+function staffGroupKey(row: any) {
+  const code = String(row?.staffCode ?? "").trim();
+  if (code) return `code:${code}`;
+
+  const name = String(row?.staffName ?? "").trim();
+  if (name) return `name:${name.toLowerCase()}`;
+
+  return "unknown";
+}
+
+function groupRowsByStationAndStaff(rows: any[], staffMap?: Map<string, string>): StationStaffGroup[] {
+  const groups = new Map<string, StationStaffGroup>();
+
+  for (const row of rows) {
+    const stationId = String(row?.stationId ?? "other");
+    const groupKey = `${stationId}__${staffGroupKey(row)}`;
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        stationId,
+        staffName: staffGroupName(row, staffMap),
+        rows: [],
+      });
+    }
+    groups.get(groupKey)!.rows.push(row);
+  }
+
+  return [...groups.values()];
+}
+
 function mashinaValue(row: any) {
   if (!row?.mashinadaYetkazildi) return "Yo'q";
   return row?.mashinaRaqami ? `Ha / ${row.mashinaRaqami}` : "Ha";
@@ -198,18 +240,14 @@ export function exportLokomotivDetailPdf(
       }]);
     }
 
-    const stationGroups = new Map<string, any[]>();
-    for (const row of dateRows) {
-      const sid = String(row?.stationId ?? "other");
-      if (!stationGroups.has(sid)) stationGroups.set(sid, []);
-      stationGroups.get(sid)!.push(row);
-    }
-
-    for (const [sid, stationRows] of stationGroups) {
+    for (const group of groupRowsByStationAndStaff(dateRows, staffMap)) {
+      const sid = group.stationId;
+      const stationRows = group.rows;
+      const groupTitle = group.staffName ? `${stationName(sid)} - ${group.staffName}` : stationName(sid);
       const total = stationRows.reduce((sum, row) => sum + parsePdfNumber(row?.qanchaBerildi ?? 0), 0);
       body.push([
         {
-          content: pdfText(stationName(sid)),
+          content: pdfText(groupTitle),
           colSpan: 10,
           styles: {
             halign: "left" as const,
@@ -567,18 +605,14 @@ export function exportCategoryDetailPdf(
       }]);
     }
 
-    const stationGroups = new Map<string, any[]>();
-    for (const row of dateRows) {
-      const sid = String(row?.stationId ?? "other");
-      if (!stationGroups.has(sid)) stationGroups.set(sid, []);
-      stationGroups.get(sid)!.push(row);
-    }
-
-    for (const [sid, stationRows] of stationGroups) {
+    for (const group of groupRowsByStationAndStaff(dateRows, staffMap)) {
+      const sid = group.stationId;
+      const stationRows = group.rows;
+      const groupTitle = group.staffName ? `${stationName(sid)} - ${group.staffName}` : stationName(sid);
       const total = stationRows.reduce((sum, row) => sum + config.total(row), 0);
       body.push([
         {
-          content: pdfText(stationName(sid)),
+          content: pdfText(groupTitle),
           colSpan: config.stationColSpan,
           styles: {
             halign: "left" as const,

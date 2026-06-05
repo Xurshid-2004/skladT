@@ -382,6 +382,45 @@ const TAMIR_LABEL: Record<string, string> = {
   profilaktika: "Profilaktika",
 };
 
+type PdfStaffGroup = {
+  stationId: string;
+  staffName: string;
+  rows: any[];
+};
+
+function getStaffNameForPdfGroup(row: any, staffMap?: Map<string, string>): string {
+  const code = String(row?.staffCode ?? '').trim();
+  const byCode = code && staffMap ? staffMap.get(code) : undefined;
+  return String(byCode ?? row?.staffName ?? code ?? '').trim();
+}
+
+function getStaffKeyForPdfGroup(row: any): string {
+  const code = String(row?.staffCode ?? '').trim();
+  if (code) return `code:${code}`;
+
+  const name = String(row?.staffName ?? '').trim();
+  if (name) return `name:${name.toLowerCase()}`;
+
+  return 'unknown';
+}
+
+function groupRowsByStationAndStaff(rows: any[], staffMap?: Map<string, string>): PdfStaffGroup[] {
+  const groups = new Map<string, PdfStaffGroup>();
+
+  for (const row of rows) {
+    const stationId = String(row?.stationId ?? 'other');
+    const staffName = getStaffNameForPdfGroup(row, staffMap);
+    const groupKey = `${stationId}__${getStaffKeyForPdfGroup(row)}`;
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, { stationId, staffName, rows: [] });
+    }
+    groups.get(groupKey)!.rows.push(row);
+  }
+
+  return [...groups.values()];
+}
+
 function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
   const sortedRows = sortRowsOldestFirst(rows);
   const doc = new jsPDF('landscape', 'mm', 'a4');
@@ -440,23 +479,11 @@ function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: stri
       }]);
     }
 
-    const zapGroups = new Map<string, any[]>();
-    for (const row of dateRows) {
-      const sid = row.stationId ?? 'other';
-      if (!zapGroups.has(sid)) zapGroups.set(sid, []);
-      zapGroups.get(sid)!.push(row);
-    }
-
-    for (const [stationId, stRows] of zapGroups) {
+    for (const group of groupRowsByStationAndStaff(dateRows, staffMap)) {
+      const stationId = group.stationId;
+      const stRows = group.rows;
       const stBase = ZAPRAVKALAR.find(z => z.id === stationId)?.name ?? stationId;
-      let stName = stBase;
-      if (staffMap) {
-        const uniqueNames = [...new Set(
-          stRows.map((r: any) => r.staffCode?.trim()).filter(Boolean)
-            .map((code: string) => staffMap.get(code)).filter(Boolean),
-        )] as string[];
-        if (uniqueNames.length > 0) stName = `${stBase}  —  ${uniqueNames.join(', ')}`;
-      }
+      const stName = group.staffName ? `${stBase} - ${group.staffName}` : stBase;
       const zapTotal = stRows.reduce((acc, r) => acc + parsePdfNumber(r.qanchaBerildi ?? 0), 0);
       body.push([
         { content: stName, colSpan: 5, styles: { halign: 'left' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: zapBg, textColor: zapFg, cellPadding: hdrPad } },
@@ -549,19 +576,11 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
       const [y, m, dd] = dateKey.split('-');
       body.push([{ content: `${dd}.${m}.${y}`, colSpan: 9, styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: dateBg, textColor: dateFg, cellPadding: { top:2,bottom:2,left:3,right:3 } } }]);
     }
-    const zapGroups = new Map<string, any[]>();
-    for (const row of dateRows) {
-      const sid = row.stationId ?? 'other';
-      if (!zapGroups.has(sid)) zapGroups.set(sid, []);
-      zapGroups.get(sid)!.push(row);
-    }
-    for (const [stationId, stRows] of zapGroups) {
+    for (const group of groupRowsByStationAndStaff(dateRows, staffMap)) {
+      const stationId = group.stationId;
+      const stRows = group.rows;
       const stBase = ZAPRAVKALAR.find(z => z.id === stationId)?.name ?? stationId;
-      let stName = stBase;
-      if (staffMap) {
-        const uniqueNames = [...new Set(stRows.map((r:any)=>r.staffCode?.trim()).filter(Boolean).map((c:string)=>staffMap.get(c)).filter(Boolean))] as string[];
-        if (uniqueNames.length > 0) stName = `${stBase}  —  ${uniqueNames.join(', ')}`;
-      }
+      const stName = group.staffName ? `${stBase} - ${group.staffName}` : stBase;
       const zapTotal = stRows.reduce((acc,r) => acc + parsePdfNumber(r.qancha ?? 0), 0);
       body.push([
         { content: stName,          colSpan: 4, styles: { halign:'left'  as const, fontStyle:'bold'   as const, fontSize:8, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
@@ -648,19 +667,11 @@ function exportQurulishPDF(rows: any[], fileSlug: string, reportTitleLine: strin
       const [y, m, dd] = dateKey.split('-');
       body.push([{ content: `${dd}.${m}.${y}`, colSpan: 10, styles: { halign: 'center' as const, fontStyle: 'bold' as const, fontSize: 8, fillColor: dateBg, textColor: dateFg, cellPadding: { top:2,bottom:2,left:3,right:3 } } }]);
     }
-    const zapGroups = new Map<string, any[]>();
-    for (const row of dateRows) {
-      const sid = row.stationId ?? 'other';
-      if (!zapGroups.has(sid)) zapGroups.set(sid, []);
-      zapGroups.get(sid)!.push(row);
-    }
-    for (const [stationId, stRows] of zapGroups) {
+    for (const group of groupRowsByStationAndStaff(dateRows, staffMap)) {
+      const stationId = group.stationId;
+      const stRows = group.rows;
       const stBase = ZAPRAVKALAR.find(z => z.id === stationId)?.name ?? stationId;
-      let stName = stBase;
-      if (staffMap) {
-        const uniqueNames = [...new Set(stRows.map((r:any)=>r.staffCode?.trim()).filter(Boolean).map((c:string)=>staffMap.get(c)).filter(Boolean))] as string[];
-        if (uniqueNames.length > 0) stName = `${stBase}  —  ${uniqueNames.join(', ')}`;
-      }
+      const stName = group.staffName ? `${stBase} - ${group.staffName}` : stBase;
       const zapTotal = stRows.reduce((acc,r) => acc + getAmount(r), 0);
       body.push([
         { content: stName,          colSpan: 5, styles: { halign:'left'  as const, fontStyle:'bold'   as const, fontSize:8, fillColor:zapBg, textColor:zapFg, cellPadding:hdrPad } },
@@ -783,27 +794,11 @@ function exportPDF(rows: any[], fileSlug: string, reportTitleLine: string, staff
       }]);
     }
 
-    // Sana ichida zapravka bo'yicha guruhlash
-    const zapGroups = new Map<string, any[]>();
-    for (const row of dateRows) {
-      const sid = (row as any).stationId ?? 'other';
-      if (!zapGroups.has(sid)) zapGroups.set(sid, []);
-      zapGroups.get(sid)!.push(row);
-    }
-
-    for (const [stationId, stRows] of zapGroups) {
+    for (const group of groupRowsByStationAndStaff(dateRows, staffMap)) {
+      const stationId = group.stationId;
+      const stRows = group.rows;
       const stBase = ZAPRAVKALAR.find(z => z.id === stationId)?.name ?? stationId;
-      let stName = stBase;
-      if (staffMap) {
-        const uniqueNames = [...new Set(
-          stRows
-            .map((r: any) => r.staffCode?.trim())
-            .filter(Boolean)
-            .map((code: string) => staffMap.get(code))
-            .filter(Boolean),
-        )] as string[];
-        if (uniqueNames.length > 0) stName = `${stBase}  —  ${uniqueNames.join(', ')}`;
-      }
+      const stName = group.staffName ? `${stBase} - ${group.staffName}` : stBase;
       const zapTotal = stRows.reduce((acc, r) => acc + getAmount(r), 0);
 
       body.push([

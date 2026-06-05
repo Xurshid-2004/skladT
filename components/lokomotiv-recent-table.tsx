@@ -119,6 +119,48 @@ function cellVal(raw: unknown, fallback = "—"): string {
   return String(raw);
 }
 
+type PdfStationStaffGroup = {
+  stationId: string;
+  staffName: string;
+  rows: any[];
+};
+
+function pdfStaffGroupName(row: any, staffMap: Map<string, string>) {
+  const code = String(row?.staffCode ?? "").trim();
+  const byCode = code ? staffMap.get(code) : undefined;
+  return String(byCode ?? row?.staffName ?? code ?? "").trim();
+}
+
+function pdfStaffGroupKey(row: any) {
+  const code = String(row?.staffCode ?? "").trim();
+  if (code) return `code:${code}`;
+
+  const name = String(row?.staffName ?? "").trim();
+  if (name) return `name:${name.toLowerCase()}`;
+
+  return "unknown";
+}
+
+function groupRowsByStationAndStaff(rows: any[], staffMap: Map<string, string>): PdfStationStaffGroup[] {
+  const groups = new Map<string, PdfStationStaffGroup>();
+
+  for (const row of rows) {
+    const stationId = String(row?.stationId ?? "other");
+    const groupKey = `${stationId}__${pdfStaffGroupKey(row)}`;
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        stationId,
+        staffName: pdfStaffGroupName(row, staffMap),
+        rows: [],
+      });
+    }
+    groups.get(groupKey)!.rows.push(row);
+  }
+
+  return [...groups.values()];
+}
+
 function rowCreatedMs(row: any): number {
   const ts = row?.timestamp ?? row?.createdAt;
   if (typeof ts?.toMillis === "function") return ts.toMillis();
@@ -168,13 +210,6 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
   lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 4.2; });
   doc.setFont(PDF_CYRILLIC_FONT, "normal");
 
-  const groups = new Map<string, any[]>();
-  for (const row of sortedRows) {
-    const sid = row.stationId ?? "other";
-    if (!groups.has(sid)) groups.set(sid, []);
-    groups.get(sid)!.push(row);
-  }
-
   const head = [
     [
       { content: "Vaqt\n1", rowSpan: 2, styles: { halign: "center" as const, valign: "middle" as const } },
@@ -195,18 +230,15 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
   ];
 
   const body: any[] = [];
-  for (const [sid, stRows] of groups) {
+  for (const group of groupRowsByStationAndStaff(sortedRows, staffMap)) {
+    const sid = group.stationId;
+    const stRows = group.rows;
     const nm = ZAPRAVKALAR.find(z => z.id === sid)?.name ?? sid;
+    const headerLabel = group.staffName ? `${nm} - ${group.staffName}` : nm;
     const tot = stRows.reduce((a, r) => a + getAmount(r), 0);
     const hBg: [number,number,number] = [210,220,210];
     const hFg: [number,number,number] = [30,60,30];
     const hp = { top:0.8, bottom:0.8, left:2.2, right:2 };
-
-    // Shu guruh uchun xodim ism familyalarini yig'ish
-    const staffNames = [...new Set(
-      stRows.map((r: any) => staffMap.get(String(r.staffCode ?? "").trim())).filter(Boolean)
-    )];
-    const headerLabel = staffNames.length > 0 ? `${nm}  —  ${staffNames.join(", ")}` : nm;
 
     body.push([
       { content: pdfText(headerLabel), colSpan: 5, styles: { halign:"left" as const, fontStyle:"bold" as const, fontSize:8, fillColor:hBg, textColor:hFg, cellPadding:hp } },
