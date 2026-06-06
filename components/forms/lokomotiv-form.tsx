@@ -13,12 +13,10 @@ import {
   subscribeLokomotivRusumSettings,
   type LokomotivRusumSettings,
 } from "@/lib/firebase/lokomotiv-rusum-service";
-import { subscribeToActiveApprovals } from "@/lib/firebase/approval-service";
 import { getSession } from "@/lib/utils/session";
 import { parsePdfNumber } from "@/lib/utils/pdf-number";
-import { notifyOverLimitEntry } from "@/lib/telegram/bot-service";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
-import { HarakatTuri, Rusumi, Approval, LokomotivSubmission } from "@/lib/types";
+import { HarakatTuri, Rusumi, LokomotivSubmission } from "@/lib/types";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
 import { doc, getDoc } from "firebase/firestore";
@@ -179,7 +177,6 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [approvals, setApprovals] = useState<Approval[]>([]);
   const [rusumSettings, setRusumSettings] = useState<LokomotivRusumSettings>({
     items: [],
     hiddenStaticValues: [],
@@ -233,22 +230,11 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     };
     fetchSettings();
 
-    const unsubscribeApprovals = subscribeToActiveApprovals(stationId, setApprovals);
     const unsubscribeRusumlar = subscribeLokomotivRusumSettings(setRusumSettings);
     return () => {
-      unsubscribeApprovals();
       unsubscribeRusumlar();
     };
   }, [stationId]);
-
-  const hasApproval = useMemo(() => {
-    return approvals.some(a => 
-      a.requestType === 'lokomotiv' && 
-      a.seriya === formData.rusumi && 
-      a.lokomotivNumber === formData.lokomotivNumber &&
-      a.isActive
-    );
-  }, [formData.rusumi, formData.lokomotivNumber, approvals]);
 
   const visibleFields = useMemo(() => {
     if (!formData.harakatTuri) return [];
@@ -466,8 +452,6 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
       return;
     }
 
-    const isOverLimit = (formData.harakatTuri === 'xojalik' || formData.harakatTuri === 'ijara') && !hasApproval;
-
     const submissionData: Omit<LokomotivSubmission, 'id' | 'timestamp' | 'createdAt'> = {
       staffCode: session.code,
       staffName: session.displayName,
@@ -490,7 +474,6 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
       ijarachi: formData.ijarachi || undefined,
       mashinadaYetkazildi: formData.mashinadaYetkazildi,
       mashinaRaqami: formData.mashinaRaqami || undefined,
-      isOverLimit: isOverLimit,
     };
 
     try {
@@ -499,15 +482,6 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
         const submissionId = await addLokomotivSubmission(submissionData);
         console.log("[Lokomotiv] Saqlandi, ID:", submissionId);
 
-        if (isOverLimit) {
-          notifyOverLimitEntry(
-            'lokomotiv',
-            session.displayName,
-            stationId,
-            parsePdfNumber(formData.qanchaBerildi),
-            0
-          );
-        }
       } else {
         console.log("[Lokomotiv] Offline rejim, IndexedDB'ga yozilmoqda");
         await savePendingSubmission(submissionData);
@@ -629,12 +603,6 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
           </h3>
         </div>
         <div className="p-3 sm:p-4">
-          {hasApproval && (
-            <div className="mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl flex items-center gap-3 text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="w-5 h-5 shrink-0" />
-              <span className="text-xs font-black uppercase">Admin tomonidan ruxsat berilgan (Limit yumshoq)</span>
-            </div>
-          )}
           <div className="grid max-w-6xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {HARAKAT_TURI_LIST.map((item) => {
               const active = formData.harakatTuri === item.value;

@@ -14,7 +14,7 @@ import {
   isPresenceTableVisible,
   type PresenceSessionDoc,
 } from "@/lib/firebase/presence-service";
-import { parsePdfNumber } from "@/lib/utils/pdf-number";
+import { formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 
 const PRESENCE_UI_TICK_MS = 5_000;
 import {
@@ -29,10 +29,12 @@ import {
   Pie,
 } from "recharts";
 
-/** To'liq raqamlarni chiqarmasdan kg ni ming ga yaxlitlab ko'rsatish. */
-function formatKgThousands(kg: number): string {
-  const rounded = Math.round(kg / 1000) * 1000;
-  return rounded.toLocaleString("uz-UZ", { maximumFractionDigits: 0 });
+function normalizeKg(kg: number): number {
+  return Math.round(kg * 1000) / 1000;
+}
+
+function formatKgExact(kg: number): string {
+  return formatPdfNumber(kg);
 }
 
 function fuelKg(d: Record<string, unknown>): number {
@@ -212,9 +214,9 @@ export default function AdminDashboard() {
   const onlinePresence = tablePresence.filter((p) => isPresenceOnline(p.lastSeen, presenceNow));
   const onlineWorkers = onlinePresence.filter((p) => p.role === "worker").length;
 
-  const todayR = Math.round(todayKg / 1000) * 1000;
-  const yesterdayR = Math.round(yesterdayKg / 1000) * 1000;
-  const diffR = todayR - yesterdayR;
+  const todayR = normalizeKg(todayKg);
+  const yesterdayR = normalizeKg(yesterdayKg);
+  const diffR = normalizeKg(todayR - yesterdayR);
   const more = diffR >= 0;
   const diffAbs = Math.abs(diffR);
 
@@ -248,10 +250,10 @@ export default function AdminDashboard() {
       : yesterdayR === 0 && todayR > 0
         ? "Kecha sarf qayd etilmagan; bugun sarflanish boshlangan."
         : more
-          ? `Kechagiga nisbatan ${diffAbs.toLocaleString("uz-UZ")} kg (${pctVsYesterday > 0 ? "+" : ""}${pctVsYesterday}%) ko'proq`
+          ? `Kechagiga nisbatan ${formatKgExact(diffAbs)} kg (${pctVsYesterday > 0 ? "+" : ""}${pctVsYesterday}%) ko'proq`
           : diffR === 0
             ? "Kecha bilan bir xil sarf."
-            : `Kechagiga nisbatan ${diffAbs.toLocaleString("uz-UZ")} kg (${pctVsYesterday}%) kam`;
+            : `Kechagiga nisbatan ${formatKgExact(diffAbs)} kg (${pctVsYesterday}%) kam`;
 
   return (
     <AdminLayout hideHeader>
@@ -368,22 +370,25 @@ export default function AdminDashboard() {
                 · barcha zapravkalar
               </span>
             </h2>
-            <p className="mt-1 text-[11px] font-bold text-white/55">
+            <p className="hidden">
               Ming kg ga yaxlitlangan · aylana va ustun diagrammalar
+            </p>
+            <p className="mt-1 text-[11px] font-bold text-white/55">
+              Aniq kg bo'yicha - aylana va ustun diagrammalar
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 px-4 py-4 shadow-xl shadow-blue-950/35 ring-1 ring-white/25 sm:px-5">
                 <p className="text-[10px] font-black uppercase tracking-wider text-blue-50/80">Bugun</p>
                 <p className="mt-1.5 text-3xl font-black leading-none tabular-nums text-white sm:text-4xl">
-                  {formatKgThousands(todayKg)}
+                  {formatKgExact(todayKg)}
                   <span className="ml-1.5 text-base text-blue-50/70 sm:text-xl">kg</span>
                 </p>
               </div>
               <div className="rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-slate-900 px-4 py-4 shadow-xl shadow-violet-950/35 ring-1 ring-white/25 sm:px-5">
                 <p className="text-[10px] font-black uppercase tracking-wider text-violet-50/80">Kecha</p>
                 <p className="mt-1.5 text-3xl font-black leading-none tabular-nums text-white sm:text-4xl">
-                  {formatKgThousands(yesterdayKg)}
+                  {formatKgExact(yesterdayKg)}
                   <span className="ml-1.5 text-base text-violet-50/70 sm:text-xl">kg</span>
                 </p>
               </div>

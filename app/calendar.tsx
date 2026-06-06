@@ -11,6 +11,9 @@ export type RentCalendarProps = {
   onExportPdf: (start: Date | null, end: Date | null) => void | Promise<void>;
   onExportErjuPdf: (start: Date | null, end: Date | null) => void | Promise<void>;
   onExportLokomotivPdf?: (start: Date | null, end: Date | null) => void | Promise<void>;
+  onExportPredpriyatiePdf?: (start: Date | null, end: Date | null) => void | Promise<void>;
+  onExportStroitelstvoPdf?: (start: Date | null, end: Date | null) => void | Promise<void>;
+  onExportRemontPdf?: (start: Date | null, end: Date | null) => void | Promise<void>;
   pdfLabel?: string;
   showErjuPdf?: boolean;
 };
@@ -143,6 +146,9 @@ export default function RentCalendar({
   onExportPdf,
   onExportErjuPdf,
   onExportLokomotivPdf,
+  onExportPredpriyatiePdf,
+  onExportStroitelstvoPdf,
+  onExportRemontPdf,
   pdfLabel = "PDF",
   showErjuPdf = true,
 }: RentCalendarProps) {
@@ -161,7 +167,7 @@ export default function RentCalendar({
   const [rangeEnd,   setRangeEnd]     = useState<Date | null>(null);
   const [hoverDate,  setHoverDate]    = useState<Date | null>(null);
   const [closedDates, setClosedDates] = useState<string[]>([]);
-  const [busy, setBusy]               = useState<"" | "pdf" | "erju" | "lokomotiv">("");
+  const [busy, setBusy]               = useState<"" | "pdf" | "erju" | "lokomotiv" | "predpriyatie" | "stroitelstvo" | "remont">("");
 
   const leftMonthDate  = currentMonthAnchor;
   const rightMonthDate = useMemo(() => addMonths(currentMonthAnchor, 1), [currentMonthAnchor]);
@@ -277,7 +283,7 @@ export default function RentCalendar({
     return Math.round((e - s) / 86400000) + 1;
   };
 
-  const runExport = async (kind: "pdf" | "erju" | "lokomotiv") => {
+  const runExport = async (kind: "pdf" | "erju" | "lokomotiv" | "predpriyatie" | "stroitelstvo" | "remont") => {
     if (!rangeStart) return;
     setBusy(kind);
     try {
@@ -290,6 +296,12 @@ export default function RentCalendar({
       else if (kind === "erju" && showErjuPdf) await Promise.resolve(onExportErjuPdf(s, endNorm));
       else if (kind === "lokomotiv" && onExportLokomotivPdf) {
         await Promise.resolve(onExportLokomotivPdf(s, endNorm));
+      } else if (kind === "predpriyatie" && onExportPredpriyatiePdf) {
+        await Promise.resolve(onExportPredpriyatiePdf(s, endNorm));
+      } else if (kind === "stroitelstvo" && onExportStroitelstvoPdf) {
+        await Promise.resolve(onExportStroitelstvoPdf(s, endNorm));
+      } else if (kind === "remont" && onExportRemontPdf) {
+        await Promise.resolve(onExportRemontPdf(s, endNorm));
       }
       onClose();
     } finally {
@@ -514,27 +526,30 @@ export default function RentCalendar({
               </button>
               <button
                 type="button"
-                onClick={() => undefined}
-                className="px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-pink-600 text-white hover:bg-pink-500 min-w-[104px]"
-                title="Keyin ulanadi"
+                disabled={!rangeStart || !!busy || !onExportPredpriyatiePdf}
+                onClick={() => void runExport("predpriyatie")}
+                className="px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-pink-600 text-white hover:bg-pink-500 disabled:opacity-40 min-w-[104px]"
+                title="Predpriyatie ma'lumotlarini PDF qilish"
               >
                 Предприятие.pdf
               </button>
               <button
                 type="button"
-                onClick={() => undefined}
-                className="px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-cyan-600 text-white hover:bg-cyan-500 min-w-[64px]"
-                title="Keyin ulanadi"
+                disabled={!rangeStart || !!busy || !onExportStroitelstvoPdf}
+                onClick={() => void runExport("stroitelstvo")}
+                className="px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-cyan-600 text-white hover:bg-cyan-500 disabled:opacity-40 min-w-[112px]"
+                title="Stroitelstvo ma'lumotlarini PDF qilish"
               >
-                Ctroitelstva.pdf
+                {busy === "stroitelstvo" ? "..." : "Stroitelstvo PDF"}
               </button>
               <button
                 type="button"
-                onClick={() => undefined}
-                className="px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-amber-600 text-white hover:bg-amber-500 min-w-[64px]"
-                title="Keyin ulanadi"
+                disabled={!rangeStart || !!busy || !onExportRemontPdf}
+                onClick={() => void runExport("remont")}
+                className="px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-amber-600 text-white hover:bg-amber-500 disabled:opacity-40 min-w-[92px]"
+                title="Remont ma'lumotlarini PDF qilish"
               >
-                Remont PDF
+                {busy === "remont" ? "..." : "Remont PDF"}
               </button>
             </div>
             <div className="flex gap-2">

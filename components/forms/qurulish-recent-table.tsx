@@ -220,7 +220,7 @@ export default function QurulishRecentTable({ stationId }: QurulishRecentTablePr
                 const qoldiq = getQoldiq(sub);
                 const fuel = getFuel(sub);
                 return (
-                  <tr key={sub.id} className={sub.isOverLimit ? "text-danger" : ""}>
+                  <tr key={sub.id}>
                     <td className="px-3 py-3 font-bold truncate">{formatTimestamp(sub.timestamp)}</td>
                     <td className="px-3 py-3 font-black truncate">{val((sub as any).seriya ?? (sub as any).korxonaNomi)}</td>
                     <td className="px-3 py-3 font-bold truncate">{val((sub as any).raqami)}</td>
@@ -254,7 +254,7 @@ export default function QurulishRecentTable({ stationId }: QurulishRecentTablePr
             return (
               <div
                 key={sub.id}
-                className={`p-4 rounded-2xl border-2 backdrop-blur-md ${sub.isOverLimit ? "bg-danger/5 border-danger/20 text-danger" : "bg-background/50 border-primary/10"}`}
+                className="p-4 rounded-2xl border-2 backdrop-blur-md bg-background/50 border-primary/10"
               >
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="font-black text-base leading-tight">{val((sub as any).seriya ?? (sub as any).korxonaNomi)}-{val((sub as any).raqami)}</h3>
@@ -267,7 +267,6 @@ export default function QurulishRecentTable({ stationId }: QurulishRecentTablePr
                   <div><p className="text-[9px] font-black uppercase opacity-60">Bak qoldig'i</p><p className="font-bold">{qoldiq ? qoldiq.toLocaleString("uz-UZ") : "-"} kg</p></div>
                   <div><p className="text-[9px] font-black uppercase opacity-60">Berilgan</p><p className="font-bold">{fuel ? fuel.toLocaleString("uz-UZ") : "-"} kg</p></div>
                   <div><p className="text-[9px] font-black uppercase opacity-60">Hisob</p><p className="font-bold">{(qoldiq + fuel).toLocaleString("uz-UZ")} kg</p></div>
-                  {sub.isOverLimit && <div className="col-span-2 font-black text-xs uppercase">Limitdan oshgan: +{sub.oshiqMiqdor} kg</div>}
                 </div>
                 {isToday(sub.timestamp) && (
                   <div className="mt-3 pt-3 border-t border-primary/5 flex justify-end">

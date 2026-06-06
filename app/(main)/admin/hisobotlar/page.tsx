@@ -18,8 +18,14 @@ import { downloadErjuYpdf } from '@/lib/pdf/erju-malumotnoma-html';
 import {
   buildCategoryDetailPdfTitle,
   buildLokomotivDetailPdfTitle,
+  buildLokomotivInputPdfTitle,
+  buildRemontInputPdfTitle,
+  buildStroitelstvoInputPdfTitle,
   exportCategoryDetailPdf,
+  exportLokomotivInputPdf,
   exportLokomotivDetailPdf,
+  exportRemontInputPdf,
+  exportStroitelstvoInputPdf,
 } from '@/lib/pdf/lokomotiv-detail-pdf';
 import type { FuelRecord } from '@/lib/pdf/erju-html-pdf';
 import { db } from '@/lib/firebase/config';
@@ -562,7 +568,7 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
   }
   const sortedDates = [...dateGroups.keys()].sort();
 
-  const head = [["Vaqt", "Korxona nomi", "Poyezd raqami", "Index", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
+  const head = [["Vaqt", "Korxona nomi", "Poyezd raqami", "Index", "Qancha (kg)", "Necha sutkalik", "Mashinada", "Mas'ul"]];
   const body: any[] = [];
   const dateBg: [number,number,number] = [10,40,10];
   const dateFg: [number,number,number] = [255,220,50];
@@ -589,7 +595,7 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
       for (const s of stRows) {
         const { time } = fmtDate(s.timestamp);
         const mashinaStr = s.mashinadaYetkazildi ? (s.mashinaRaqami ? `Ha · ${s.mashinaRaqami}` : 'Ha') : "Yo'q";
-        body.push([time, String(s.korxonaNomi ?? '—'), String(s.poyezdNumber ?? '—'), String(s.ruxsatIndeksi ?? '—'), formatPdfNumber(s.qancha ?? 0), String(s.nechaSutkalik ?? '—'), formatPdfNonZeroNumber(s.limit, '—'), mashinaStr, s.staffName ?? '—']);
+        body.push([time, String(s.korxonaNomi ?? '—'), String(s.poyezdNumber ?? '—'), String(s.ruxsatIndeksi ?? '—'), formatPdfNumber(s.qancha ?? 0), String(s.nechaSutkalik ?? '—'), mashinaStr, s.staffName ?? '—']);
       }
     }
   }
@@ -602,7 +608,7 @@ function exportKorxonaPDF(rows: any[], fileSlug: string, reportTitleLine: string
     columnStyles: {
       0:{cellWidth:20}, 1:{cellWidth:50}, 2:{cellWidth:24}, 3:{cellWidth:24},
       4:{cellWidth:30,halign:'right'as const}, 5:{cellWidth:24},
-      6:{cellWidth:22,halign:'right'as const}, 7:{cellWidth:28}, 8:{cellWidth:40},
+      6:{cellWidth:28}, 7:{cellWidth:40},
     },
   });
   const total = sortedRows.reduce((s,r) => s + parsePdfNumber(r.qancha ?? 0), 0);
@@ -1149,9 +1155,9 @@ export default function HisobotlarPage() {
       }
       const endForTitle = new Date(endDay);
       endForTitle.setHours(0, 0, 0, 0);
-      const titleLine = buildLokomotivDetailPdfTitle(s, endForTitle);
+      const titleLine = buildLokomotivInputPdfTitle(s, endForTitle);
       const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
-      exportLokomotivDetailPdf(rows, {
+      exportLokomotivInputPdf(rows, {
         fileSlug,
         titleLine,
         staffMap,
@@ -1160,6 +1166,106 @@ export default function HisobotlarPage() {
     } catch (err) {
       console.error(err);
       window.alert("L.PDF tayyorlashda xato. Firestore indeksini tekshiring.");
+    } finally {
+      setGlobalPdfLoading(false);
+    }
+  }, [staffMap]);
+
+  /** Taqvimdagi Predpriyatie PDF: tanlangan davr bo'yicha faqat korxona yozuvlari */
+  const exportPredpriyatiePdfForDateRange = useCallback(async (start: Date, endDay: Date) => {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(endDay);
+    e.setHours(23, 59, 59, 999);
+    setGlobalDateRange({ start: s, end: e });
+    setGlobalPdfLoading(true);
+    try {
+      const allRows = await fetchAllSubmissionsInRange(s, e);
+      const rows = allRows.filter((row) => row.category === 'korxona');
+      if (!rows.length) {
+        window.alert("Tanlangan davr uchun predpriyatie ma'lumoti yo'q.");
+        return;
+      }
+      const endForTitle = new Date(endDay);
+      endForTitle.setHours(0, 0, 0, 0);
+      const titleLine = buildCategoryDetailPdfTitle('korxona', s, endForTitle);
+      const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
+      exportCategoryDetailPdf(rows, {
+        category: 'korxona',
+        fileSlug,
+        titleLine,
+        staffMap,
+        showDateGroups: true,
+      });
+    } catch (err) {
+      console.error(err);
+      window.alert("Predpriyatie PDF tayyorlashda xato. Firestore indeksini tekshiring.");
+    } finally {
+      setGlobalPdfLoading(false);
+    }
+  }, [staffMap]);
+
+  /** Taqvimdagi Stroitelstvo PDF: tanlangan davr bo'yicha faqat qurilish yozuvlari */
+  const exportStroitelstvoPdfForDateRange = useCallback(async (start: Date, endDay: Date) => {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(endDay);
+    e.setHours(23, 59, 59, 999);
+    setGlobalDateRange({ start: s, end: e });
+    setGlobalPdfLoading(true);
+    try {
+      const allRows = await fetchAllSubmissionsInRange(s, e);
+      const rows = allRows.filter((row) => row.category === 'qurulish');
+      if (!rows.length) {
+        window.alert("Tanlangan davr uchun stroitelstvo ma'lumoti yo'q.");
+        return;
+      }
+      const endForTitle = new Date(endDay);
+      endForTitle.setHours(0, 0, 0, 0);
+      const titleLine = buildStroitelstvoInputPdfTitle(s, endForTitle);
+      const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
+      exportStroitelstvoInputPdf(rows, {
+        fileSlug,
+        titleLine,
+        staffMap,
+        showDateGroups: true,
+      });
+    } catch (err) {
+      console.error(err);
+      window.alert("Stroitelstvo PDF tayyorlashda xato. Firestore indeksini tekshiring.");
+    } finally {
+      setGlobalPdfLoading(false);
+    }
+  }, [staffMap]);
+
+  /** Taqvimdagi Remont PDF: tanlangan davr bo'yicha faqat ta'mirlash yozuvlari */
+  const exportRemontPdfForDateRange = useCallback(async (start: Date, endDay: Date) => {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(endDay);
+    e.setHours(23, 59, 59, 999);
+    setGlobalDateRange({ start: s, end: e });
+    setGlobalPdfLoading(true);
+    try {
+      const allRows = await fetchAllSubmissionsInRange(s, e);
+      const rows = allRows.filter((row) => row.category === 'tamirlash');
+      if (!rows.length) {
+        window.alert("Tanlangan davr uchun remont ma'lumoti yo'q.");
+        return;
+      }
+      const endForTitle = new Date(endDay);
+      endForTitle.setHours(0, 0, 0, 0);
+      const titleLine = buildRemontInputPdfTitle(s, endForTitle);
+      const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
+      exportRemontInputPdf(rows, {
+        fileSlug,
+        titleLine,
+        staffMap,
+        showDateGroups: true,
+      });
+    } catch (err) {
+      console.error(err);
+      window.alert("Remont PDF tayyorlashda xato. Firestore indeksini tekshiring.");
     } finally {
       setGlobalPdfLoading(false);
     }
@@ -1415,7 +1521,7 @@ export default function HisobotlarPage() {
                             {qoldiq > 0 ? <span className="text-amber-200 font-black text-[11px] sm:text-sm tabular-nums leading-tight break-all drop-shadow-[0_0_8px_rgba(251,191,36,0.25)]">{qoldiq.toLocaleString('uz-UZ')}</span> : <span className="text-gray-600 text-[10px]">—</span>}
                           </td>
                           <td className={`px-1.5 sm:px-2 py-2 align-top text-right border-solid ${hisobotlarDividerLeftClass(13, 'body')}`}>
-                            <span className={`font-black text-[11px] sm:text-sm tabular-nums leading-tight break-all ${s.isOverLimit ? 'text-red-400' : 'text-lime-300'}`}>{amount.toLocaleString('uz-UZ')}</span>
+                            <span className="font-black text-[11px] sm:text-sm tabular-nums leading-tight break-all text-lime-300">{amount.toLocaleString('uz-UZ')}</span>
                           </td>
                           <td className={`px-1.5 sm:px-2 py-2 align-top text-right border-solid ${hisobotlarDividerLeftClass(14, 'body')}`}>
                             <span className="text-cyan-200 font-black text-[11px] sm:text-sm tabular-nums leading-tight break-all [text-shadow:0_0_10px_rgba(34,211,238,0.28)]">{hisob.toLocaleString('uz-UZ')}</span>
@@ -1491,7 +1597,7 @@ export default function HisobotlarPage() {
                           <td className="px-2 py-2 align-top"><span className="text-gray-300 text-[10px] font-bold break-words">{s.poyezdNumber ?? '—'}</span></td>
                           <td className="px-2 py-2 align-top"><span className="text-purple-300 text-[10px] font-bold break-words">{s.ruxsatIndeksi ?? '—'}</span></td>
                           <td className="px-2 py-2 align-top text-right">
-                            <span className={`font-black text-sm tabular-nums ${s.isOverLimit ? 'text-red-400' : 'text-lime-300'}`}>{parsePdfNumber(s.qancha ?? 0).toLocaleString('uz-UZ')}</span>
+                            <span className="font-black text-sm tabular-nums text-lime-300">{parsePdfNumber(s.qancha ?? 0).toLocaleString('uz-UZ')}</span>
                           </td>
                           <td className="px-2 py-2 align-top"><span className="text-gray-300 text-[10px] font-bold">{s.nechaSutkalik ?? '—'}</span></td>
                           <td className="px-2 py-2 align-top">
@@ -1583,7 +1689,7 @@ export default function HisobotlarPage() {
                             {qoldiq > 0 ? <span className="text-amber-200 font-black text-sm tabular-nums">{qoldiq.toLocaleString('uz-UZ')}</span> : <span className="text-gray-600 text-[10px]">—</span>}
                           </td>
                           <td className="px-2 py-2 align-top text-right">
-                            <span className={`font-black text-sm tabular-nums ${s.isOverLimit ? 'text-red-400' : 'text-lime-300'}`}>{amount ? amount.toLocaleString('uz-UZ') : '—'}</span>
+                            <span className="font-black text-sm tabular-nums text-lime-300">{amount ? amount.toLocaleString('uz-UZ') : '—'}</span>
                           </td>
                           <td className="px-2 py-2 align-top text-right"><span className="text-cyan-200 font-black text-sm tabular-nums">{hisob.toLocaleString('uz-UZ')}</span></td>
                           <td className="overflow-visible px-1 py-2 align-top">
@@ -1741,6 +1847,18 @@ export default function HisobotlarPage() {
         onExportLokomotivPdf={async (start, endDay) => {
           if (!start || !endDay) return;
           await exportLokomotivPdfForDateRange(start, endDay);
+        }}
+        onExportPredpriyatiePdf={async (start, endDay) => {
+          if (!start || !endDay) return;
+          await exportPredpriyatiePdfForDateRange(start, endDay);
+        }}
+        onExportStroitelstvoPdf={async (start, endDay) => {
+          if (!start || !endDay) return;
+          await exportStroitelstvoPdfForDateRange(start, endDay);
+        }}
+        onExportRemontPdf={async (start, endDay) => {
+          if (!start || !endDay) return;
+          await exportRemontPdfForDateRange(start, endDay);
         }}
         onExportErjuPdf={async (start, endDay) => {
           if (!start || !endDay) return;

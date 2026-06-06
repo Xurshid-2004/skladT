@@ -5,8 +5,6 @@ import { getSession } from '@/lib/utils/session';
 import { subscribeToQuestions } from '@/lib/firebase/questions-service'; 
 import { FormQuestion } from '@/lib/types'; 
 import { addLokomotivSubmission } from '@/lib/firebase/lokomotiv-service'; 
-import { subscribeToActiveApprovals } from '@/lib/firebase/approval-service'; 
-import { notifyOverLimitEntry } from '@/lib/telegram/bot-service'; 
 import { Loader2, CheckCircle2, AlertCircle, Save, X } from 'lucide-react'; 
  
 interface DynamicFormProps { 
@@ -20,7 +18,6 @@ export default function DynamicForm({ category, stationId, onSuccess }: DynamicF
   const [loading, setLoading] = useState(true); 
   const [saving, setSaving] = useState(false); 
   const [formData, setFormData] = useState<Record<string, any>>({}); 
-  const [approvals, setApprovals] = useState<any[]>([]); 
   const [session, setSession] = useState<any>(null); 
   const [success, setSuccess] = useState(false); 
  
@@ -30,11 +27,9 @@ export default function DynamicForm({ category, stationId, onSuccess }: DynamicF
       setQuestions(data.filter(q => q.isVisible)); 
       setLoading(false); 
     }); 
-    const unsubscribeApprovals = subscribeToActiveApprovals(stationId, setApprovals); 
  
     return () => { 
       unsubscribeQuestions(); 
-      unsubscribeApprovals(); 
     }; 
   }, [category, stationId]); 
  
@@ -48,10 +43,6 @@ export default function DynamicForm({ category, stationId, onSuccess }: DynamicF
  
     setSaving(true); 
     try { 
-      // This is a generic submission logic, we will adapt based on category 
-      // For now, let's keep the existing specific logic but with dynamic fields 
-      const isOverLimit = false; // Logic will be more complex with dynamic fields 
-       
       await addLokomotivSubmission({ 
         staffCode: session.code, 
         staffName: session.displayName, 
@@ -60,12 +51,7 @@ export default function DynamicForm({ category, stationId, onSuccess }: DynamicF
         category: category, 
         timestamp: Date.now(), 
         data: formData, // Store dynamic fields in a data object 
-        isOverLimit 
       } as any); 
- 
-      if (isOverLimit) { 
-        notifyOverLimitEntry(category, session.displayName, stationId, 0, 0); 
-      } 
  
       setSuccess(true); 
       if (onSuccess) onSuccess(); 

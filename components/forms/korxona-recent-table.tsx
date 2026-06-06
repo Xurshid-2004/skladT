@@ -9,7 +9,7 @@ import { History, Loader2, Pencil, Download } from "lucide-react";
 import { Submission } from "@/lib/types";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
 import { buildCategoryDetailPdfTitle, exportCategoryDetailPdf } from "@/lib/pdf/lokomotiv-detail-pdf";
-import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
+import { formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -50,7 +50,6 @@ function exportKorxonaPdf(rows: KorxonaSubmission[]) {
     "Index",
     "Qancha (kg)",
     "Necha sutkalik",
-    "Limit (kg)",
     "Mashinada",
     "Mas'ul",
   ]];
@@ -66,7 +65,6 @@ function exportKorxonaPdf(rows: KorxonaSubmission[]) {
       sub.ruxsatIndeksi ?? "—",
       formatPdfNumber(sub.qancha),
       String(sub.nechaSutkalik),
-      formatPdfNonZeroNumber(sub.limit, "—"),
       mashinaStr,
       sub.staffName ?? "—",
     ];
@@ -87,9 +85,8 @@ function exportKorxonaPdf(rows: KorxonaSubmission[]) {
       3: { cellWidth: 24 },
       4: { cellWidth: 30, halign: "right" as const },
       5: { cellWidth: 24 },
-      6: { cellWidth: 22, halign: "right" as const },
-      7: { cellWidth: 28 },
-      8: { cellWidth: 40 },
+      6: { cellWidth: 28 },
+      7: { cellWidth: 40 },
     },
   });
 
@@ -194,7 +191,7 @@ export default function KorxonaRecentTable({ stationId }: KorxonaRecentTableProp
             </thead>
             <tbody className="divide-y divide-primary/5">
               {todaySubmissions.map((sub) => (
-                <tr key={sub.id} className={sub.isOverLimit ? "text-danger" : ""}>
+                <tr key={sub.id}>
                   <td className="px-4 py-3 font-bold text-sm truncate">{formatTimestamp(sub.timestamp)}</td>
                   <td className="px-4 py-3 font-black truncate">{sub.korxonaNomi}</td>
                   <td className="px-4 py-3 font-bold truncate">{sub.poyezdNumber ?? "—"}</td>
@@ -227,7 +224,7 @@ export default function KorxonaRecentTable({ stationId }: KorxonaRecentTableProp
           {todaySubmissions.map((sub) => (
             <div
               key={sub.id}
-              className={`p-4 rounded-2xl border-2 backdrop-blur-md ${sub.isOverLimit ? "bg-danger/5 border-danger/20 text-danger" : "bg-background/50 border-primary/10"}`}
+              className="p-4 rounded-2xl border-2 backdrop-blur-md bg-background/50 border-primary/10"
             >
               <div className="flex justify-between items-start mb-3">
                 <h3 className="font-black text-base">{sub.korxonaNomi}</h3>

@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { subscribeToLimits, checkKorxonaLimit, LimitsSettings } from "@/lib/firebase/limits-service";
+import { useState, useMemo } from "react";
 import { addSubmission } from "@/lib/firebase/submissions-service";
 import { appendFuelRecordForErjuJu } from "@/lib/firebase/fuel-record-writer";
-import { subscribeToActiveApprovals } from "@/lib/firebase/approval-service";
 import { getSession } from "@/lib/utils/session";
-import { notifyOverLimitEntry } from "@/lib/telegram/bot-service";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { Approval } from "@/lib/types";
 
 interface KorxonaFormProps {
   stationId: string;
@@ -29,54 +25,17 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [limits, setLimits] = useState<LimitsSettings | null>(null);
-  const [approvals, setApprovals] = useState<Approval[]>([]);
 
   const [formData, setFormData] = useState({
     poyezdNumber: "",
     ruxsatIndeksi: "",
     qancha: "",
     nechaSutkalik: "1",
-    buyruqNumber: "",
-    kimTomonidan: "",
-    buyruqVaqti: "",
     mashinadaYetkazildi: false,
     mashinaRaqami: "",
   });
 
   const qanchaAmount = useMemo(() => parseDecimalInput(formData.qancha), [formData.qancha]);
-  const qanchaForLimit = Number.isFinite(qanchaAmount) ? qanchaAmount : 0;
-
-  useEffect(() => {
-    const unsubscribeLimits = subscribeToLimits(setLimits);
-    const unsubscribeApprovals = subscribeToActiveApprovals(stationId, setApprovals);
-    return () => {
-      unsubscribeLimits();
-      unsubscribeApprovals();
-    };
-  }, [stationId]);
-
-  const limitInfo = useMemo(() => {
-    const info = checkKorxonaLimit(
-      KORXONA_DEFAULT_NOMI,
-      qanchaForLimit,
-      Number(formData.nechaSutkalik),
-      limits
-    );
-
-    // Check for existing approval
-    const hasApproval = approvals.some(a => 
-      a.requestType === 'korxona' && 
-      a.korxonaNomi === KORXONA_DEFAULT_NOMI &&
-      a.isActive
-    );
-
-    if (hasApproval) {
-      return { ...info, isOverLimit: false }; // Override limit if approved
-    }
-
-    return info;
-  }, [qanchaForLimit, formData.nechaSutkalik, limits, approvals]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -84,12 +43,9 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
 
   const isSaveDisabled = useMemo(() => {
     if (!formData.qancha || !Number.isFinite(qanchaAmount) || !formData.nechaSutkalik) return true;
-    if (limitInfo.isOverLimit) {
-      if (!formData.buyruqNumber || !formData.kimTomonidan || !formData.buyruqVaqti) return true;
-    }
     if (formData.mashinadaYetkazildi && !formData.mashinaRaqami) return true;
     return false;
-  }, [formData, qanchaAmount, limitInfo.isOverLimit]);
+  }, [formData, qanchaAmount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,14 +77,8 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
         ruxsatIndeksi: formData.ruxsatIndeksi.trim() || undefined,
         qancha: qanchaAmount,
         nechaSutkalik: Number(formData.nechaSutkalik),
-        buyruqNumber: limitInfo.isOverLimit ? formData.buyruqNumber : undefined,
-        kimTomonidan: limitInfo.isOverLimit ? formData.kimTomonidan : undefined,
-        buyruqVaqti: limitInfo.isOverLimit ? new Date(formData.buyruqVaqti).getTime() : undefined,
         mashinadaYetkazildi: formData.mashinadaYetkazildi,
         mashinaRaqami: formData.mashinaRaqami || undefined,
-        limit: limitInfo.limit,
-        isOverLimit: limitInfo.isOverLimit,
-        oshiqMiqdor: limitInfo.oshiqMiqdor,
       };
 
       if (navigator.onLine) {
@@ -146,15 +96,6 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
           console.warn("fuelRecords (korxona) yozilmadi:", fe);
         }
 
-        if (limitInfo.isOverLimit) {
-          notifyOverLimitEntry(
-            'korxona',
-            session.displayName,
-            stationId,
-            qanchaAmount,
-            limitInfo.limit || 0
-          );
-        }
       } else {
         await savePendingSubmission(submissionData);
       }
@@ -199,9 +140,6 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
       ruxsatIndeksi: "",
       qancha: "",
       nechaSutkalik: "1",
-      buyruqNumber: "",
-      kimTomonidan: "",
-      buyruqVaqti: "",
       mashinadaYetkazildi: false,
       mashinaRaqami: "",
     });
@@ -210,19 +148,15 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
 
   return (
     <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-2.5">
-      <div className={`p-3.5 sm:p-4 rounded-[22px] border-2 transition-all duration-500 shadow-lg backdrop-blur-md ${
-        limitInfo.isOverLimit ? "bg-danger/10 border-danger/30" : "bg-background/70 border-primary/15"
-      }`}>
-        <h2 className={`text-base sm:text-lg font-black mb-3 uppercase tracking-tight ${
-          limitInfo.isOverLimit ? "text-danger" : "text-primary"
-        }`}>
+      <div className="p-3.5 sm:p-4 rounded-[22px] border-2 transition-all duration-500 shadow-lg backdrop-blur-md bg-background/70 border-primary/15">
+        <h2 className="text-base sm:text-lg font-black mb-3 uppercase tracking-tight text-primary">
           Korxona uchun yoqilg'i berish
         </h2>
 
         <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:grid-cols-[minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(8rem,0.7fr)_minmax(8rem,0.65fr)_minmax(12rem,1fr)]">
           {/* Poyezd raqami */}
           <div className="space-y-1">
-            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+            <label className="text-xs font-black uppercase tracking-widest text-primary">
               1. Poyezd raqami
             </label>
             <input
@@ -237,7 +171,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
 
           {/* Index */}
           <div className="space-y-1">
-            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+            <label className="text-xs font-black uppercase tracking-widest text-primary">
               2. Index
             </label>
             <input
@@ -252,7 +186,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
 
           {/* Qancha */}
           <div className="space-y-1">
-            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+            <label className="text-xs font-black uppercase tracking-widest text-primary">
               3. Qancha (kg)
             </label>
             <input
@@ -269,7 +203,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
 
           {/* Necha Sutkalik */}
           <div className="space-y-1">
-            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+            <label className="text-xs font-black uppercase tracking-widest text-primary">
               4. Necha Sutkalik
             </label>
             <input
@@ -287,56 +221,42 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
             />
           </div>
 
-          {/* Limit Info */}
-          <div className="flex min-h-10 items-end gap-2 md:col-span-2 lg:col-span-1">
-            <div className={`w-full h-10 px-3 rounded-lg flex items-center font-black text-xs ${
-              limitInfo.isOverLimit ? "bg-danger text-white" : "bg-primary/10 text-primary"
-            }`}>
-              Limit: {limitInfo.limit} kg/sutka
-            </div>
-            {limitInfo.isOverLimit && (
-              <div className="text-danger font-black animate-pulse">
-                Limitdan oshgan: +{limitInfo.oshiqMiqdor} kg
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Over Limit Fields */}
-        {limitInfo.isOverLimit && (
+        {/* Legacy disabled fields */}
+        {false && (
           <div className="mt-3 pt-3 border-t border-danger/20 grid grid-cols-1 md:grid-cols-3 gap-2.5 animate-in slide-in-from-top-4 duration-500">
             <div className="space-y-1">
               <label className="text-xs font-black text-danger uppercase tracking-widest">Buyruq №</label>
               <input
                 type="text"
-                value={formData.buyruqNumber}
-                onChange={(e) => handleInputChange("buyruqNumber", e.target.value)}
+                value=""
+                readOnly
                 onKeyDown={handleKeyDown}
                 className="w-full h-10 px-3 bg-background border-2 border-danger/20 rounded-lg focus:outline-none focus:border-danger font-black text-sm sm:text-base text-foreground"
-                placeholder="Buyruq raqami"
+                placeholder=""
               />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-black text-danger uppercase tracking-widest">Kim Tomonidan</label>
               <input
                 type="text"
-                list="buyruqEgalari"
-                value={formData.kimTomonidan}
-                onChange={(e) => handleInputChange("kimTomonidan", e.target.value)}
+                list="legacyList"
+                value=""
+                readOnly
                 onKeyDown={handleKeyDown}
                 className="w-full h-10 px-3 bg-background border-2 border-danger/20 rounded-lg focus:outline-none focus:border-danger font-black text-sm sm:text-base text-foreground"
-                placeholder="Ism sharif"
+                placeholder=""
               />
-              <datalist id="buyruqEgalari">
-                {(limits?.buyruqEgalariList?.[stationId] || limits?.buyruqEgalariList?.default || []).map(b => <option key={b} value={b} />)}
+              <datalist id="legacyList">
               </datalist>
             </div>
             <div className="space-y-1">
               <label className="text-xs font-black text-danger uppercase tracking-widest">Vaqti</label>
               <input
                 type="datetime-local"
-                value={formData.buyruqVaqti}
-                onChange={(e) => handleInputChange("buyruqVaqti", e.target.value)}
+                value=""
+                readOnly
                 onKeyDown={handleKeyDown}
                 className="w-full h-10 px-3 bg-background border-2 border-danger/20 rounded-lg focus:outline-none focus:border-danger font-black text-sm sm:text-base text-foreground"
               />
@@ -347,7 +267,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
         {/* Mashina */}
         <div className="mt-3 grid gap-2.5 lg:grid-cols-[minmax(14rem,0.75fr)_minmax(12rem,0.65fr)_minmax(16rem,0.9fr)] lg:items-end">
           <div className="space-y-2">
-            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+            <label className="text-xs font-black uppercase tracking-widest text-primary">
               Mashinada yetkazildimi?
             </label>
             <div className="flex gap-2">
@@ -375,7 +295,6 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
             {formData.mashinadaYetkazildi ? (
               <input
                 type="text"
-                list="mashinaRaqamlari"
                 value={formData.mashinaRaqami}
                 onChange={(e) => handleInputChange("mashinaRaqami", e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -385,9 +304,6 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
             ) : (
               <div className="hidden lg:block h-10" />
             )}
-            <datalist id="mashinaRaqamlari">
-              {(limits?.mashinaRaqamlari?.[stationId] || limits?.mashinaRaqamlari?.default || []).map(m => <option key={m} value={m} />)}
-            </datalist>
           </div>
 
           <div className="flex gap-2">

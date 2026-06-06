@@ -16,6 +16,4 @@ export const REPORT_TITLES = {
   period: 'Oraliq hisobot', 
   over_limit: 'Limitdan oshganlar ro\'yxati', 
   qurulish: 'Qurulish bo\'limi hisoboti', 
-  lokomotiv_appr: 'Lokomotiv ruxsatnomalari', 
-  korxona_appr: 'Korxona ruxsatnomalari', 
 }; 

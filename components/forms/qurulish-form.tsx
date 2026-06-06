@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { subscribeToLimits, checkQurulishLimit, LimitsSettings } from "@/lib/firebase/limits-service";
+import { useState, useMemo } from "react";
 import { addSubmission } from "@/lib/firebase/submissions-service";
 import { appendFuelRecordForErjuJu } from "@/lib/firebase/fuel-record-writer";
 import { getSession } from "@/lib/utils/session";
 import { parsePdfNumber } from "@/lib/utils/pdf-number";
-import { notifyOverLimitEntry } from "@/lib/telegram/bot-service";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
 import { Loader2 } from "lucide-react";
 
@@ -19,7 +17,6 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [limits, setLimits] = useState<LimitsSettings | null>(null);
 
   const [formData, setFormData] = useState({
     seriya: "",
@@ -30,15 +27,6 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
     poyezdVazni: "",
     qanchaBerildi: "",
   });
-
-  useEffect(() => {
-    const unsubscribeLimits = subscribeToLimits(setLimits);
-    return () => unsubscribeLimits();
-  }, []);
-
-  const limitInfo = useMemo(() => {
-    return checkQurulishLimit("", parsePdfNumber(formData.qanchaBerildi), limits);
-  }, [formData.qanchaBerildi, limits]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -77,9 +65,6 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
         qanchaBerildi,
         qanchaOlindi: qanchaBerildi,
         mashinadaYetkazildi: false,
-        limit: limitInfo.limit,
-        isOverLimit: limitInfo.isOverLimit,
-        oshiqMiqdor: limitInfo.oshiqMiqdor,
       };
 
       if (navigator.onLine) {
@@ -100,15 +85,6 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
           console.warn("fuelRecords (qurulish) yozilmadi:", fe);
         }
 
-        if (limitInfo.isOverLimit) {
-          notifyOverLimitEntry(
-            "qurulish",
-            session.displayName,
-            stationId,
-            qanchaBerildi,
-            limitInfo.limit || 0
-          );
-        }
       } else {
         await savePendingSubmission(submissionData);
       }
@@ -164,12 +140,8 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
 
   return (
     <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-2.5">
-      <div className={`p-3.5 sm:p-4 rounded-[22px] border-2 transition-all duration-500 shadow-lg backdrop-blur-md ${
-        limitInfo.isOverLimit ? "bg-danger/10 border-danger/30" : "bg-gradient-to-br from-sky-50 via-white to-emerald-50 border-sky-200/70"
-      }`}>
-        <h2 className={`text-base sm:text-lg font-black mb-3 uppercase tracking-tight ${
-          limitInfo.isOverLimit ? "text-danger" : "text-primary"
-        }`}>
+      <div className="p-3.5 sm:p-4 rounded-[22px] border-2 transition-all duration-500 shadow-lg backdrop-blur-md bg-gradient-to-br from-sky-50 via-white to-emerald-50 border-sky-200/70">
+        <h2 className="text-base sm:text-lg font-black mb-3 uppercase tracking-tight text-primary">
           Qurilish ishlari uchun yoqilg'i
         </h2>
 
@@ -236,7 +208,7 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
           </div>
 
           <div className="space-y-1">
-            <label className={`text-xs font-black uppercase tracking-widest ${limitInfo.isOverLimit ? "text-danger" : "text-primary"}`}>
+            <label className="text-xs font-black uppercase tracking-widest text-primary">
               6. Berilgan yoqilg'i (kg)
             </label>
             <input
@@ -263,18 +235,6 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
             />
           </div>
 
-          <div className="flex min-h-10 items-end gap-2">
-            <div className={`w-full h-10 px-3 rounded-lg flex items-center font-black text-xs ${
-              limitInfo.isOverLimit ? "bg-danger text-white" : "bg-primary/10 text-primary"
-            }`}>
-              Limit: {limitInfo.limit} kg
-            </div>
-            {limitInfo.isOverLimit && (
-              <div className="text-danger font-black animate-pulse">
-                +{limitInfo.oshiqMiqdor} kg oshiq
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">

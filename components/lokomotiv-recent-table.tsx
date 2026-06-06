@@ -309,7 +309,7 @@ function exportKorxonaCatPdf(rows: any[]) {
   let y = 10;
   lines.forEach((ln: string) => { doc.text(ln, W / 2, y, { align: "center" }); y += 5; });
 
-  const head = [["Vaqt", "Korxona nomi", "Poyezd raqami", "Index", "Qancha (kg)", "Necha sutkalik", "Limit (kg)", "Mashinada", "Mas'ul"]];
+  const head = [["Vaqt", "Korxona nomi", "Poyezd raqami", "Index", "Qancha (kg)", "Necha sutkalik", "Mashinada", "Mas'ul"]];
 
   const body = sortedRows.map((sub) => {
     const mashinaStr = sub.mashinadaYetkazildi
@@ -322,7 +322,6 @@ function exportKorxonaCatPdf(rows: any[]) {
       sub.ruxsatIndeksi ?? "—",
       formatPdfNumber(sub.qancha ?? 0),
       String(sub.nechaSutkalik ?? "—"),
-      formatPdfNonZeroNumber(sub.limit, "—"),
       mashinaStr,
       sub.staffName ?? "—",
     ];
@@ -336,7 +335,7 @@ function exportKorxonaCatPdf(rows: any[]) {
     columnStyles: {
       0: { cellWidth: 20 }, 1: { cellWidth: 50 }, 2: { cellWidth: 24 }, 3: { cellWidth: 24 },
       4: { cellWidth: 30, halign: "right" as const }, 5: { cellWidth: 24 },
-      6: { cellWidth: 22, halign: "right" as const }, 7: { cellWidth: 28 }, 8: { cellWidth: 40 },
+      6: { cellWidth: 28 }, 7: { cellWidth: 40 },
     },
   });
 
@@ -713,17 +712,16 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                   <col style={{ width: "5%" }} />
                   <col style={{ width: "20%" }} />
                   <col style={{ width: "8%" }} />
-                  <col style={{ width: "8%" }} />
                   <col style={{ width: "9%" }} />
                   <col style={{ width: "7%" }} />
                   <col style={{ width: "8%" }} />
                   <col style={{ width: "10%" }} />
-                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "26%" }} />
                   <col style={{ width: "4%" }} />
                 </colgroup>
                 <thead>
                   <tr style={{ background: "#eab308" }}>
-                    {["№","VAQT","KORXONA NOMI","P.RAQ","INDEX","QANCHA","SUTKA","LIMIT","MASHINA","MAS'UL","AMAL"].map((lbl, i) => (
+                    {["№","VAQT","KORXONA NOMI","P.RAQ","INDEX","QANCHA","SUTKA","MASHINA","MAS'UL","AMAL"].map((lbl, i) => (
                       <th key={lbl}
                         className="px-1.5 py-2 text-[8px] sm:text-[9px] font-black uppercase tracking-tight leading-tight select-none overflow-hidden"
                         style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
@@ -751,21 +749,20 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                         {td(<span className="text-cyan-400 font-black text-[10px] block truncate">{s.korxonaNomi ?? "—"}</span>,"left",2)}
                         {td(<span className="text-gray-300 font-bold text-[10px] block truncate">{s.poyezdNumber ?? "—"}</span>,"left",3)}
                         {td(<span className="text-purple-300 font-bold text-[10px] block truncate">{s.ruxsatIndeksi ?? "—"}</span>,"left",4)}
-                        {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,"right",5)}
+                        {td(<span className="font-black text-[11px] tabular-nums text-lime-300">{amount.toLocaleString("uz-UZ")}</span>,"right",5)}
                         {td(<span className="text-gray-300 font-bold text-[10px]">{s.nechaSutkalik ?? "—"}</span>,"center",6)}
-                        {td(<span className="text-amber-200 font-bold text-[10px] tabular-nums">{s.limit ? String(s.limit) : "—"}</span>,"right",7)}
-                        {td(renderMashinaCell(s), "center", 8)}
+                        {td(renderMashinaCell(s), "center", 7)}
                         {td(
                           <span className="text-emerald-300 font-black text-[10px] block truncate">
                             {staffMap.get(String(s.staffCode ?? "").trim()) ?? s.staffName ?? "—"}
-                          </span>,"left",9
+                          </span>,"left",8
                         )}
                         {td(
                           <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
                             className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
                             style={{ background:"rgba(99,102,241,0.12)" }} aria-label="Tahrirlash">
                             <Pencil className="w-3.5 h-3.5 text-primary" />
-                          </button>,"center",10
+                          </button>,"center",9
                         )}
                       </tr>
                     );
@@ -788,12 +785,11 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                   <col style={{ width: "10%" }} />
                   <col style={{ width: "10%" }} />
                   <col style={{ width: "10%" }} />
-                  <col style={{ width: "9%" }} />
                   <col style={{ width: "4%" }} />
                 </colgroup>
                 <thead>
                   <tr style={{ background: "#eab308" }}>
-                    {["№","VAQT","SERIYA","RAQAMI","P.RAQ","INDEX","P.VAZNI","QOLDIQ","YOQILG'I","HISOB","HOLAT","AMAL"].map((lbl, i) => (
+                    {["№","VAQT","SERIYA","RAQAMI","P.RAQ","INDEX","P.VAZNI","QOLDIQ","YOQILG'I","HISOB","AMAL"].map((lbl, i) => (
                       <th key={lbl}
                         className="px-1.5 py-2 text-[8px] font-black uppercase tracking-tight leading-tight select-none whitespace-nowrap"
                         style={{ color:"#b91c1c", borderLeft: i>0?"1px solid rgba(255,255,255,0.35)":undefined }}>
@@ -831,20 +827,14 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                         {td(<span className="text-purple-300 font-bold text-[10px] block truncate">{cellVal(s.ruxsatIndeksi)}</span>,"left",5)}
                         {td(<span className="text-gray-300 font-bold text-[10px] tabular-nums">{cellVal(s.poyezdVazni)}</span>,"right",6)}
                         {td(<span className="text-amber-200 font-black text-[10px] tabular-nums">{qoldiq ? qoldiq.toLocaleString("uz-UZ") : "—"}</span>,"right",7)}
-                        {td(<span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount ? amount.toLocaleString("uz-UZ") : "—"}</span>,"right",8)}
+                        {td(<span className="font-black text-[11px] tabular-nums text-lime-300">{amount ? amount.toLocaleString("uz-UZ") : "—"}</span>,"right",8)}
                         {td(<span className="text-cyan-200 font-black text-[11px] tabular-nums">{hisob.toLocaleString("uz-UZ")}</span>,"right",9)}
-                        {td(
-                          s.isOverLimit
-                            ? <span className="text-red-400 font-black text-[9px] uppercase">+{s.oshiqMiqdor ?? 0} kg</span>
-                            : <span className="text-emerald-400 font-black text-[9px] uppercase">Norma</span>,
-                          "left",10
-                        )}
                         {td(
                           <button type="button" onClick={() => { setEditSub(sub); setEditOpen(true); }}
                             className="w-7 h-7 grid place-items-center rounded-lg transition-colors"
                             style={{ background:"rgba(99,102,241,0.12)" }} aria-label="Tahrirlash">
                             <Pencil className="w-3.5 h-3.5 text-primary" />
-                          </button>,"center",11
+                          </button>,"center",10
                         )}
                       </tr>
                     );
@@ -1012,7 +1002,7 @@ export default function LokomotivRecentTable({ stationId }: LokomotivRecentTable
                           "right",11
                         )}
                         {td(
-                          <span className={`font-black text-[11px] tabular-nums ${s.isOverLimit?"text-red-400":"text-lime-300"}`}>{amount.toLocaleString("uz-UZ")}</span>,
+                          <span className="font-black text-[11px] tabular-nums text-lime-300">{amount.toLocaleString("uz-UZ")}</span>,
                           "right",12
                         )}
                         {td(

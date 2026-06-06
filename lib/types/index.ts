@@ -114,16 +114,16 @@ export interface KorxonaSubmission {
   ruxsatIndeksi?: string;
   qancha: number;              // kg 
   nechaSutkalik: number;       // necha kun 
-  buyruqNumber?: string;       // limitdan oshsa majburiy 
-  kimTomonidan?: string;       // limitdan oshsa majburiy 
-  buyruqVaqti?: number;        // timestamp - buyruq olingan vaqt 
+  buyruqNumber?: string;       // eski yozuvlar uchun ixtiyoriy
+  kimTomonidan?: string;       // eski yozuvlar uchun ixtiyoriy
+  buyruqVaqti?: number;        // eski yozuvlar uchun ixtiyoriy
   mashinadaYetkazildi: boolean; 
   mashinaRaqami?: string; 
   
-  // Limit ma'lumotlari (saqlash paytida) 
-  limit?: number;              // o'sha vaqtdagi limit 
-  isOverLimit: boolean; 
-  oshiqMiqdor?: number;        // qancha oshgan 
+  // Eski limit yozuvlari uchun ixtiyoriy metadata
+  limit?: number;
+  isOverLimit?: boolean;
+  oshiqMiqdor?: number;
   
   timestamp: number; 
   createdAt: number; 
@@ -162,7 +162,7 @@ export interface QurulishSubmission {
   mashinaRaqami?: string; 
   
   limit?: number; 
-  isOverLimit: boolean; 
+  isOverLimit?: boolean; 
   oshiqMiqdor?: number; 
   
   timestamp: number; 
@@ -196,26 +196,6 @@ export interface TamirlashSubmission {
 
 export type Submission = LokomotivSubmission | KorxonaSubmission | QurulishSubmission | TamirlashSubmission;
 
-export type RequestKind = 'tashqari' | 'oldinroq'; 
-  
-export interface Approval { 
-  id: string; 
-  messageId: string; 
-  requestType: 'lokomotiv' | 'korxona'; 
-  seriya?: string; 
-  lokomotivNumber?: string; 
-  requestKind?: RequestKind; 
-  korxonaNomi?: string; 
-  stationId: string; 
-  nodeId: string; 
-  approvedBy: string; 
-  approvedByName: string; 
-  approvedAt: number; 
-  sutkalikLimit: number; 
-  validUntil: number; 
-  isActive: boolean; 
-} 
- 
 export type ReportType = 
   | 'spr_day'           // Kunlik operativ 
   | 'svod_spr'          // Kunlik umumiy 
@@ -223,9 +203,7 @@ export type ReportType =
   | 'yearly'            // Yillik 
   | 'period'            // Oraliq 
   | 'over_limit'        // Limitdan oshganlar 
-  | 'qurulish'          // Qurulish 
-  | 'lokomotiv_appr'    // Lokomotiv ruxsatnomalari 
-  | 'korxona_appr';     // Korxona ruxsatnomalari 
+  | 'qurulish';         // Qurulish 
  
 export type GroupType = 'republic' | 'node' | 'station'; 
 export type CalendarMode = 'single' | 'range' | 'month' | 'year'; 

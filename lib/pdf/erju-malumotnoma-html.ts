@@ -133,7 +133,7 @@ const MISC_AGG = '__misc_agg__';
 const MISC_OPTION: IndexedOption = {
   index: 998,
   id: MISC_AGG,
-  label: 'Прочие',
+  label: 'Boshqa',
 };
 
 /** Tanlangan harakat ustunlari (NOMA ustunisiz moslash) — bo‘sh harakat uchun NOMA_KEY */
@@ -171,33 +171,33 @@ function rowNeedsMiscRow(r: FuelRecord, staffByCode: Map<string, Staff>, matchCo
 }
 
 const DEFAULT_MOVES: readonly IndexedOption[] = Object.freeze([
-  { index: 0, id: 'yuk', label: 'Для грузовых поездов', aliases: ['yuk', 'грузовой', 'gruz'] },
-  { index: 1, id: 'yolovchi', label: 'Для пассажирских поездов', aliases: ['yolovchi', "yo'lovchi", 'yoʻlovchi', 'пасс', 'pass'] },
-  { index: 2, id: 'manyovr', label: 'Для маневровых работ', aliases: ['manyovr', 'manevr', 'маневр', 'manyevr'] },
-  { index: 3, id: 'xojalik', label: 'Для хозяйственных работ', aliases: ['xojalik', "xo'jalik", 'хоз', 'hojalik'] },
-  { index: 4, id: 'ijara', label: 'Аренда', aliases: ['ijara', 'ижара', 'arena', 'arenda', 'аренда'] },
+  { index: 0, id: 'yuk', label: 'Yuk poyezdlari uchun', aliases: ['yuk', 'грузовой', 'gruz'] },
+  { index: 1, id: 'yolovchi', label: "Yo'lovchi poyezdlari uchun", aliases: ['yolovchi', "yo'lovchi", 'yoʻlovchi', 'пасс', 'pass'] },
+  { index: 2, id: 'manyovr', label: 'Manyovr ishlari uchun', aliases: ['manyovr', 'manevr', 'маневр', 'manyevr'] },
+  { index: 3, id: 'xojalik', label: "Xo'jalik ishlari uchun", aliases: ['xojalik', "xo'jalik", 'хоз', 'hojalik'] },
+  { index: 4, id: 'ijara', label: 'Ijara', aliases: ['ijara', 'ижара', 'arena', 'arenda', 'аренда'] },
   {
     index: 5,
     id: 'tamirlash',
-    label: 'Для ремонта тепловозов',
+    label: "Teplovoz ta'miri uchun",
     aliases: ['tamirlash', 'tamir', 'tamlash', 'repair'],
   },
   {
     index: 6,
     id: ZAGRANITSA_KEY,
-    label: 'Заграница',
+    label: 'Zagranitsa',
     aliases: ['zagranitsa', 'zagranisa', 'zagranintsa', 'ref', 'refrigerat', 'seksiya'],
   },
   {
     index: 7,
     id: 'korxona',
-    label: 'Предприятиям',
+    label: 'Korxonalarga',
     aliases: ['korxona', 'kompensatsiya', 'компенс', 'компенсация', 'organisation'],
   },
   {
     index: 8,
     id: 'qurulish',
-    label: 'Строительным работам',
+    label: 'Qurilish ishlariga',
     aliases: ['qurulish', 'ombor', 'ombor ehtiyoji', 'склад', 'warehouse', 'qurilish ishlari'],
   },
 ]);
@@ -206,7 +206,7 @@ const DEFAULT_MOVES: readonly IndexedOption[] = Object.freeze([
 const NOMA_OPTION: IndexedOption = {
   index: 999,
   id: NOMA_KEY,
-  label: 'Без вида',
+  label: "Turi yo'q",
 };
 
 function esc(s: string): string {
@@ -401,7 +401,7 @@ ${ucells}
   /** Pivot ikkinchi jadval */
   let pivotTHEAD = `<th></th>${orderedBuckets
     .map((b) => `<th>${esc(b.pivotShort)}</th>`)
-    .join('')}<th>Итого</th>`;
+    .join('')}<th>Jami</th>`;
 
   let pivotBODY = '';
 
@@ -610,11 +610,11 @@ export function downloadErjuYpdf(
   // Jadval sarlavhasi — barcha kunlar uchun bir xil
   const head: any[][] = [[
     { content: '№',                                  rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Заправочные пункты',                 rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Роздано за сутки',                   rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Итого передано тепловозам',          rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+    { content: "Yoqilg'i quyish shoxobchalari",      rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Sutka davomida tarqatilgan',         rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Jami teplovozlarga topshirilgan',    rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
     ...(activeCols.length > 0
-      ? [{ content: 'в том числе', colSpan: activeCols.length, styles: { halign: 'center' } }]
+      ? [{ content: 'shu jumladan', colSpan: activeCols.length, styles: { halign: 'center' } }]
       : []),
   ]];
   if (activeCols.length > 0) {
@@ -757,7 +757,7 @@ export function downloadErjuYpdf(
       }
 
       body.push([
-        { content: `Итого ${b.bucketTitle}`, colSpan: 2, styles: { fontStyle: 'italic', fillColor: SUM, halign: 'left' } },
+        { content: `Jami ${b.bucketTitle}`, colSpan: 2, styles: { fontStyle: 'italic', fillColor: SUM, halign: 'left' } },
         { content: fmt(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
         { content: fmt(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
         ...activeCols.map((c) => ({ content: fmt(bucketMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } })),
@@ -799,7 +799,7 @@ export function downloadErjuYpdf(
     const pivotHead: any[][] = [[
       '',
       ...allPivotBuckets.map((b) => ({ content: b.pivotShort, styles: { halign: 'center' } })),
-      { content: 'Итого', styles: { halign: 'center' } },
+      { content: 'Jami', styles: { halign: 'center' } },
     ]];
 
     const pivotBody: any[][] = [];
@@ -817,7 +817,7 @@ export function downloadErjuYpdf(
       return { content: fmt(sub), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } };
     });
     pivotBody.push([
-      { content: 'Итого', styles: { fontStyle: 'bold', fillColor: GRAND } },
+      { content: 'Jami', styles: { fontStyle: 'bold', fillColor: GRAND } },
       ...pfooter,
       { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } },
     ]);
@@ -835,9 +835,9 @@ export function downloadErjuYpdf(
 
     // ── Harakat turi hisobi (jadval ostidan, chap tarafda) ────────────────
     const SHORT_MOVE: Record<string, string> = {
-      yuk: 'Груз', yolovchi: 'Пасс', manyovr: 'Маневр',
-      xojalik: 'Хоз', ijara: 'Аренда', arenda: 'Аренда', tamirlash: 'Ремонт',
-      ref: 'Заграница', zagranitsa: 'Заграница', korxona: 'Предпр.', qurulish: 'Строит-во',
+      yuk: 'Yuk', yolovchi: "Yo'lovchi", manyovr: 'Manyovr',
+      xojalik: "Xo'jalik", ijara: 'Ijara', arenda: 'Ijara', tamirlash: "Ta'mirlash",
+      ref: 'Zagranitsa', zagranitsa: 'Zagranitsa', korxona: 'Korxona', qurulish: 'Qurilish',
     };
     const moveCount = new Map<string, number>();
     for (const r of dayRows) {
