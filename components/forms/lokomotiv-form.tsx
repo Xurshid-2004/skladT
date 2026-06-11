@@ -17,7 +17,7 @@ import { getSession } from "@/lib/utils/session";
 import { parsePdfNumber } from "@/lib/utils/pdf-number";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
 import { HarakatTuri, Rusumi, LokomotivSubmission } from "@/lib/types";
-import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, ChevronDown } from "lucide-react";
 import { db } from "@/lib/firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -44,6 +44,10 @@ const HARAKAT_TURI_CARD_COLOR: Record<string, string> = {
 
 const OPTIONAL_LOKOMOTIV_FIELDS = new Set(["poyezdNumber", "jadval", "zagranitsa"]);
 const DECIMAL_LOKOMOTIV_FIELDS = new Set(["zagranitsa", "poyezdVazni", "qoldiq", "qanchaBerildi", "dizMasla"]);
+
+function isLokomotivFieldOptional(field: string, harakatTuri: HarakatTuri | "") {
+  return OPTIONAL_LOKOMOTIV_FIELDS.has(field) || (harakatTuri === "yuk" && field === "dizMasla");
+}
 
 type RusumiOption = {
   value: Rusumi;
@@ -204,6 +208,8 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
   const [rusumiQuery, setRusumiQuery] = useState("");
   const [rusumiLookupError, setRusumiLookupError] = useState("");
   const rusumiLookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const detailsSectionRef = useRef<HTMLDivElement | null>(null);
+  const rusumiInputRef = useRef<HTMLInputElement | null>(null);
 
   const [options, setOptions] = useState<{
     stansiyalar: string[];
@@ -329,6 +335,9 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
       setRusumiQuery("");
       setRusumiLookupError("");
       setFormData(prev => ({ ...prev, harakatTuri: value, rusumi: "", jadval: "", zagranitsa: "" }));
+      window.setTimeout(() => {
+        detailsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
       return;
     }
 
@@ -417,7 +426,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     if (!formData.rusumi) return rusumiQuery.trim() ? "Bunday rusum topilmadi" : "Rusumni tanlang";
     
     for (const field of visibleFields) {
-      if (!formData[field as keyof typeof formData] && !OPTIONAL_LOKOMOTIV_FIELDS.has(field)) {
+      if (!formData[field as keyof typeof formData] && !isLokomotivFieldOptional(field, formData.harakatTuri)) {
         return "Barcha maydonlarni to'ldiring";
       }
     }
@@ -568,7 +577,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
     : formData.mashinaRaqami
       ? machineInputTone.filled
       : machineInputTone.idle;
-
+  const isYukHarakat = formData.harakatTuri === "yuk";
   return (
     <form onSubmit={handleSubmit} className="space-y-3 animate-in fade-in duration-500">
       {/* Top Sticky Error Banner — har doim ko'rinadi */}
@@ -602,7 +611,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
             ҲАРАКАТ ТУРИ
           </h3>
         </div>
-        <div className="p-3 sm:p-4">
+        <div className="p-2.5 sm:p-3">
           <div className="grid max-w-6xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {HARAKAT_TURI_LIST.map((item) => {
               const active = formData.harakatTuri === item.value;
@@ -612,16 +621,16 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                   type="button"
                   aria-pressed={active}
                   onClick={() => handleInputChange("harakatTuri", item.value)}
-                  className={`harakat-type-card relative flex min-h-[62px] items-center justify-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2 text-white shadow-lg transition-none sm:min-h-[66px] sm:gap-3 ${HARAKAT_TURI_CARD_COLOR[item.value] ?? "bg-slate-700 border-slate-800"} ${
+                  className={`harakat-type-card relative flex min-h-[54px] items-center justify-center gap-2 overflow-hidden rounded-xl border px-2.5 py-1.5 text-white shadow-lg transition-none sm:min-h-[58px] sm:gap-2.5 xl:min-h-[62px] ${HARAKAT_TURI_CARD_COLOR[item.value] ?? "bg-slate-700 border-slate-800"} ${
                     active ? "ring-2 ring-white ring-offset-2 ring-offset-black" : ""
                   }`}
                 >
                   <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-lg font-black text-white ring-1 ring-white/25 sm:h-10 sm:w-10 sm:text-xl"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-base font-black text-white ring-1 ring-white/25 sm:h-9 sm:w-9 sm:text-lg"
                   >
                     {item.number}
                   </span>
-                  <span className="min-w-0 text-center text-[13px] font-black uppercase leading-tight tracking-wide text-white sm:text-[15px] xl:text-base">
+                  <span className="min-w-0 text-center text-[13px] font-black uppercase leading-tight tracking-wide text-white sm:text-[14px] xl:text-[15px]">
                     {HARAKAT_TURI_CYRILLIC[item.value] ?? item.label}
                   </span>
                   {active && (
@@ -639,7 +648,10 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
       {formData.harakatTuri && (
         <>
           {/* Dynamic Fields — yagona bo'lim ichida guruhlangan */}
-          <div className="w-full bg-white/90 dark:bg-white/[0.06] backdrop-blur-md rounded-3xl border border-black/5 dark:border-white/10 shadow-xl overflow-hidden animate-in slide-in-from-top-8 duration-500">
+          <div
+            ref={detailsSectionRef}
+            className="w-full scroll-mt-4 bg-white/90 dark:bg-white/[0.06] backdrop-blur-md rounded-3xl border border-black/5 dark:border-white/10 shadow-xl overflow-visible animate-in slide-in-from-top-8 duration-500"
+          >
             <div className="flex items-center gap-2.5 px-4 sm:px-5 py-2.5 border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-emerald-500/10 to-transparent">
               <span className="grid place-items-center h-8 w-8 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 text-white text-xs font-black shadow-md shadow-emerald-500/30">
                 3
@@ -648,8 +660,10 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                 Ma&apos;lumotlar
               </h3>
             </div>
-            <div className="grid grid-cols-1 gap-2.5 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              <div className="flex min-w-0 flex-col">
+            <div className={`grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 sm:p-4 lg:grid-cols-3 ${
+              isYukHarakat ? "xl:grid-cols-[repeat(20,minmax(0,1fr))]" : "xl:grid-cols-4 2xl:grid-cols-5"
+            }`}>
+              <div className={`flex min-w-0 flex-col ${isYukHarakat ? "xl:col-span-5" : ""}`}>
                 <label
                   className={`mb-1 flex items-center gap-1.5 text-[11px] font-black tracking-wide uppercase transition-colors ${
                     focusedField === "rusumi" ? "text-slate-950 dark:text-white" : "text-slate-700 dark:text-slate-300"
@@ -666,8 +680,9 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                   </span>
                   <span className="truncate">Rusumi</span>
                 </label>
-                <div className="relative">
+                <div className="relative z-50">
                   <input
+                    ref={rusumiInputRef}
                     type="text"
                     inputMode="search"
                     value={rusumiQuery}
@@ -676,7 +691,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                     onFocus={() => setFocusedField("rusumi")}
                     onBlur={handleRusumiComboBlur}
                     placeholder="Raqam yoki rusum nomi"
-                    className={`h-12 w-full rounded-xl border px-3.5 py-3 text-base font-black transition-all placeholder:text-slate-400 placeholder:font-bold focus:outline-none ${
+                    className={`h-14 w-full rounded-2xl border-2 px-4 py-3 pr-14 text-lg font-black shadow-sm transition-all placeholder:text-slate-400 placeholder:font-black focus:outline-none ${
                       focusedField === "rusumi"
                         ? INPUT_TONE_BY_FIELD.rusumi.active
                         : formData.rusumi
@@ -684,8 +699,24 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                           : INPUT_TONE_BY_FIELD.rusumi.idle
                     }`}
                   />
+                  <button
+                    type="button"
+                    aria-label="Rusumlarni ochish"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setFocusedField("rusumi");
+                      rusumiInputRef.current?.focus();
+                    }}
+                    className={`absolute right-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-xl border shadow-sm transition-colors ${
+                      focusedField === "rusumi"
+                        ? "border-indigo-300 bg-indigo-600 text-white"
+                        : "border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400/30 dark:bg-slate-900 dark:text-indigo-200"
+                    }`}
+                  >
+                    <ChevronDown className="h-5 w-5 stroke-[3]" />
+                  </button>
                   {focusedField === "rusumi" && (
-                    <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 max-h-56 overflow-y-auto rounded-xl border border-indigo-200 bg-white p-1 shadow-2xl shadow-indigo-950/15 dark:border-indigo-400/30 dark:bg-slate-950">
+                    <div className="absolute left-0 top-[calc(100%+8px)] z-50 max-h-64 w-[min(82vw,32rem)] overflow-y-auto rounded-2xl border-2 border-indigo-200 bg-white p-1.5 shadow-2xl shadow-indigo-950/20 dark:border-indigo-400/30 dark:bg-slate-950">
                       {visibleRusumiOptions.length > 0 ? (
                         visibleRusumiOptions.slice(0, 10).map((item) => {
                           const active = formData.rusumi === item.value;
@@ -697,14 +728,14 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                                 e.preventDefault();
                                 selectRusumiOption(item);
                               }}
-                              className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm font-black transition-colors ${
+                              className={`flex w-full items-center justify-between gap-3 rounded-xl px-3.5 py-3 text-left text-base font-black transition-colors ${
                                 active
-                                  ? "bg-indigo-600 text-white"
+                                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
                                   : "text-slate-800 hover:bg-indigo-50 dark:text-slate-100 dark:hover:bg-indigo-500/15"
                               }`}
                             >
                               <span className="truncate">{item.label}</span>
-                              <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs ${active ? "bg-white/20" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"}`}>
+                              <span className={`shrink-0 rounded-lg px-2.5 py-1 text-sm ${active ? "bg-white/20" : "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200"}`}>
                                 {rusumiOptionCode(item)}
                               </span>
                             </button>
@@ -755,9 +786,29 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                 const tone = INPUT_TONE_BY_FIELD[field] ?? INPUT_TONE_BY_FIELD.default;
                 const inputColorClass = isFocused ? tone.active : filled ? tone.filled : tone.idle;
                 const badgeColorClass = isFocused ? tone.activeBadge : tone.badge;
+                const isYukCompactRow = isYukHarakat && (
+                  field === "poyezdVazni" ||
+                  field === "qoldiq" ||
+                  field === "qanchaBerildi" ||
+                  field === "dizMasla" ||
+                  field === "zagranitsa"
+                );
+                const fieldInputSizeClass = isYukCompactRow
+                  ? "h-11 px-3 py-2.5 text-sm xl:text-[15px]"
+                  : "h-12 px-3.5 py-3 text-base";
+                const yukGridClass = isYukHarakat
+                  ? isYukCompactRow
+                    ? field === "poyezdVazni"
+                      ? "xl:col-span-4 xl:col-start-1"
+                      : "xl:col-span-4"
+                    : "xl:col-span-5"
+                  : "";
 
                 return (
-                  <div key={field} className="flex min-w-0 flex-col">
+                  <div
+                    key={field}
+                    className={`flex min-w-0 flex-col ${yukGridClass}`}
+                  >
                     <label
                       className={`mb-1 flex items-center gap-1.5 text-[11px] font-black tracking-wide uppercase transition-colors ${
                         isFocused ? "text-slate-950 dark:text-white" : "text-slate-700 dark:text-slate-300"
@@ -777,7 +828,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                         onKeyDown={handleKeyDown}
                         onFocus={() => setFocusedField(field)}
                         onBlur={() => handleFieldBlur(field)}
-                        className={`h-12 w-full rounded-xl border px-3.5 py-3 text-base font-black transition-all focus:outline-none disabled:cursor-not-allowed disabled:text-slate-400 ${inputColorClass}`}
+                        className={`${fieldInputSizeClass} w-full rounded-xl border font-black transition-all focus:outline-none disabled:cursor-not-allowed disabled:text-slate-400 ${inputColorClass}`}
                         disabled={jadvalOptions.length === 0}
                       >
                         <option value="">
@@ -806,7 +857,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                         onBlur={() => handleFieldBlur(field)}
                         placeholder={placeholder}
                         list={listId}
-                        className={`h-12 w-full rounded-xl border px-3.5 py-3 text-base font-black transition-all placeholder:text-slate-400 placeholder:font-bold focus:outline-none ${inputColorClass} ${
+                        className={`${fieldInputSizeClass} w-full rounded-xl border font-black transition-all placeholder:text-slate-400 placeholder:font-bold focus:outline-none ${inputColorClass} ${
                           isQoldiqField || isQanchaBerildiField ? "text-right tabular-nums" : ""
                         }`}
                       />
@@ -818,19 +869,22 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                         ))}
                       </datalist>
                     )}
+
                   </div>
                 );
               })}
 
               {/* Mashinada yetkazildimi */}
-              <div className="rounded-2xl border border-black/5 bg-slate-50/80 p-2.5 dark:border-white/10 dark:bg-white/[0.03] sm:col-span-2 lg:col-span-3 xl:col-span-4 2xl:col-span-5">
-                <label className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-300">
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-lg bg-indigo-600 text-[10px] text-white">
-                    {visibleFields.length + 3}
-                  </span>
-                  <span>Mashinada yetkazildimi?</span>
-                </label>
-                <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+              <div className={`rounded-2xl border border-black/5 bg-slate-50/80 p-2 dark:border-white/10 dark:bg-white/[0.03] sm:col-span-2 lg:col-span-3 ${
+                isYukHarakat ? "xl:col-span-20" : "xl:col-span-4 2xl:col-span-5"
+              }`}>
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                  <label className="flex shrink-0 items-center gap-1.5 text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-300 lg:w-[220px]">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-lg bg-indigo-600 text-[10px] text-white">
+                      {visibleFields.length + 3}
+                    </span>
+                    <span className="truncate">Mashinada yetkazildimi?</span>
+                  </label>
                   <div className="grid w-full grid-cols-2 gap-2 sm:max-w-[260px]">
                     <button
                       type="button"
@@ -871,7 +925,7 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                     />
                   )}
 
-                  <div className="grid w-full grid-cols-2 gap-2 sm:max-w-[360px] xl:ml-auto">
+                  <div className="grid w-full grid-cols-2 gap-2 sm:max-w-[360px] lg:ml-auto">
                     <button
                       type="button"
                       onClick={handleReset}

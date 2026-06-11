@@ -6,7 +6,7 @@ import { collection, query, where, getDocs, Timestamp } from "firebase/firestore
 import { db } from "@/lib/firebase/config";
 import { startOfDay, endOfDay, subDays, format } from "date-fns";
 import Link from "next/link";
-import { TrendingUp, TrendingDown, Users } from "lucide-react";
+import { ArrowLeftRight, TrendingUp, TrendingDown, Users } from "lucide-react";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 import {
   subscribePresenceSessions,
@@ -17,6 +17,29 @@ import {
 import { formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 
 const PRESENCE_UI_TICK_MS = 5_000;
+const OPERATOR_SHIPMENTS_KEY = "operator_pending_shipments";
+
+type OperatorShipment = {
+  id: string;
+  fromStationName: string;
+  toStationName: string;
+  amountKg: number;
+  createdAt: number;
+  status: "pending" | "accepted";
+  acceptedAt?: number;
+  acceptedKg?: number;
+};
+
+type OperatorShipmentDifference = {
+  id: string;
+  fromStationName: string;
+  toStationName: string;
+  sentKg: number;
+  acceptedKg: number;
+  diffKg: number;
+  acceptedAt: number;
+};
+
 import {
   BarChart,
   Bar,
@@ -35,6 +58,51 @@ function normalizeKg(kg: number): number {
 
 function formatKgExact(kg: number): string {
   return formatPdfNumber(kg);
+}
+
+function formatSignedKg(kg: number): string {
+  const normalized = normalizeKg(kg);
+  if (normalized === 0) return "0 kg";
+
+  return `${normalized > 0 ? "+" : "-"}${formatKgExact(Math.abs(normalized))} kg`;
+}
+
+function readOperatorShipmentDifferences(): OperatorShipmentDifference[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const rawShipments = window.localStorage.getItem(OPERATOR_SHIPMENTS_KEY);
+    if (!rawShipments) return [];
+
+    const parsedShipments = JSON.parse(rawShipments);
+    if (!Array.isArray(parsedShipments)) return [];
+
+    return parsedShipments
+      .filter((shipment): shipment is OperatorShipment => {
+        return (
+          shipment &&
+          typeof shipment.id === "string" &&
+          typeof shipment.fromStationName === "string" &&
+          typeof shipment.toStationName === "string" &&
+          typeof shipment.amountKg === "number" &&
+          shipment.status === "accepted" &&
+          typeof shipment.acceptedKg === "number"
+        );
+      })
+      .map((shipment) => ({
+        id: shipment.id,
+        fromStationName: shipment.fromStationName,
+        toStationName: shipment.toStationName,
+        sentKg: normalizeKg(shipment.amountKg),
+        acceptedKg: normalizeKg(shipment.acceptedKg ?? 0),
+        diffKg: normalizeKg((shipment.acceptedKg ?? 0) - shipment.amountKg),
+        acceptedAt: typeof shipment.acceptedAt === "number" ? shipment.acceptedAt : shipment.createdAt,
+      }))
+      .filter((shipment) => shipment.diffKg !== 0)
+      .sort((a, b) => b.acceptedAt - a.acceptedAt);
+  } catch {
+    return [];
+  }
 }
 
 function fuelKg(d: Record<string, unknown>): number {
@@ -138,10 +206,28 @@ export default function AdminDashboard() {
   const [presence, setPresence] = useState<PresenceSessionDoc[]>([]);
   const [presenceError, setPresenceError] = useState<string | null>(null);
   const [presenceNow, setPresenceNow] = useState(() => Date.now());
+  const [operatorDifferences, setOperatorDifferences] = useState<OperatorShipmentDifference[]>([]);
 
   useEffect(() => {
     const tick = setInterval(() => setPresenceNow(Date.now()), PRESENCE_UI_TICK_MS);
     return () => clearInterval(tick);
+  }, []);
+
+  useEffect(() => {
+    const refreshOperatorDifferences = () => {
+      setOperatorDifferences(readOperatorShipmentDifferences());
+    };
+
+    refreshOperatorDifferences();
+    window.addEventListener("storage", refreshOperatorDifferences);
+    window.addEventListener("focus", refreshOperatorDifferences);
+    window.addEventListener("operatorShipmentsChanged", refreshOperatorDifferences);
+
+    return () => {
+      window.removeEventListener("storage", refreshOperatorDifferences);
+      window.removeEventListener("focus", refreshOperatorDifferences);
+      window.removeEventListener("operatorShipmentsChanged", refreshOperatorDifferences);
+    };
   }, []);
 
   useEffect(() => {
@@ -219,6 +305,12 @@ export default function AdminDashboard() {
   const diffR = normalizeKg(todayR - yesterdayR);
   const more = diffR >= 0;
   const diffAbs = Math.abs(diffR);
+  const operatorDiffTotal = normalizeKg(
+    operatorDifferences.reduce((sum, difference) => sum + difference.diffKg, 0),
+  );
+  const operatorDiffAbs = Math.abs(operatorDiffTotal);
+  const operatorDiffMore = operatorDiffTotal > 0;
+  const latestOperatorDifferences = operatorDifferences.slice(0, 3);
 
   const hasFuelData = todayR > 0 || yesterdayR > 0;
   const pctVsYesterday =
@@ -258,6 +350,60 @@ export default function AdminDashboard() {
   return (
     <AdminLayout hideHeader>
       <div className="mx-auto flex max-w-5xl flex-col space-y-8">
+        <section className="order-2 overflow-hidden rounded-[20px] border border-cyan-200/80 bg-white shadow-xl shadow-cyan-200/35">
+          <div className="bg-gradient-to-br from-cyan-600 via-sky-600 to-indigo-700 px-4 py-3 text-white sm:px-5">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/16 ring-1 ring-white/25">
+                <ArrowLeftRight className="h-5 w-5" strokeWidth={2.8} />
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-cyan-50/75">
+                  Operator jo'natma farqi
+                </p>
+                <h2 className="mt-0.5 text-lg font-black leading-tight">
+                  Yuborilgan va qabul qilingan kg farqi
+                </h2>
+                <p className="mt-0.5 text-[11px] font-bold text-white/70">
+                  Qabul miqdori jo'natma bilan bir xil bo'lmasa ham qabul qilinadi.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 bg-slate-50 px-5 py-4 sm:px-7">
+            {latestOperatorDifferences.length ? (
+              latestOperatorDifferences.map((difference) => (
+                <div
+                  key={difference.id}
+                  className="grid gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:grid-cols-[1fr_auto] sm:items-center"
+                >
+                  <div>
+                    <p className="text-sm font-black text-slate-950">
+                      {difference.fromStationName}{" -> "}{difference.toStationName}
+                    </p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-500">
+                      Yuborildi: {formatKgExact(difference.sentKg)} kg | Qabul qilindi:{" "}
+                      {formatKgExact(difference.acceptedKg)} kg |{" "}
+                      {format(new Date(difference.acceptedAt), "HH:mm, dd.MM.yyyy")}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <span className="text-xs font-black uppercase tracking-wide text-red-500">
+                      Orasidagi farq
+                    </span>
+                    <span className="inline-flex justify-center rounded-xl bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-red-500 ring-1 ring-red-200">
+                      {formatSignedKg(difference.diffKg)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-5 text-center text-sm font-black text-slate-500">
+                Hozircha jo'natma va qabul orasida farq yo'q.
+              </p>
+            )}
+          </div>
+        </section>
         {/* Ulangan foydalanuvchilar — premium jadval */}
         <div className="order-2 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-xl shadow-slate-300/40">
           <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">

@@ -278,6 +278,125 @@ function toIsoDateLocal(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+/** Y.PDF uchun submissions yozuvlarini ERJU fuel row formatiga moslash */
+function timeFromSubmission(row: any): string {
+  const ms = rowCreatedMs(row);
+  if (!ms) return '';
+  const d = new Date(ms);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+function submissionDateIso(row: any): string {
+  const date = String(row?.dateISO ?? row?.date ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+
+  const ms = rowCreatedMs(row);
+  return ms ? toIsoDateLocal(new Date(ms)) : toIsoDateLocal(new Date());
+}
+
+function submissionToErjuFuelRecord(row: Submission): FuelRecord | null {
+  const anyRow = row as any;
+  const stationId = String(anyRow.stationId ?? '').trim();
+  if (!stationId) return null;
+
+  const dateISO = submissionDateIso(anyRow);
+  const zap = ZAPRAVKALAR.find((z) => z.id === stationId);
+  const common = {
+    id: String(anyRow.id ?? ''),
+    date: dateISO,
+    dateISO,
+    locCode: stationId,
+    supplyPoint: zap?.name ?? stationId,
+    time: timeFromSubmission(anyRow),
+    route: '',
+    trainCode: '',
+    trainNumber: '',
+    staffName: String(anyRow.staffName ?? ''),
+    staffCode: String(anyRow.staffCode ?? ''),
+    category: String(anyRow.category ?? ''),
+  } as FuelRecord & { category?: string; dateISO?: string };
+
+  if (anyRow.category === 'lokomotiv') {
+    const harakat = String(anyRow.harakatTuri ?? '');
+    const locoNumber =
+      harakat === 'manyovr'
+        ? String(anyRow.stansiya ?? '')
+        : harakat === 'xojalik'
+          ? String(anyRow.tashkilot ?? '')
+          : String(anyRow.poyezdNumber ?? '');
+    return {
+      ...common,
+      moveType: harakat,
+      locoSeries: String(anyRow.rusumi ?? ''),
+      locoCode: String(anyRow.lokomotivNumber ?? ''),
+      locoNumber,
+      trainIndex: String(anyRow.ruxsatIndeksi ?? ''),
+      weight: anyRow.poyezdVazni == null ? '' : String(anyRow.poyezdVazni),
+      balanceBefore: anyRow.qoldiq == null ? '' : String(anyRow.qoldiq),
+      fuelAmount: anyRow.qanchaBerildi == null ? '' : String(anyRow.qanchaBerildi),
+      zagranitsa: anyRow.zagranitsa == null ? '' : String(anyRow.zagranitsa),
+      zagranitsaAmount: anyRow.zagranitsa == null ? '' : String(anyRow.zagranitsa),
+      maslaAmount: anyRow.dizMasla == null ? '' : String(anyRow.dizMasla),
+      stansiya: String(anyRow.stansiya ?? ''),
+      tashkilot: String(anyRow.tashkilot ?? ''),
+      ijarachi: String(anyRow.ijarachi ?? ''),
+    };
+  }
+
+  if (anyRow.category === 'korxona') {
+    return {
+      ...common,
+      moveType: 'korxona',
+      locoSeries: '',
+      locoCode: '',
+      locoNumber: String(anyRow.poyezdNumber ?? anyRow.korxonaNomi ?? ''),
+      trainIndex: String(anyRow.ruxsatIndeksi ?? anyRow.korxonaNomi ?? ''),
+      weight: '',
+      balanceBefore: '',
+      fuelAmount: anyRow.qancha == null ? '' : String(anyRow.qancha),
+      maslaAmount: '',
+    };
+  }
+
+  if (anyRow.category === 'qurulish') {
+    return {
+      ...common,
+      moveType: 'qurulish',
+      locoSeries: String(anyRow.seriya ?? anyRow.korxonaNomi ?? ''),
+      locoCode: String(anyRow.raqami ?? ''),
+      locoNumber: String(anyRow.poyezdNumber ?? ''),
+      trainIndex: String(anyRow.ruxsatIndeksi ?? ''),
+      weight: anyRow.poyezdVazni == null ? '' : String(anyRow.poyezdVazni),
+      balanceBefore: anyRow.qoldiq == null ? '' : String(anyRow.qoldiq),
+      fuelAmount: String(anyRow.qanchaBerildi ?? anyRow.qanchaOlindi ?? ''),
+      maslaAmount: '',
+    };
+  }
+
+  if (anyRow.category === 'tamirlash') {
+    return {
+      ...common,
+      moveType: 'tamirlash',
+      locoSeries: String(anyRow.seriya ?? ''),
+      locoCode: String(anyRow.raqami ?? ''),
+      locoNumber: '',
+      trainIndex: String(anyRow.tamirlashTuri ?? ''),
+      weight: '',
+      balanceBefore: '',
+      fuelAmount: anyRow.qanchaBerildi == null ? '' : String(anyRow.qanchaBerildi),
+      maslaAmount: anyRow.dizMasla == null ? '' : String(anyRow.dizMasla),
+    };
+  }
+
+  return null;
+}
+
+function submissionsToErjuFuelRecords(rows: Submission[]): FuelRecord[] {
+  return rows
+    .map(submissionToErjuFuelRecord)
+    .filter((row): row is FuelRecord => !!row && parsePdfNumber(row.fuelAmount) > 0);
+}
+
 /** Oddiy PDF (operativ hisobot) sarlavhasi — jadval va taqvim eksportlari */
 function buildOperationalPdfTitle(start: Date, end: Date): string {
   const a = new Date(start);
@@ -424,7 +543,23 @@ function groupRowsByStationAndStaff(rows: any[], staffMap?: Map<string, string>)
     groups.get(groupKey)!.rows.push(row);
   }
 
-  return [...groups.values()];
+  return [...groups.values()]
+    .map((group, index) => ({ group, index }))
+    .sort((a, b) => {
+      const stationA = ZAPRAVKALAR.findIndex((z) => z.id === a.group.stationId);
+      const stationB = ZAPRAVKALAR.findIndex((z) => z.id === b.group.stationId);
+      const orderA = stationA >= 0 ? stationA : Number.MAX_SAFE_INTEGER;
+      const orderB = stationB >= 0 ? stationB : Number.MAX_SAFE_INTEGER;
+      if (orderA !== orderB) return orderA - orderB;
+
+      const firstA = Math.min(...a.group.rows.map((row) => rowCreatedMs(row)));
+      const firstB = Math.min(...b.group.rows.map((row) => rowCreatedMs(row)));
+      if (firstA !== firstB) return firstA - firstB;
+
+      const staffDiff = a.group.staffName.localeCompare(b.group.staffName, 'uz');
+      return staffDiff || a.index - b.index;
+    })
+    .map(({ group }) => group);
 }
 
 function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
@@ -1278,9 +1413,14 @@ export default function HisobotlarPage() {
       s.setHours(0, 0, 0, 0);
       const e = new Date(rangeEnd);
       e.setHours(0, 0, 0, 0);
-      const isoS = toIsoDateLocal(s);
-      const isoE = toIsoDateLocal(e);
-      const sourceRows = (await fetchAllFuelRecordsInRange(isoS, isoE)) as FuelRecord[];
+      const endBound = new Date(e);
+      endBound.setHours(23, 59, 59, 999);
+      const submissions = await fetchAllSubmissionsInRange(s, endBound);
+      const sourceRows = submissionsToErjuFuelRecords(submissions);
+      if (!sourceRows.length) {
+        window.alert("Tanlangan davr uchun Y.PDF ma'lumoti yo'q.");
+        return;
+      }
       const title = buildErjuReportTitle(s, e);
       downloadErjuYpdf(sourceRows, title, [], []);
     } catch (err) {

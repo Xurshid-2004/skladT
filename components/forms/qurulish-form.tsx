@@ -174,6 +174,12 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
             <label className="text-xs font-black uppercase tracking-widest text-primary">3. Stansya va P.raqami</label>
             <input
               type="text"
+              name="qurulish-stansya-p-raqami"
+              autoComplete="new-password"
+              autoCorrect="off"
+              spellCheck={false}
+              data-form-type="other"
+              data-lpignore="true"
               value={formData.poyezdNumber}
               onChange={(e) => handleInputChange("poyezdNumber", e.target.value)}
               onKeyDown={handleKeyDown}

@@ -42,7 +42,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
   };
 
   const isSaveDisabled = useMemo(() => {
-    if (!formData.qancha || !Number.isFinite(qanchaAmount) || !formData.nechaSutkalik) return true;
+    if (!formData.qancha || !Number.isFinite(qanchaAmount)) return true;
     if (formData.mashinadaYetkazildi && !formData.mashinaRaqami) return true;
     return false;
   }, [formData, qanchaAmount]);
@@ -76,7 +76,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
         poyezdNumber: formData.poyezdNumber.trim() || undefined,
         ruxsatIndeksi: formData.ruxsatIndeksi.trim() || undefined,
         qancha: qanchaAmount,
-        nechaSutkalik: Number(formData.nechaSutkalik),
+        nechaSutkalik: Number(formData.nechaSutkalik || 1),
         mashinadaYetkazildi: formData.mashinadaYetkazildi,
         mashinaRaqami: formData.mashinaRaqami || undefined,
       };
@@ -153,7 +153,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
           Korxona uchun yoqilg'i berish
         </h2>
 
-        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:grid-cols-[minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(8rem,0.7fr)_minmax(8rem,0.65fr)_minmax(12rem,1fr)]">
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 lg:grid-cols-[minmax(9rem,0.8fr)_minmax(12rem,0.9fr)_minmax(8rem,0.7fr)]">
           {/* Poyezd raqami */}
           <div className="space-y-1">
             <label className="text-xs font-black uppercase tracking-widest text-primary">
@@ -172,7 +172,7 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
           {/* Index */}
           <div className="space-y-1">
             <label className="text-xs font-black uppercase tracking-widest text-primary">
-              2. Index
+              2. Necha Sutkalik & Index
             </label>
             <input
               type="text"
@@ -198,26 +198,6 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
               onKeyDown={handleKeyDown}
               className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
               placeholder="0 yoki 12,5"
-            />
-          </div>
-
-          {/* Necha Sutkalik */}
-          <div className="space-y-1">
-            <label className="text-xs font-black uppercase tracking-widest text-primary">
-              4. Necha Sutkalik
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={formData.nechaSutkalik}
-              onChange={(e) => {
-                const val = e.target.value.replace(/[^0-9]/g, "");
-                handleInputChange("nechaSutkalik", val);
-              }}
-              onKeyDown={handleKeyDown}
-              className="w-full h-10 px-3 bg-background border-2 border-primary/20 rounded-lg focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-sm sm:text-base text-foreground transition-all"
-              placeholder="1"
             />
           </div>
 

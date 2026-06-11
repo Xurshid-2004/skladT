@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
-import { LogOut, User, Home, ArrowLeft } from "lucide-react";
+import { LogOut, User, ArrowLeft } from "lucide-react";
 import { clearSession, getSession } from "@/lib/utils/session";
 import { useEffect, useState } from "react";
 import { Session } from "@/lib/types";
@@ -35,15 +35,6 @@ export function Header() {
     router.push("/login");
   };
 
-  const handleHome = () => {
-    if (!session) return;
-    if (session.role === "worker" && session.stationId) {
-      router.push(`/zapravka/${session.stationId}/lokomotiv`);
-    } else if (session.role === "admin") {
-      router.push("/admin");
-    }
-  };
-
   const zapravkaName = session?.stationId
     ? ZAPRAVKALAR.find((z) => z.id === session.stationId)?.name ?? session.stationId
     : null;
@@ -63,15 +54,15 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/92 shadow-[0_8px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/88">
-      <div className="container mx-auto flex min-h-16 items-center justify-between gap-2 px-2.5 py-2 sm:gap-3 sm:px-4">
+      <div className="container mx-auto flex min-h-14 items-center justify-between gap-1.5 px-2 py-1.5 sm:min-h-16 sm:gap-3 sm:px-4 sm:py-2">
         <div className="flex min-w-0 items-center gap-2">
           <button
             onClick={() => router.back()}
-            className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3.5 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-blue-600/25 ring-1 ring-white/20 transition-all hover:brightness-105 active:scale-[0.98]"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 text-xs font-black uppercase tracking-wide text-white shadow-lg shadow-blue-600/25 ring-1 ring-white/20 transition-all hover:brightness-105 active:scale-[0.98] [&>span]:hidden sm:h-11 sm:gap-2 sm:px-3.5 sm:text-sm sm:[&>span]:inline"
             title="Orqaga"
             aria-label="Orqaga"
           >
-            <ArrowLeft className="h-5 w-5 stroke-[3]" />
+            <ArrowLeft className="h-4 w-4 stroke-[3] sm:h-5 sm:w-5" />
             <span>Орқага</span>
           </button>
 
@@ -97,14 +88,14 @@ export function Header() {
         </div>
 
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-          <div className="flex min-w-0 items-center gap-2.5 rounded-xl border-2 border-indigo-200 bg-white px-3 py-2 shadow-sm shadow-indigo-500/10 dark:border-indigo-400/25 dark:bg-slate-900 sm:px-4">
-            <User className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" />
+          <div className="flex min-w-0 items-center gap-1.5 rounded-xl border-2 border-indigo-200 bg-white px-2 py-1.5 shadow-sm shadow-indigo-500/10 dark:border-indigo-400/25 dark:bg-slate-900 sm:gap-2.5 sm:px-4 sm:py-2">
+            <User className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-300 sm:h-5 sm:w-5" />
             <div className="min-w-0">
-              <span className="block max-w-[118px] truncate text-base font-black leading-tight text-slate-950 dark:text-white sm:max-w-[210px] sm:text-lg">
+              <span className="block max-w-[92px] truncate text-sm font-black leading-tight text-slate-950 dark:text-white sm:max-w-[210px] sm:text-lg">
                 {session?.displayName || "Foydalanuvchi"}
               </span>
               {zapravkaName && (
-                <span className="block max-w-[118px] truncate text-[10px] font-black uppercase leading-tight tracking-wide text-indigo-600 dark:text-indigo-300 sm:max-w-[210px]">
+                <span className="block max-w-[92px] truncate text-[9px] font-black uppercase leading-tight tracking-wide text-indigo-600 dark:text-indigo-300 sm:max-w-[210px] sm:text-[10px]">
                   Zapravka: {zapravkaName}
                 </span>
               )}
@@ -136,17 +127,8 @@ export function Header() {
           <ThemeToggle />
 
           <button
-            onClick={handleHome}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-            title="Bosh sahifa"
-            aria-label="Bosh sahifa"
-          >
-            <Home className="w-5 h-5" />
-          </button>
-
-          <button
             onClick={handleLogout}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger sm:h-10 sm:w-10"
             title="Chiqish"
             aria-label="Chiqish"
           >

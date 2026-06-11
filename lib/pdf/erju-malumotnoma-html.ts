@@ -41,11 +41,89 @@ function toNum(v: unknown): number {
   return parsePdfNumber(v);
 }
 
+const TEPLOVOZ_TOTAL_KEYS = new Set(['yuk', 'yolovchi', 'manyovr', 'xojalik']);
+const YPDF_STATION_NUMBERS: Record<string, number> = {
+  toshkent: 1,
+  angren: 3,
+  sirdaryo: 4,
+  hovos: 5,
+  jizzax: 6,
+  qoqon: 7,
+  marglon: 8,
+  andijon: 10,
+  samarqand: 11,
+  ziyovuddin: 13,
+  buxoro: 14,
+  tinchlik: 15,
+  uchquduq: 16,
+  qarshi: 17,
+  termez: 18,
+  darband: 19,
+  qongirot: 20,
+  urganch: 23,
+  miskin: 24,
+  qumqurgon: 26,
+};
+const YPDF_PIVOT_BUCKET_ORDER = [
+  'rju-toshkent',
+  'rju-qoqon',
+  'rju-buxoro',
+  'rju-qarshi',
+  'rju-termiz',
+  'rju-qongirot',
+];
+const YPDF_COUNT_ROWS = [
+  { id: 'yuk', label: 'gr' },
+  { id: 'yolovchi', label: 'pas' },
+  { id: 'manyovr', label: 'man' },
+  { id: 'xojalik', label: 'x/r' },
+  { id: 'ijara', label: 'ar' },
+] as const;
+
+function roundKgToYpdfTons(kg: unknown): number {
+  return Math.round((toNum(kg) / 1000) * 100) / 100;
+}
+
+function formatYpdfTons(tons: unknown): string {
+  return toNum(tons)
+    .toLocaleString('ru-RU', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: false,
+    })
+    .replace('.', ',');
+}
+
+function ypdfTons(kg: unknown): string {
+  return formatYpdfTons(roundKgToYpdfTons(kg));
+}
+
+function addYpdfTons(a: number, b: number): number {
+  return Math.round((a + b) * 100) / 100;
+}
+
+function sumMoveValues(map: Map<string, number>, keys: ReadonlySet<string>): number {
+  let total = 0;
+  for (const key of keys) total += map.get(key) ?? 0;
+  return total;
+}
+
+const YPDF_WEEKDAYS_UZ = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+
+function formatYpdfDayLabel(dateKey: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!m) return dateKey;
+
+  const [, year, month, day] = m;
+  const d = new Date(Number(year), Number(month) - 1, Number(day));
+  const weekday = Number.isNaN(d.getTime()) ? '' : YPDF_WEEKDAYS_UZ[d.getDay()];
+  return weekday ? `${day}.${month}.${year} (${weekday})` : `${day}.${month}.${year}`;
+}
+
 const ZAGRANITSA_KEY = 'zagranitsa';
 
 function getZagranitsaAmount(r: FuelRecord): number {
-  // Zagranitsa inputining ERJU logikasi hali ulanmaydi.
-  return 0;
+  return toNum((r as any).zagranitsaAmount ?? (r as any).zagranitsa ?? 0);
 }
 
 function normalizeSupplyKey(s: string): string {
@@ -202,12 +280,48 @@ const DEFAULT_MOVES: readonly IndexedOption[] = Object.freeze([
   },
 ]);
 
+/** Y.PDF uchun namuna tartibidagi qat'iy ustunlar */
+const YPDF_COLUMNS: readonly IndexedOption[] = Object.freeze([
+  { index: 0, id: 'yuk', label: 'Yuk poyezd. tashish uchun', aliases: ['yuk', 'gruz'] },
+  { index: 1, id: 'yolovchi', label: "Yo'lovchi poyezd. tashish uchun", aliases: ['yolovchi', "yo'lovchi", 'pass', 'pas', 'prigor'] },
+  { index: 2, id: 'manyovr', label: 'Manyovr ishlarida', aliases: ['manyovr', 'manevr', 'manyevr'] },
+  { index: 3, id: 'xojalik', label: "Xo'jalik ishlarida", aliases: ['xojalik', "xo'jalik", 'hojalik'] },
+  { index: 4, id: 'ijara', label: 'Ijara', aliases: ['ijara', 'arena', 'arenda'] },
+  { index: 5, id: 'tamirlash', label: "Teplovozlar ta'miri uchun", aliases: ['tamirlash', 'tamir', 'tamlash', 'repair'] },
+  { index: 6, id: ZAGRANITSA_KEY, label: 'Zagranitsa', aliases: ['zagranitsa', 'zagranisa', 'zagranintsa', 'ref', 'refrigerat', 'seksiya'] },
+  { index: 7, id: 'korxona', label: 'Korxonalarga', aliases: ['korxona', 'kompensatsiya', 'organisation'] },
+  { index: 8, id: 'qurulish', label: 'Qurilish ishlariga', aliases: ['qurulish', 'qurilish', 'ombor', 'ombor ehtiyoji', 'warehouse', 'qurilish ishlari'] },
+]);
+
 /** Jadval uchun Noma ustuni (faqat zarur boʻlganida) */
 const NOMA_OPTION: IndexedOption = {
   index: 999,
   id: NOMA_KEY,
   label: "Turi yo'q",
 };
+
+function ypdfMoveColumnKey(r: FuelRecord, cols: IndexedOption[]): string {
+  const category = String((r as any).category ?? '').trim().toLowerCase();
+  if (category === 'korxona' || category === 'qurulish' || category === 'qurilish' || category === 'tamirlash') {
+    return category === 'qurilish' ? 'qurulish' : category;
+  }
+
+  const mk = moveColumnKey(r.moveType, cols);
+  if (mk !== NOMA_KEY && mk !== MISC_AGG) return mk;
+
+  const raw = [r.moveType, r.route, r.trainIndex, (r as any).ruxsatIndeksi]
+    .map((v) => latinizeForMatch(String(v ?? '')))
+    .join(' ');
+  if (/\b(gruz|yuk)\b/.test(raw)) return 'yuk';
+  if (/\b(pass|pas|prigor|yolovchi)\b/.test(raw)) return 'yolovchi';
+  if (/\b(manevr|manyovr|manyevr)\b/.test(raw)) return 'manyovr';
+  if (/\b(arenda|arena|ijara)\b/.test(raw)) return 'ijara';
+  if (/\b(pred|korxona)\b/.test(raw)) return 'korxona';
+  if (/\b(stroit|quril|sklad|ombor)\b/.test(raw)) return 'qurulish';
+  if (/\b(ref|seksiya|zagran)\b/.test(raw)) return ZAGRANITSA_KEY;
+
+  return MISC_AGG;
+}
 
 function esc(s: string): string {
   return s
@@ -563,27 +677,12 @@ export function downloadErjuYpdf(
   const staffByCode = new Map<string, Staff>();
   for (const s of staffList) staffByCode.set(String(s.code).trim(), s);
 
-  let cols = [...(moveOptions?.length ? moveOptions : [...DEFAULT_MOVES])].sort((a, b) => a.index - b.index);
-  if (cols.length === 0) cols = [...DEFAULT_MOVES];
-
-  const usedNoma = sourceRows.some((r) => {
-    if (toNum(r.fuelAmount) <= 0) return false;
-    return !String(r.moveType ?? '').trim();
-  });
-
-  let activeCols = cols.filter((c) => c.id !== NOMA_KEY);
-  if (usedNoma && !activeCols.some((c) => c.id === NOMA_KEY))
-    activeCols = [...activeCols, NOMA_OPTION].sort((a, b) => a.index - b.index);
-
-  const matchColsSansNoma = activeCols.filter((c) => c.id !== NOMA_KEY && c.id !== MISC_AGG);
-  const miscNeeded = sourceRows.some((row) => rowNeedsMiscRow(row, staffByCode, matchColsSansNoma));
-  if (miscNeeded && !activeCols.some((c) => c.id === MISC_AGG))
-    activeCols = [...activeCols, MISC_OPTION].sort((a, b) => a.index - b.index);
+  const activeCols = [...(moveOptions?.length ? moveOptions : YPDF_COLUMNS)].sort((a, b) => a.index - b.index);
 
   // ── Sanalar bo'yicha guruhlash ────────────────────────────────────────────
   const dateGroups = new Map<string, FuelRecord[]>();
   for (const r of sourceRows) {
-    const dk = String(r.date ?? '').trim();
+    const dk = String(r.date ?? '').trim() || String((r as any).dateISO ?? '').trim();
     if (!dk) continue;
     if (!dateGroups.has(dk)) dateGroups.set(dk, []);
     dateGroups.get(dk)!.push(r);
@@ -625,6 +724,21 @@ export function downloadErjuYpdf(
   useCyrillicPdfFont(doc);
   const W      = doc.internal.pageSize.width;
   const MARGIN = 14;
+  const CONTINUATION_TOP = 18;
+
+  const drawDayHeader = (dayLabel: string, y: number) => {
+    doc.setFontSize(8);
+    doc.setFont(PDF_CYRILLIC_FONT, 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text(pdfText(`Sana: ${dayLabel}`), W / 2, y, { align: 'center' });
+    doc.setFont(PDF_CYRILLIC_FONT, 'normal');
+  };
+
+  const currentPageNumber = (): number => {
+    const direct = (doc as any).getCurrentPageInfo?.();
+    const internal = (doc as any).internal?.getCurrentPageInfo?.();
+    return Number(direct?.pageNumber ?? internal?.pageNumber ?? doc.getNumberOfPages());
+  };
 
   // 1-sahifaga umumiy sarlavha
   doc.setFontSize(8.5);
@@ -653,6 +767,18 @@ export function downloadErjuYpdf(
         zaps:        new Map(),
       });
     }
+    for (const z of ZAPRAVKALAR) {
+      const bucket = bucketMap.get(z.uzelId);
+      if (!bucket) continue;
+      bucket.zaps.set(z.id, {
+        stationId: z.id,
+        label: z.name,
+        byMove: new Map(),
+        byMoveCount: new Map(),
+        totalFuel: 0,
+        totalCount: 0,
+      });
+    }
 
     for (const r of dayRows) {
       const z = zapBySupplyOrLoc(r, staffByCode);
@@ -661,49 +787,46 @@ export function downloadErjuYpdf(
       if (!ej) continue;
       const fuel = toNum(r.fuelAmount);
       const zagranitsaFuel = getZagranitsaAmount(r);
-      if (fuel <= 0 && zagranitsaFuel <= 0) continue;
+      if (fuel <= 0) continue;
       const bucket = bucketMap.get(ej.id);
       if (!bucket) continue;
-      if (!bucket.zaps.has(z.id)) {
-        bucket.zaps.set(z.id, {
-          stationId: z.id, label: z.name,
-          byMove: new Map(), byMoveCount: new Map(),
-          totalFuel: 0, totalCount: 0,
-        });
-      }
       const za = bucket.zaps.get(z.id)!;
-      if (fuel > 0) {
-        const mk = moveColumnKey(r.moveType, activeCols);
-        za.byMove.set(mk, (za.byMove.get(mk) ?? 0) + fuel);
+
+      const refFuel = Math.max(0, Math.min(fuel, zagranitsaFuel));
+      const normalFuel = Math.max(0, fuel - refFuel);
+      const mk = ypdfMoveColumnKey(r, activeCols);
+
+      if (normalFuel > 0 && mk !== NOMA_KEY && mk !== MISC_AGG) {
+        za.byMove.set(mk, (za.byMove.get(mk) ?? 0) + normalFuel);
         za.byMoveCount.set(mk, (za.byMoveCount.get(mk) ?? 0) + 1);
-        za.totalFuel += fuel;
-        za.totalCount += 1;
       }
-      if (zagranitsaFuel > 0) {
-        const zk = moveColumnKey(ZAGRANITSA_KEY, activeCols);
-        if (zk !== NOMA_KEY && zk !== MISC_AGG) {
-          za.byMove.set(zk, (za.byMove.get(zk) ?? 0) + zagranitsaFuel);
-          za.byMoveCount.set(zk, (za.byMoveCount.get(zk) ?? 0) + 1);
-          za.totalFuel += zagranitsaFuel;
-          za.totalCount += 1;
-        }
+      if (refFuel > 0) {
+        za.byMove.set(ZAGRANITSA_KEY, (za.byMove.get(ZAGRANITSA_KEY) ?? 0) + refFuel);
       }
+      za.totalFuel += fuel;
+      za.totalCount += 1;
     }
 
     const orderedBuckets = ERJU_DATA
       .map((ej) => bucketMap.get(ej.id)!)
-      .filter((b): b is BucketAgg => !!b && b.zaps.size > 0);
+      .filter((b): b is BucketAgg => !!b && [...b.zaps.values()].some((z) => z.totalFuel > 0));
 
     if (orderedBuckets.length === 0) continue; // bu kunda ma'lumot yo'q
 
     const grandByMove  = new Map<string, number>();
     let   grandTotal   = 0;
+    let   grandTeplovozTotal = 0;
     const pivotTotals  = new Map<string, Map<string, number>>();
+    const pivotCounts  = new Map<string, Map<string, number>>();
     for (const er of ERJU_DATA) pivotTotals.set(er.id, new Map());
-    // 2-jadval uchun barcha 6 ta ERJU (ma'lumot bo'lmasa ham ustun yaratilaversin)
-    const allPivotBuckets = ERJU_DATA
-      .map((ej) => bucketMap.get(ej.id)!)
-      .filter((b): b is BucketAgg => !!b);
+    for (const er of ERJU_DATA) pivotCounts.set(er.id, new Map());
+    const allPivotBuckets = [...orderedBuckets].sort((a, b) => {
+      const ia = YPDF_PIVOT_BUCKET_ORDER.indexOf(a.bucketId);
+      const ib = YPDF_PIVOT_BUCKET_ORDER.indexOf(b.bucketId);
+      const oa = ia >= 0 ? ia : Number.MAX_SAFE_INTEGER;
+      const ob = ib >= 0 ? ib : Number.MAX_SAFE_INTEGER;
+      return oa - ob;
+    });
 
     // Asosiy jadval satrlari
     const body: any[][] = [];
@@ -719,6 +842,7 @@ export function downloadErjuYpdf(
 
       const bucketMove = new Map<string, number>();
       let bucketTotal = 0;
+      let bucketTeplovozTotal = 0;
 
       const zapOrder = [...b.zaps.keys()].sort((aId, bId) => {
         const order = ERJU_DATA.find((e) => e.id === b.bucketId)?.zapravkalar ?? [];
@@ -731,50 +855,71 @@ export function downloadErjuYpdf(
 
       for (const zapId of zapOrder) {
         const za = b.zaps.get(zapId)!;
+        const stationMoveTons = new Map<string, number>();
+        for (const c of activeCols) stationMoveTons.set(c.id, roundKgToYpdfTons(za.byMove.get(c.id) ?? 0));
+        const zaTeplovozTotal = sumMoveValues(stationMoveTons, TEPLOVOZ_TOTAL_KEYS);
+        const zaTotal = activeCols.reduce((sum, c) => addYpdfTons(sum, stationMoveTons.get(c.id) ?? 0), 0);
+        const hasStationFuel = za.totalFuel > 0;
         rowNum++;
-        bucketTotal += za.totalFuel;
+        bucketTotal = addYpdfTons(bucketTotal, zaTotal);
+        bucketTeplovozTotal = addYpdfTons(bucketTeplovozTotal, zaTeplovozTotal);
 
         const pivotMap = pivotTotals.get(b.bucketId)!;
+        const pivotCountMap = pivotCounts.get(b.bucketId)!;
         for (const c of activeCols) {
-          const v = za.byMove.get(c.id) ?? 0;
+          const v = stationMoveTons.get(c.id) ?? 0;
           if (v > 0) {
-            pivotMap.set(c.id, (pivotMap.get(c.id) ?? 0) + v);
-            grandByMove.set(c.id, (grandByMove.get(c.id) ?? 0) + v);
+            pivotMap.set(c.id, addYpdfTons(pivotMap.get(c.id) ?? 0, v));
+            grandByMove.set(c.id, addYpdfTons(grandByMove.get(c.id) ?? 0, v));
+          }
+          const count = za.byMoveCount.get(c.id) ?? 0;
+          if (count > 0) {
+            pivotCountMap.set(c.id, (pivotCountMap.get(c.id) ?? 0) + count);
           }
         }
 
       body.push([
-        { content: String(rowNum), styles: { halign: 'center' } },
+        { content: String(YPDF_STATION_NUMBERS[za.stationId] ?? rowNum), styles: { halign: 'center' } },
           pdfText(za.label),
-          { content: fmt(za.totalFuel), styles: { halign: 'right' } },
-          { content: fmt(za.totalFuel), styles: { halign: 'right' } },
-          ...activeCols.map((c) => ({ content: fmt(za.byMove.get(c.id) ?? 0), styles: { halign: 'right' } })),
+          { content: hasStationFuel ? formatYpdfTons(zaTotal) : '', styles: { halign: 'right' } },
+          { content: hasStationFuel ? formatYpdfTons(zaTeplovozTotal) : '', styles: { halign: 'right' } },
+          ...activeCols.map((c) => ({ content: hasStationFuel ? formatYpdfTons(stationMoveTons.get(c.id) ?? 0) : '', styles: { halign: 'right' } })),
         ]);
 
-        for (const [k, vv] of za.byMove)
-          bucketMove.set(k, (bucketMove.get(k) ?? 0) + vv);
-        grandTotal += za.totalFuel;
+        for (const [k, vv] of stationMoveTons)
+          bucketMove.set(k, addYpdfTons(bucketMove.get(k) ?? 0, vv));
+        grandTotal = addYpdfTons(grandTotal, zaTotal);
+        grandTeplovozTotal = addYpdfTons(grandTeplovozTotal, zaTeplovozTotal);
       }
 
       body.push([
         { content: `Jami ${b.bucketTitle}`, colSpan: 2, styles: { fontStyle: 'italic', fillColor: SUM, halign: 'left' } },
-        { content: fmt(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
-        { content: fmt(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
-        ...activeCols.map((c) => ({ content: fmt(bucketMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } })),
+        { content: formatYpdfTons(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
+        { content: formatYpdfTons(bucketTeplovozTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
+        ...activeCols.map((c) => ({ content: formatYpdfTons(bucketMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } })),
       ]);
     }
 
     body.push([
       { content: 'ОБЩИЙ ИТОГ', colSpan: 2, styles: { fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG, halign: 'left' } },
-      { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
-      { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
-      ...activeCols.map((c) => ({ content: fmt(grandByMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } })),
+      { content: formatYpdfTons(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
+      { content: formatYpdfTons(grandTeplovozTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
+      ...activeCols.map((c) => ({ content: formatYpdfTons(grandByMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } })),
     ]);
 
     // ── Yangi sahifa (birinchi sana uchun emas) ───────────────────────────
     if (!isFirstDate) doc.addPage();
 
-    const tableStartY: number = isFirstDate ? titleEndY + 1.5 : 15;
+    const dayFirstPage = doc.getNumberOfPages();
+    const dayLabel = formatYpdfDayLabel(dateKey);
+    const dayHeaderY = isFirstDate ? titleEndY + 1.5 : 10;
+    drawDayHeader(dayLabel, dayHeaderY);
+
+    const drawContinuationDayHeader = () => {
+      if (currentPageNumber() !== dayFirstPage) drawDayHeader(dayLabel, 10);
+    };
+
+    const tableStartY: number = dayHeaderY + 4;
     isFirstDate = false;
 
     // ── Asosiy jadval ─────────────────────────────────────────────────────
@@ -792,7 +937,8 @@ export function downloadErjuYpdf(
         return cs;
       })(),
       tableWidth: W - MARGIN * 2,
-      margin: { left: MARGIN, right: MARGIN },
+      margin: { left: MARGIN, right: MARGIN, top: CONTINUATION_TOP },
+      willDrawPage: drawContinuationDayHeader,
     });
 
     // ── Pivot jadval ──────────────────────────────────────────────────────
@@ -803,23 +949,27 @@ export function downloadErjuYpdf(
     ]];
 
     const pivotBody: any[][] = [];
-    for (const mv of activeCols) {
-      const rowTot = allPivotBuckets.reduce((s, bb) => s + (pivotTotals.get(bb.bucketId)?.get(mv.id) ?? 0), 0);
-      if (rowTot <= 0) continue;
+    for (const mv of YPDF_COUNT_ROWS) {
+      const rowTot = allPivotBuckets.reduce((s, bb) => s + (pivotCounts.get(bb.bucketId)?.get(mv.id) ?? 0), 0);
       pivotBody.push([
         pdfText(mv.label),
-        ...allPivotBuckets.map((b) => ({ content: fmt(pivotTotals.get(b.bucketId)?.get(mv.id) ?? 0), styles: { halign: 'right' } })),
-        { content: fmt(rowTot), styles: { halign: 'right' } },
+        ...allPivotBuckets.map((b) => ({ content: String(pivotCounts.get(b.bucketId)?.get(mv.id) ?? 0), styles: { halign: 'right' } })),
+        { content: String(rowTot), styles: { halign: 'right' } },
       ]);
     }
     const pfooter = allPivotBuckets.map((b) => {
-      const sub = [...(pivotTotals.get(b.bucketId)?.values() ?? [])].reduce((s, x) => s + x, 0);
-      return { content: fmt(sub), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } };
+      const bucketCounts = pivotCounts.get(b.bucketId);
+      const sub = YPDF_COUNT_ROWS.reduce((sum, row) => sum + (bucketCounts?.get(row.id) ?? 0), 0);
+      return { content: String(sub), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } };
     });
+    const grandCount = YPDF_COUNT_ROWS.reduce(
+      (sum, row) => sum + allPivotBuckets.reduce((s, b) => s + (pivotCounts.get(b.bucketId)?.get(row.id) ?? 0), 0),
+      0,
+    );
     pivotBody.push([
       { content: 'Jami', styles: { fontStyle: 'bold', fillColor: GRAND } },
       ...pfooter,
-      { content: fmt(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } },
+      { content: String(grandCount), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND } },
     ]);
 
     const afterMain = (doc as any).lastAutoTable?.finalY ?? tableStartY;
@@ -830,7 +980,8 @@ export function downloadErjuYpdf(
       theme: 'grid',
       styles:     { font: PDF_CYRILLIC_FONT, fontSize: 7, cellPadding: 1.2, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.2 },
       headStyles: { font: PDF_CYRILLIC_FONT, fillColor: [232, 235, 232], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, lineColor: [0, 0, 0], lineWidth: 0.3 },
-      margin: { left: MARGIN, right: MARGIN },
+      margin: { left: MARGIN, right: MARGIN, top: CONTINUATION_TOP },
+      willDrawPage: drawContinuationDayHeader,
     });
 
     // ── Harakat turi hisobi (jadval ostidan, chap tarafda) ────────────────
@@ -852,12 +1003,7 @@ export function downloadErjuYpdf(
       }
       for (const key of rowMoveKeys) moveCount.set(key, (moveCount.get(key) ?? 0) + 1);
     }
-    const visibleMoveCounts = activeCols
-      .map((mc) => ({
-        label: SHORT_MOVE[mc.id] ?? mc.id,
-        count: moveCount.get(mc.id) ?? 0,
-      }))
-      .filter((row) => row.count > 0);
+    const visibleMoveCounts: { label: string; count: number }[] = [];
     const afterPivot = (doc as any).lastAutoTable?.finalY ?? afterMain + 6;
     let cy = afterPivot + 5;
     const pageH = doc.internal.pageSize.height;
