@@ -104,6 +104,10 @@ export default function AdminLayout({ children, hideHeader = false }: AdminLayou
     router.push('/login');
   };
 
+  const activeMenuItem = menuItems.find(
+    item => item.href && currentPath === normalizePath(item.href)
+  );
+
   const linkBase =
     'group relative flex h-full min-h-0 w-full flex-1 items-center gap-3 overflow-hidden rounded-2xl border-2 border-white/10 px-4 text-sm font-black uppercase tracking-wide text-white shadow-md drop-shadow-sm transition-all duration-200 ease-out select-none hover:brightness-110';
 
@@ -166,8 +170,19 @@ export default function AdminLayout({ children, hideHeader = false }: AdminLayou
     );
   };
 
-  const SidebarContent = ({ collapsed, onLinkClick }: { collapsed?: boolean; onLinkClick?: () => void }) => (
-    <nav className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden px-3 py-2.5">
+  const SidebarContent = ({
+    collapsed,
+    onLinkClick,
+    mobile = false,
+  }: {
+    collapsed?: boolean;
+    onLinkClick?: () => void;
+    mobile?: boolean;
+  }) => (
+    <nav className={[
+      'flex min-h-0 flex-1 flex-col gap-1.5 px-3 py-2.5',
+      mobile ? 'overflow-y-auto' : 'overflow-hidden',
+    ].join(' ')}>
       {menuItems
         .filter(item => item.roles.includes(session.role))
         .map((item, idx) =>
@@ -177,7 +192,10 @@ export default function AdminLayout({ children, hideHeader = false }: AdminLayou
               className="mx-2 h-px shrink-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
             />
           ) : (
-            <div key={item.href ?? `${item.type}-${idx}`} className="flex min-h-0 flex-1 flex-col">
+            <div
+              key={item.href ?? `${item.type}-${idx}`}
+              className={mobile ? 'flex min-h-[3.25rem] flex-none flex-col' : 'flex min-h-0 flex-1 flex-col'}
+            >
               <SidebarLink item={item} onClick={onLinkClick} collapsed={collapsed} />
             </div>
           )
@@ -230,6 +248,35 @@ export default function AdminLayout({ children, hideHeader = false }: AdminLayou
       </aside>
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        {hideHeader && (
+          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-white/60 bg-white/90 px-3 shadow-[0_1px_0_rgba(255,255,255,0.7),0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/88 md:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border-2 border-slate-200 bg-white text-slate-600 shadow-sm hover:border-primary/40 hover:bg-primary/10 hover:text-primary dark:border-white/15 dark:bg-white/6"
+              aria-label="Admin menyu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
+                Admin panel
+              </p>
+              <p className="truncate text-sm font-black leading-tight text-slate-950 dark:text-white">
+                {activeMenuItem?.title ?? 'Boshqaruv'}
+              </p>
+            </div>
+
+            <Link
+              href="/admin"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-500/22"
+              aria-label="Bosh sahifa"
+            >
+              <Home className="h-4.5 w-4.5" style={{ width: '1.1rem', height: '1.1rem' }} />
+            </Link>
+          </header>
+        )}
+
         {!hideHeader && (
           <header className={[
             'flex h-16 flex-shrink-0 items-center justify-between gap-4 px-4 sm:px-6',
@@ -284,7 +331,7 @@ export default function AdminLayout({ children, hideHeader = false }: AdminLayou
             className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[17rem] flex-col bg-black shadow-2xl animate-in slide-in-from-left duration-250">
+          <aside className="absolute inset-y-0 left-0 flex w-[17rem] max-w-[calc(100vw-1rem)] flex-col bg-black shadow-2xl animate-in slide-in-from-left duration-250">
             <div className="flex h-[72px] items-center justify-between border-b border-white/10 px-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-9 w-9 place-items-center rounded-[12px] bg-gradient-to-br from-blue-500 via-violet-500 to-fuchsia-500 text-[11px] font-black text-white shadow-lg shadow-violet-500/28">UT</div>
@@ -298,7 +345,7 @@ export default function AdminLayout({ children, hideHeader = false }: AdminLayou
               </button>
             </div>
 
-            <SidebarContent onLinkClick={() => setIsMobileMenuOpen(false)} />
+            <SidebarContent mobile onLinkClick={() => setIsMobileMenuOpen(false)} />
           </aside>
         </div>
       )}

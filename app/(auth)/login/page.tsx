@@ -45,7 +45,7 @@ function resolveZapravka(rawZapravka: string) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [code, setCode] = useState(["", "", "", ""]);
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const verifyingRef = useRef(false);
@@ -117,8 +117,12 @@ export default function LoginPage() {
   }, []);
 
   const handleVerify = useCallback(async () => {
-    const fullCode = code.join("");
-    if (fullCode.length < 4 || verifyingRef.current) return;
+    const fullCode = code.replace(/\D/g, "").slice(0, 4);
+    if (!fullCode || verifyingRef.current) return;
+    if (fullCode.length !== 4) {
+      setError("4 xonali kodni to'liq kiriting.");
+      return;
+    }
 
     verifyingRef.current = true;
     setVerifying(true);
@@ -135,15 +139,15 @@ export default function LoginPage() {
 
       if (!session) {
         await signOut(auth);
-        setError("Kod xato terildi. Qaytadan urinib ko'ring");
-        setCode(["", "", "", ""]);
+        setError("siz bizda shubxa uyg'otdingiz");
+        setCode("");
         return;
       }
 
       if (blocked) {
         await signOut(auth);
         setError("Bu kirish kodi bloklangan. Administratorga murojaat qiling.");
-        setCode(["", "", "", ""]);
+        setCode("");
         return;
       }
 
@@ -163,7 +167,7 @@ export default function LoginPage() {
         /* ignore */
       }
       setError("Tekshiruvda xato. Internet aloqasini tekshiring.");
-      setCode(["", "", "", ""]);
+      setCode("");
     } finally {
       verifyingRef.current = false;
       setVerifying(false);
@@ -178,7 +182,7 @@ export default function LoginPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleVerify]);
 
-  const canSubmit = !code.some((c) => !c) && !verifying;
+  const canSubmit = code.replace(/\D/g, "").length === 4 && !verifying;
 
   return (
     <div className="flex min-h-screen w-full bg-[#030005]">
@@ -223,7 +227,7 @@ export default function LoginPage() {
                   Tizimga kirish
                 </h2>
                 <p className="mt-2 text-sm font-semibold leading-6 text-[#667085]">
-                  Maxsus 4 xonali kodni kiriting va ish paneliga o&apos;ting.
+                  Maxsus kodni kiriting va ish paneliga o&apos;ting.
                 </p>
               </div>
 

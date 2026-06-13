@@ -763,10 +763,10 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                 let listId = "";
 
                 switch (field) {
-                  case "lokomotivNumber": label = "Lokomotiv raqami"; placeholder = "1141"; break;
+                  case "lokomotivNumber": label = "Lokomotiv raqami"; placeholder = "6553"; break;
                   case "jadval": label = "Депони танланг"; placeholder = "Депони танланг"; break;
                   case "zagranitsa": label = "Zagranitsa"; placeholder = "0"; type = "number"; break;
-                  case "poyezdNumber": label = "Poyezd raqami"; placeholder = "3606"; break;
+                  case "poyezdNumber": label = "Poyezd raqami"; placeholder = "chuqursoy"; break;
                   case "ruxsatIndeksi": label = "Ruxsat indeksi"; placeholder = "3001-T"; break;
                   case "poyezdVazni": label = "Poyezd vazni, tonna"; placeholder = "5000"; type = "number"; break;
                   case "qoldiq": label = "Qoldiq, kg"; placeholder = "0"; type = "number"; break;

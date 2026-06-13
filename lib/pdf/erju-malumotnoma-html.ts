@@ -9,6 +9,7 @@ import { ZAPRAVKALAR } from '@/lib/data/uzellar';
 import { PDF_CYRILLIC_FONT, useCyrillicPdfFont } from '@/lib/pdf/cyrillic-font';
 import { formatPdfNonZeroNumber, parsePdfNumber } from '@/lib/utils/pdf-number';
 import { pdfText } from '@/lib/utils/pdf-text';
+import { savePdfDocument } from '@/lib/pdf/save-pdf';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -80,26 +81,8 @@ const YPDF_COUNT_ROWS = [
   { id: 'ijara', label: 'ar' },
 ] as const;
 
-function roundKgToYpdfTons(kg: unknown): number {
-  return Math.round((toNum(kg) / 1000) * 100) / 100;
-}
-
-function formatYpdfTons(tons: unknown): string {
-  return toNum(tons)
-    .toLocaleString('ru-RU', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-      useGrouping: false,
-    })
-    .replace('.', ',');
-}
-
-function ypdfTons(kg: unknown): string {
-  return formatYpdfTons(roundKgToYpdfTons(kg));
-}
-
-function addYpdfTons(a: number, b: number): number {
-  return Math.round((a + b) * 100) / 100;
+function formatTonExactForYPdf(kg: number): string {
+  return (kg / 1000).toFixed(3).replace('.', ',');
 }
 
 function sumMoveValues(map: Map<string, number>, keys: ReadonlySet<string>): number {
@@ -753,9 +736,15 @@ export function downloadErjuYpdf(
 
   // ── Har bir sana uchun tsikl ──────────────────────────────────────────────
   let isFirstDate = true;
+  const reportGroups = [{
+    label: sortedDates.length === 1
+      ? formatYpdfDayLabel(sortedDates[0])
+      : `${formatYpdfDayLabel(sortedDates[0])} - ${formatYpdfDayLabel(sortedDates[sortedDates.length - 1])}`,
+    rows: sortedDates.flatMap((date) => dateGroups.get(date) ?? []),
+  }];
 
-  for (const dateKey of sortedDates) {
-    const dayRows = dateGroups.get(dateKey)!;
+  for (const reportGroup of reportGroups) {
+    const dayRows = reportGroup.rows;
 
     // Aggregatsiya — faqat shu kunning yozuvlari
     const bucketMap = new Map<string, BucketAgg>();
@@ -855,22 +844,22 @@ export function downloadErjuYpdf(
 
       for (const zapId of zapOrder) {
         const za = b.zaps.get(zapId)!;
-        const stationMoveTons = new Map<string, number>();
-        for (const c of activeCols) stationMoveTons.set(c.id, roundKgToYpdfTons(za.byMove.get(c.id) ?? 0));
-        const zaTeplovozTotal = sumMoveValues(stationMoveTons, TEPLOVOZ_TOTAL_KEYS);
-        const zaTotal = activeCols.reduce((sum, c) => addYpdfTons(sum, stationMoveTons.get(c.id) ?? 0), 0);
+        const stationMoveKg = new Map<string, number>();
+        for (const c of activeCols) stationMoveKg.set(c.id, za.byMove.get(c.id) ?? 0);
+        const zaTeplovozTotal = sumMoveValues(stationMoveKg, TEPLOVOZ_TOTAL_KEYS);
+        const zaTotal = activeCols.reduce((sum, c) => sum + (stationMoveKg.get(c.id) ?? 0), 0);
         const hasStationFuel = za.totalFuel > 0;
         rowNum++;
-        bucketTotal = addYpdfTons(bucketTotal, zaTotal);
-        bucketTeplovozTotal = addYpdfTons(bucketTeplovozTotal, zaTeplovozTotal);
+        bucketTotal += zaTotal;
+        bucketTeplovozTotal += zaTeplovozTotal;
 
         const pivotMap = pivotTotals.get(b.bucketId)!;
         const pivotCountMap = pivotCounts.get(b.bucketId)!;
         for (const c of activeCols) {
-          const v = stationMoveTons.get(c.id) ?? 0;
+          const v = stationMoveKg.get(c.id) ?? 0;
           if (v > 0) {
-            pivotMap.set(c.id, addYpdfTons(pivotMap.get(c.id) ?? 0, v));
-            grandByMove.set(c.id, addYpdfTons(grandByMove.get(c.id) ?? 0, v));
+            pivotMap.set(c.id, (pivotMap.get(c.id) ?? 0) + v);
+            grandByMove.set(c.id, (grandByMove.get(c.id) ?? 0) + v);
           }
           const count = za.byMoveCount.get(c.id) ?? 0;
           if (count > 0) {
@@ -881,37 +870,37 @@ export function downloadErjuYpdf(
       body.push([
         { content: String(YPDF_STATION_NUMBERS[za.stationId] ?? rowNum), styles: { halign: 'center' } },
           pdfText(za.label),
-          { content: hasStationFuel ? formatYpdfTons(zaTotal) : '', styles: { halign: 'right' } },
-          { content: hasStationFuel ? formatYpdfTons(zaTeplovozTotal) : '', styles: { halign: 'right' } },
-          ...activeCols.map((c) => ({ content: hasStationFuel ? formatYpdfTons(stationMoveTons.get(c.id) ?? 0) : '', styles: { halign: 'right' } })),
+          { content: hasStationFuel ? formatTonExactForYPdf(zaTotal) : '', styles: { halign: 'right' } },
+          { content: hasStationFuel ? formatTonExactForYPdf(zaTeplovozTotal) : '', styles: { halign: 'right' } },
+          ...activeCols.map((c) => ({ content: hasStationFuel ? formatTonExactForYPdf(stationMoveKg.get(c.id) ?? 0) : '', styles: { halign: 'right' } })),
         ]);
 
-        for (const [k, vv] of stationMoveTons)
-          bucketMove.set(k, addYpdfTons(bucketMove.get(k) ?? 0, vv));
-        grandTotal = addYpdfTons(grandTotal, zaTotal);
-        grandTeplovozTotal = addYpdfTons(grandTeplovozTotal, zaTeplovozTotal);
+        for (const [k, vv] of stationMoveKg)
+          bucketMove.set(k, (bucketMove.get(k) ?? 0) + vv);
+        grandTotal += zaTotal;
+        grandTeplovozTotal += zaTeplovozTotal;
       }
 
       body.push([
         { content: `Jami ${b.bucketTitle}`, colSpan: 2, styles: { fontStyle: 'italic', fillColor: SUM, halign: 'left' } },
-        { content: formatYpdfTons(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
-        { content: formatYpdfTons(bucketTeplovozTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
-        ...activeCols.map((c) => ({ content: formatYpdfTons(bucketMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } })),
+        { content: formatTonExactForYPdf(bucketTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
+        { content: formatTonExactForYPdf(bucketTeplovozTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } },
+        ...activeCols.map((c) => ({ content: formatTonExactForYPdf(bucketMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: SUM } })),
       ]);
     }
 
     body.push([
       { content: 'ОБЩИЙ ИТОГ', colSpan: 2, styles: { fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG, halign: 'left' } },
-      { content: formatYpdfTons(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
-      { content: formatYpdfTons(grandTeplovozTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
-      ...activeCols.map((c) => ({ content: formatYpdfTons(grandByMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } })),
+      { content: formatTonExactForYPdf(grandTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
+      { content: formatTonExactForYPdf(grandTeplovozTotal), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } },
+      ...activeCols.map((c) => ({ content: formatTonExactForYPdf(grandByMove.get(c.id) ?? 0), styles: { halign: 'right', fontStyle: 'bold', fillColor: GRAND_ROW, textColor: GRAND_ROW_FG } })),
     ]);
 
     // ── Yangi sahifa (birinchi sana uchun emas) ───────────────────────────
     if (!isFirstDate) doc.addPage();
 
     const dayFirstPage = doc.getNumberOfPages();
-    const dayLabel = formatYpdfDayLabel(dateKey);
+    const dayLabel = reportGroup.label;
     const dayHeaderY = isFirstDate ? titleEndY + 1.5 : 10;
     drawDayHeader(dayLabel, dayHeaderY);
 
@@ -1025,5 +1014,5 @@ export function downloadErjuYpdf(
   }
 
   const slug = cyrToLat(reportTitle).slice(0, 40).replace(/[^\w\s]/g, '').replace(/\s+/g, '_');
-  doc.save(`y_pdf_${slug}.pdf`);
+  savePdfDocument(doc, `y_pdf_${slug}.pdf`);
 }

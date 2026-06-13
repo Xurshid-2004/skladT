@@ -87,15 +87,15 @@ export function Header() {
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-          <div className="flex min-w-0 items-center gap-1.5 rounded-xl border-2 border-indigo-200 bg-white px-2 py-1.5 shadow-sm shadow-indigo-500/10 dark:border-indigo-400/25 dark:bg-slate-900 sm:gap-2.5 sm:px-4 sm:py-2">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-xl border-2 border-indigo-200 bg-white px-2 py-1.5 shadow-sm shadow-indigo-500/10 dark:border-indigo-400/25 dark:bg-slate-900 sm:max-w-[260px] sm:gap-2.5 sm:px-4 sm:py-2">
             <User className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-300 sm:h-5 sm:w-5" />
-            <div className="min-w-0">
-              <span className="block max-w-[92px] truncate text-sm font-black leading-tight text-slate-950 dark:text-white sm:max-w-[210px] sm:text-lg">
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-black leading-tight text-slate-950 dark:text-white sm:text-lg">
                 {session?.displayName || "Foydalanuvchi"}
               </span>
               {zapravkaName && (
-                <span className="block max-w-[92px] truncate text-[9px] font-black uppercase leading-tight tracking-wide text-indigo-600 dark:text-indigo-300 sm:max-w-[210px] sm:text-[10px]">
+                <span className="block truncate text-[9px] font-black uppercase leading-tight tracking-wide text-indigo-600 dark:text-indigo-300 sm:text-[10px]">
                   Zapravka: {zapravkaName}
                 </span>
               )}

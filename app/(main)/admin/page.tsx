@@ -349,18 +349,18 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout hideHeader>
-      <div className="mx-auto flex max-w-5xl flex-col space-y-8">
-        <section className="order-2 overflow-hidden rounded-[20px] border border-cyan-200/80 bg-white shadow-xl shadow-cyan-200/35">
+      <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col space-y-6 sm:space-y-8">
+        <section className="order-2 min-w-0 overflow-hidden rounded-[20px] border border-cyan-200/80 bg-white shadow-xl shadow-cyan-200/35">
           <div className="bg-gradient-to-br from-cyan-600 via-sky-600 to-indigo-700 px-4 py-3 text-white sm:px-5">
-            <div className="flex items-start gap-3">
+            <div className="flex min-w-0 items-start gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/16 ring-1 ring-white/25">
                 <ArrowLeftRight className="h-5 w-5" strokeWidth={2.8} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-cyan-50/75">
                   Operator jo'natma farqi
                 </p>
-                <h2 className="mt-0.5 text-lg font-black leading-tight">
+                <h2 className="mt-0.5 break-words text-lg font-black leading-tight">
                   Yuborilgan va qabul qilingan kg farqi
                 </h2>
                 <p className="mt-0.5 text-[11px] font-bold text-white/70">
@@ -375,13 +375,13 @@ export default function AdminDashboard() {
               latestOperatorDifferences.map((difference) => (
                 <div
                   key={difference.id}
-                  className="grid gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:grid-cols-[1fr_auto] sm:items-center"
+                  className="grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
                 >
-                  <div>
-                    <p className="text-sm font-black text-slate-950">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-black text-slate-950">
                       {difference.fromStationName}{" -> "}{difference.toStationName}
                     </p>
-                    <p className="mt-1 text-[11px] font-bold text-slate-500">
+                    <p className="mt-1 break-words text-[11px] font-bold text-slate-500">
                       Yuborildi: {formatKgExact(difference.sentKg)} kg | Qabul qilindi:{" "}
                       {formatKgExact(difference.acceptedKg)} kg |{" "}
                       {format(new Date(difference.acceptedAt), "HH:mm, dd.MM.yyyy")}
@@ -405,7 +405,7 @@ export default function AdminDashboard() {
           </div>
         </section>
         {/* Ulangan foydalanuvchilar — premium jadval */}
-        <div className="order-2 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-xl shadow-slate-300/40">
+        <div className="order-2 min-w-0 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-xl shadow-slate-300/40">
           <div className="flex flex-col gap-3 border-b border-slate-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
             <h2 className="flex items-center gap-3 text-base font-black uppercase tracking-tight text-slate-900 sm:text-lg">
               <Users className="h-6 w-6 text-indigo-600" />
@@ -505,7 +505,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Yoqilg'i — kecha vs bugun (yashil panel, donut + ustun) */}
-        <section className="fuel-compare-panel order-1 overflow-hidden rounded-[28px] border border-emerald-900/50 shadow-2xl shadow-emerald-950/40">
+        <section className="fuel-compare-panel order-1 min-w-0 overflow-hidden rounded-[24px] border border-emerald-900/50 shadow-2xl shadow-emerald-950/40 sm:rounded-[28px]">
           <div className="bg-gradient-to-br from-emerald-950 via-green-900 to-teal-950 px-5 py-6 text-white sm:px-8 sm:py-8">
             <p className="text-[10px] font-black uppercase tracking-[0.35em] text-emerald-200/90">
               Yoqilg&apos;i sarfi
@@ -523,23 +523,23 @@ export default function AdminDashboard() {
               Aniq kg bo'yicha - aylana va ustun diagrammalar
             </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 px-4 py-4 shadow-xl shadow-blue-950/35 ring-1 ring-white/25 sm:px-5">
+            <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-3">
+              <div className="min-w-0 rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 px-4 py-4 shadow-xl shadow-blue-950/35 ring-1 ring-white/25 sm:px-5">
                 <p className="text-[10px] font-black uppercase tracking-wider text-blue-50/80">Bugun</p>
-                <p className="mt-1.5 text-3xl font-black leading-none tabular-nums text-white sm:text-4xl">
+                <p className="mt-1.5 break-words text-[clamp(1.65rem,8vw,2.25rem)] font-black leading-none tabular-nums text-white">
                   {formatKgExact(todayKg)}
                   <span className="ml-1.5 text-base text-blue-50/70 sm:text-xl">kg</span>
                 </p>
               </div>
-              <div className="rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-slate-900 px-4 py-4 shadow-xl shadow-violet-950/35 ring-1 ring-white/25 sm:px-5">
+              <div className="min-w-0 rounded-2xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-slate-900 px-4 py-4 shadow-xl shadow-violet-950/35 ring-1 ring-white/25 sm:px-5">
                 <p className="text-[10px] font-black uppercase tracking-wider text-violet-50/80">Kecha</p>
-                <p className="mt-1.5 text-3xl font-black leading-none tabular-nums text-white sm:text-4xl">
+                <p className="mt-1.5 break-words text-[clamp(1.65rem,8vw,2.25rem)] font-black leading-none tabular-nums text-white">
                   {formatKgExact(yesterdayKg)}
                   <span className="ml-1.5 text-base text-violet-50/70 sm:text-xl">kg</span>
                 </p>
               </div>
               <div
-                className={`rounded-2xl px-4 py-4 shadow-xl ring-2 backdrop-blur-sm sm:px-5 ${
+                className={`min-w-0 rounded-2xl px-4 py-4 shadow-xl ring-2 backdrop-blur-sm sm:px-5 ${
                   more
                     ? "bg-gradient-to-br from-amber-400 via-orange-500 to-rose-700 shadow-orange-950/30 ring-amber-200/55"
                     : diffR === 0
@@ -548,7 +548,7 @@ export default function AdminDashboard() {
                 }`}
               >
                 <p className="text-[10px] font-black uppercase tracking-wider text-white/75">Farq</p>
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   {diffR !== 0 &&
                     (more ? (
                       <TrendingUp className="h-5 w-5 shrink-0 text-white/90" />
@@ -556,7 +556,7 @@ export default function AdminDashboard() {
                       <TrendingDown className="h-5 w-5 shrink-0 text-white/90" />
                     ))}
                   <p
-                    className={`mt-1.5 text-3xl font-black leading-none tabular-nums sm:text-4xl ${
+                    className={`mt-1.5 break-words text-[clamp(1.65rem,8vw,2.25rem)] font-black leading-none tabular-nums ${
                       more ? "text-white" : diffR === 0 ? "text-slate-100" : "text-white"
                     }`}
                   >
@@ -578,8 +578,8 @@ export default function AdminDashboard() {
             <p className="mt-4 text-center text-xs font-bold text-emerald-50/90">{compareCaption}</p>
 
             {hasFuelData ? (
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl bg-black/25 p-4 ring-1 ring-emerald-400/20">
+              <div className="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
+                <div className="min-w-0 rounded-2xl bg-black/25 p-4 ring-1 ring-emerald-400/20">
                   <p className="mb-2 text-center text-[9px] font-black uppercase tracking-widest text-emerald-100/60">
                     Nisbat (aylana)
                   </p>
@@ -631,7 +631,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl bg-black/25 p-4 ring-1 ring-emerald-400/20">
+                <div className="min-w-0 rounded-2xl bg-black/25 p-4 ring-1 ring-emerald-400/20">
                   <p className="mb-3 text-center text-[9px] font-black uppercase tracking-widest text-emerald-100/60">
                     Kecha vs bugun (kg)
                   </p>

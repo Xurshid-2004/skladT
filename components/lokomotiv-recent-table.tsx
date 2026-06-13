@@ -21,6 +21,7 @@ import type { FuelRecord } from "@/lib/pdf/erju-html-pdf";
 import { pdfText } from "@/lib/utils/pdf-text";
 import { formatPdfNonZeroNumber, formatPdfNumber, parsePdfNumber } from "@/lib/utils/pdf-number";
 import { PDF_CYRILLIC_FONT, useCyrillicPdfFont } from "@/lib/pdf/cyrillic-font";
+import { savePdfDocument } from "@/lib/pdf/save-pdf";
 import { SubmissionEditDrawer } from "@/components/admin/submission-edit-drawer";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -290,7 +291,7 @@ function exportPDF(rows: any[], fileSlug: string, titleLine: string, staffMap: M
   let gY=fY+10; if(gY>pH-mg){doc.addPage();gY=mg;}
   doc.setFontSize(8); doc.setFont(PDF_CYRILLIC_FONT,"bold");
   doc.text(`Общий итог топлива: ${formatPdfNumber(grand)} кг`, mg, gY, {align:"left"});
-  doc.save(`hisobot_${fileSlug}.pdf`);
+  savePdfDocument(doc, `hisobot_${fileSlug}.pdf`);
 }
 
 // ── Korxona PDF ────────────────────────────────────────────────────────────────
@@ -343,7 +344,7 @@ function exportKorxonaCatPdf(rows: any[]) {
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont("helvetica", "bold");
   doc.text(`Jami berildi: ${formatPdfNumber(total)} kg`, 14, fY + 8);
-  doc.save(`korxona_${dateStr}.pdf`);
+  savePdfDocument(doc, `korxona_${dateStr}.pdf`);
 }
 
 // ── Qurulish PDF ───────────────────────────────────────────────────────────────
@@ -416,7 +417,7 @@ function exportQurulishCatPdf(rows: any[]) {
   const fY = (doc as any).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(8); doc.setFont("helvetica", "bold");
   doc.text(`Jami berildi: ${formatPdfNumber(total)} kg`, 14, fY + 8);
-  doc.save(`qurulish_${dateStr}.pdf`);
+  savePdfDocument(doc, `qurulish_${dateStr}.pdf`);
 }
 
 // ── Tamirlash PDF ──────────────────────────────────────────────────────────────
@@ -479,7 +480,7 @@ function exportTamirlashCatPdf(rows: any[]) {
   if (totalMasla > 0) {
     doc.text(`Jami diz masla: ${formatPdfNumber(totalMasla)} kg`, 14, fY + 14);
   }
-  doc.save(`tamirlash_${dateStr}.pdf`);
+  savePdfDocument(doc, `tamirlash_${dateStr}.pdf`);
 }
 
 // ── component ──────────────────────────────────────────────────────────────────
