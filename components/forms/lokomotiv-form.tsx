@@ -602,17 +602,17 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
       )}
 
       {/* Harakat Turi */}
-      <div className="harakat-panel rounded-3xl border border-white/10 bg-black shadow-xl shadow-black/25 overflow-hidden">
-        <div className="flex items-center gap-2.5 px-4 sm:px-5 py-2 border-b border-white/10">
-          <span className="grid place-items-center h-7 w-7 rounded-xl bg-white text-black text-xs font-black shadow-md">
+      <div className="harakat-panel overflow-hidden rounded-2xl border border-white/10 bg-black shadow-lg shadow-black/20">
+        <div className="flex items-center gap-2 border-b border-white/10 px-3 py-1.5 sm:px-4">
+          <span className="grid h-6 w-6 place-items-center rounded-lg bg-white text-[11px] font-black text-black shadow-md">
             1
           </span>
-          <h3 className="text-xs font-black text-white tracking-wide uppercase">
+          <h3 className="text-[11px] font-black uppercase tracking-wide text-white sm:text-xs">
             ҲАРАКАТ ТУРИ
           </h3>
         </div>
-        <div className="p-2.5 sm:p-3">
-          <div className="grid max-w-6xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="p-2 sm:p-2.5">
+          <div className="grid w-full grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2 lg:grid-cols-5">
             {HARAKAT_TURI_LIST.map((item) => {
               const active = formData.harakatTuri === item.value;
               return (
@@ -621,22 +621,25 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
                   type="button"
                   aria-pressed={active}
                   onClick={() => handleInputChange("harakatTuri", item.value)}
-                  className={`harakat-type-card relative flex min-h-[54px] items-center justify-center gap-2 overflow-hidden rounded-xl border px-2.5 py-1.5 text-white shadow-lg transition-none sm:min-h-[58px] sm:gap-2.5 xl:min-h-[62px] ${HARAKAT_TURI_CARD_COLOR[item.value] ?? "bg-slate-700 border-slate-800"} ${
-                    active ? "ring-2 ring-white ring-offset-2 ring-offset-black" : ""
+                  className={`harakat-type-card relative flex min-h-[44px] items-center justify-center gap-2 overflow-hidden rounded-xl border px-2 py-1 text-white shadow-md transition-none sm:min-h-[48px] xl:min-h-[50px] ${HARAKAT_TURI_CARD_COLOR[item.value] ?? "bg-slate-700 border-slate-800"} ${
+                    active ? "brightness-105 ring-2 ring-white/90 ring-offset-1 ring-offset-black" : "opacity-95"
                   }`}
                 >
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15 text-base font-black text-white ring-1 ring-white/25 sm:h-9 sm:w-9 sm:text-lg"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/15 text-sm font-black text-white ring-1 ring-white/25 sm:h-8 sm:w-8 sm:text-base"
                   >
                     {item.number}
                   </span>
-                  <span className="min-w-0 text-center text-[13px] font-black uppercase leading-tight tracking-wide text-white sm:text-[14px] xl:text-[15px]">
+                  <span className="min-w-0 truncate text-center text-[12px] font-black uppercase leading-tight tracking-wide text-white sm:text-[13px] xl:text-sm">
                     {HARAKAT_TURI_CYRILLIC[item.value] ?? item.label}
                   </span>
                   {active && (
-                    <span className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-black shadow-sm">
-                      <CheckCircle2 className="h-3.5 w-3.5 stroke-[3]" />
-                    </span>
+                    <>
+                      <span className="absolute right-1.5 top-1.5 grid h-4 w-4 place-items-center rounded-full bg-white text-black shadow-sm">
+                        <CheckCircle2 className="h-3 w-3 stroke-[3]" />
+                      </span>
+                      <span className="absolute bottom-1 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-white/85" />
+                    </>
                   )}
                 </button>
               );

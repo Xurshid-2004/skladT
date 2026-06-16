@@ -45,7 +45,7 @@ export default function SectionTabs() {
 
   return (
     <div
-      className="mx-auto mb-3 mt-1 grid w-full max-w-[1500px] grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-4"
+      className="mx-auto mb-2 mt-1 grid w-full max-w-[1500px] grid-cols-2 gap-1.5 sm:gap-2 md:grid-cols-4"
       role="tablist"
       aria-label="Bo'limlar"
     >
@@ -59,33 +59,33 @@ export default function SectionTabs() {
             role="tab"
             aria-selected={isActive}
             aria-label={section.label}
-            className={`section-tab-card relative flex min-h-[56px] items-center justify-center gap-2 overflow-hidden rounded-xl border px-3 py-1.5 text-white shadow-lg transition-none sm:min-h-[60px] ${
-              isActive ? "pr-10" : ""
+            className={`section-tab-card relative flex min-h-[46px] items-center justify-center gap-2 overflow-hidden rounded-xl border px-2.5 py-1 text-white shadow-md transition-none sm:min-h-[50px] lg:min-h-[54px] ${
+              isActive ? "ring-2 ring-white/70 ring-offset-1 ring-offset-background" : ""
             } ${section.card} ${
-              isActive ? "ring-2 ring-white/70 ring-offset-2 ring-offset-background" : ""
+              isActive ? "brightness-105" : "opacity-95"
             }`}
           >
             {isActive && (
               <span
-                className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-white text-slate-900 shadow-md ring-1 ring-white/70"
+                className="absolute right-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-slate-900 shadow-md ring-1 ring-white/70"
                 aria-hidden
               >
-                <Check className="h-3.5 w-3.5 stroke-[3]" />
+                <Check className="h-3 w-3 stroke-[3]" />
               </span>
             )}
 
             <span
-              className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ring-1 sm:h-8 sm:w-8 ${section.iconBox}`}
+              className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 sm:h-8 sm:w-8 ${section.iconBox}`}
             >
-              <Icon className="h-4 w-4 stroke-[2.9] text-white sm:h-[18px] sm:w-[18px]" />
+              <Icon className="h-4 w-4 stroke-[2.9] text-white" />
             </span>
 
-            <span className="relative min-w-0 truncate text-center text-[12px] font-black uppercase leading-none tracking-wide text-white sm:text-[13px] lg:text-sm">
+            <span className="relative min-w-0 truncate text-center text-[11px] font-black uppercase leading-none tracking-wide text-white sm:text-[12px] lg:text-[13px]">
               {section.label}
             </span>
 
             {isActive && (
-              <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 h-1 w-9 rounded-full bg-white/70" />
+              <span className="absolute bottom-1 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-white/80" />
             )}
           </Link>
         );

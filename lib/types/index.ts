@@ -44,6 +44,8 @@ export interface StaffVaultRecord {
   zapravka: string;
   tabelNumber: string;
   fullName: string;
+  role?: "worker" | "operator";
+  stationId?: string;
 } 
  
 export interface DeviceLock { 

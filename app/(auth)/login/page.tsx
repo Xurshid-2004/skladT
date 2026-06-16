@@ -117,12 +117,8 @@ export default function LoginPage() {
   }, []);
 
   const handleVerify = useCallback(async () => {
-    const fullCode = code.replace(/\D/g, "").slice(0, 4);
+    const fullCode = code.trim();
     if (!fullCode || verifyingRef.current) return;
-    if (fullCode.length !== 4) {
-      setError("4 xonali kodni to'liq kiriting.");
-      return;
-    }
 
     verifyingRef.current = true;
     setVerifying(true);
@@ -182,7 +178,7 @@ export default function LoginPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleVerify]);
 
-  const canSubmit = code.replace(/\D/g, "").length === 4 && !verifying;
+  const canSubmit = !!code.trim() && !verifying;
 
   return (
     <div className="flex min-h-screen w-full bg-[#030005]">
@@ -212,10 +208,17 @@ export default function LoginPage() {
                   </p>
                 </div>
               </div>
-              <span className="hidden items-center gap-1.5 rounded-full border border-[#ffd85d]/35 bg-[#ffd85d]/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-[#ffe79a] shadow-sm shadow-black/20 sm:inline-flex">
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/admin.html";
+                }}
+                className="hidden items-center gap-1.5 rounded-full border border-[#ffd85d]/35 bg-[#ffd85d]/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-[#ffe79a] shadow-sm shadow-black/20 transition-all hover:bg-[#ffd85d]/25 active:scale-95 sm:inline-flex"
+                aria-label="Admin panelga o'tish"
+              >
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Xavfsiz
-              </span>
+              </button>
             </div>
 
             <section className="rounded-3xl border border-white/25 bg-white/[0.94] p-5 shadow-2xl shadow-black/45 backdrop-blur-xl sm:p-7">

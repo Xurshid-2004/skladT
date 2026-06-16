@@ -1,10 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { ThemeToggle } from "./theme-toggle";
-import { LogOut, User, ArrowLeft } from "lucide-react";
-import { clearSession, getSession } from "@/lib/utils/session";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, CalendarDays, Headphones, LogOut, User } from "lucide-react";
+import { ThemeToggle } from "./theme-toggle";
+import { clearSession, getSession } from "@/lib/utils/session";
 import { Session } from "@/lib/types";
 import { ZAPRAVKALAR } from "@/lib/data/uzellar";
 import { getReportDateOverride, setReportDateOverride } from "@/lib/utils/report-date-override";
@@ -53,64 +53,71 @@ export function Header() {
   })();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/92 shadow-[0_8px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/88">
-      <div className="container mx-auto flex min-h-14 items-center justify-between gap-1.5 px-2 py-1.5 sm:min-h-16 sm:gap-3 sm:px-4 sm:py-2">
-        <div className="flex min-w-0 items-center gap-2">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-slate-50/95 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/90">
+      <div className="container mx-auto flex min-h-16 flex-wrap items-center gap-2 px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-4">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => router.back()}
-            className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 text-xs font-black uppercase tracking-wide text-white shadow-lg shadow-blue-600/25 ring-1 ring-white/20 transition-all hover:brightness-105 active:scale-[0.98] [&>span]:hidden sm:h-11 sm:gap-2 sm:px-3.5 sm:text-sm sm:[&>span]:inline"
+            className="flex h-10 shrink-0 items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-3 text-xs font-black uppercase tracking-wide text-white shadow-lg shadow-blue-600/25 ring-1 ring-white/30 transition-all hover:brightness-105 active:scale-[0.98] sm:h-11 sm:px-4 sm:text-sm"
             title="Orqaga"
             aria-label="Orqaga"
           >
             <ArrowLeft className="h-4 w-4 stroke-[3] sm:h-5 sm:w-5" />
-            <span>Орқага</span>
+            <span className="hidden min-[390px]:inline">ORQAGA</span>
           </button>
 
-          {/* Telegram murojat */}
-          <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
-            <span className="hidden max-w-[220px] truncate text-xs font-bold leading-tight text-red-500 lg:block">
-              Техподдержка
+          <div className="flex min-w-0 items-center gap-1.5 rounded-2xl border border-red-100 bg-white px-2 py-1 shadow-sm dark:border-red-400/15 dark:bg-slate-900">
+            <Headphones className="hidden h-4 w-4 text-red-500 md:block" />
+            <span className="hidden max-w-[150px] truncate text-xs font-black leading-tight text-red-500 lg:block">
+              Texnopodderjka
             </span>
             <a
               href="https://t.me/xurshid_bio"
               target="_blank"
               rel="noopener noreferrer"
-              title="Техподдержка: @xurshid_bio"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform hover:scale-105 active:scale-95"
+              title="Texnopodderjka: @xurshid_bio"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform hover:scale-105 active:scale-95 sm:h-9 sm:w-9"
             >
-              <svg viewBox="0 0 48 48" className="w-7 h-7" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="48" height="48" rx="10" fill="#29A9EB"/>
-                <path d="M10.5 23.5L34.8 13.2C35.9 12.8 36.9 13.7 36.5 14.8L31.2 36.1C30.9 37.1 29.6 37.4 28.9 36.6L22.5 29.5L18.2 33.3C17.5 33.9 16.5 33.5 16.3 32.6L14.8 26.1L10.1 24.8C9.2 24.5 9.2 23.2 10.5 23.5Z" fill="white"/>
-                <path d="M22.5 29.5L28.5 23.5" stroke="#29A9EB" strokeWidth="1.5" strokeLinecap="round"/>
+              <svg viewBox="0 0 48 48" className="h-7 w-7" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="48" height="48" rx="10" fill="#29A9EB" />
+                <path d="M10.5 23.5L34.8 13.2C35.9 12.8 36.9 13.7 36.5 14.8L31.2 36.1C30.9 37.1 29.6 37.4 28.9 36.6L22.5 29.5L18.2 33.3C17.5 33.9 16.5 33.5 16.3 32.6L14.8 26.1L10.1 24.8C9.2 24.5 9.2 23.2 10.5 23.5Z" fill="white" />
+                <path d="M22.5 29.5L28.5 23.5" stroke="#29A9EB" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </a>
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-xl border-2 border-indigo-200 bg-white px-2 py-1.5 shadow-sm shadow-indigo-500/10 dark:border-indigo-400/25 dark:bg-slate-900 sm:max-w-[260px] sm:gap-2.5 sm:px-4 sm:py-2">
-            <User className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-300 sm:h-5 sm:w-5" />
+        <div className="order-3 flex min-w-0 flex-[1_1_100%] items-center rounded-2xl border border-indigo-100 bg-white px-3 py-2 shadow-sm shadow-indigo-500/10 dark:border-indigo-400/20 dark:bg-slate-900 sm:order-none sm:min-w-[260px] sm:flex-1 sm:px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+              <User className="h-5 w-5" />
+            </span>
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-black leading-tight text-slate-950 dark:text-white sm:text-lg">
+              <span className="block break-words text-sm font-black leading-tight text-slate-950 dark:text-white sm:text-xl">
                 {session?.displayName || "Foydalanuvchi"}
               </span>
               {zapravkaName && (
-                <span className="block truncate text-[9px] font-black uppercase leading-tight tracking-wide text-indigo-600 dark:text-indigo-300 sm:text-[10px]">
-                  Zapravka: {zapravkaName}
+                <span className="mt-0.5 inline-flex max-w-full rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-black uppercase leading-tight tracking-wide text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+                  <span className="truncate">Zapravka: {zapravkaName}</span>
                 </span>
               )}
             </div>
           </div>
+        </div>
 
+        <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
           {time && (
-            <div className="hidden items-center rounded-xl border-2 border-indigo-200 bg-white px-3 py-2 shadow-sm dark:border-indigo-400/25 dark:bg-slate-900 md:flex">
-              <span className="text-sm font-black tracking-widest text-indigo-600 tabular-nums dark:text-indigo-300">{time}</span>
+            <div className="hidden h-10 items-center rounded-2xl border border-indigo-100 bg-white px-3 shadow-sm dark:border-indigo-400/20 dark:bg-slate-900 md:flex">
+              <span className="text-sm font-black tracking-widest text-indigo-600 tabular-nums dark:text-indigo-300">
+                {time}
+              </span>
             </div>
           )}
 
           {session?.role === "worker" && (
-            <div className="hidden items-center gap-1.5 rounded-xl border-2 border-amber-300 bg-amber-50 px-2.5 py-1.5 shadow-sm dark:border-amber-400/30 dark:bg-amber-950/30 lg:flex">
-              <span className="text-[10px] font-black uppercase tracking-wide text-amber-700 dark:text-amber-200">
+            <div className="flex h-10 items-center gap-1.5 rounded-2xl border border-emerald-100 bg-white px-2 shadow-sm dark:border-emerald-400/20 dark:bg-slate-900 sm:h-11 sm:px-2.5">
+              <CalendarDays className="hidden h-4 w-4 text-emerald-600 sm:block" />
+              <span className="hidden text-[10px] font-black uppercase tracking-wide text-emerald-700 dark:text-emerald-200 lg:inline">
                 Sana
               </span>
               <input
@@ -118,7 +125,7 @@ export function Header() {
                 value={reportDate}
                 max={todayIso}
                 onChange={(e) => handleReportDateChange(e.target.value)}
-                className="h-8 w-[138px] rounded-lg border border-amber-300 bg-white px-2 text-xs font-black text-slate-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-300/40 dark:border-amber-400/30 dark:bg-slate-900 dark:text-white"
+                className="h-8 w-[120px] rounded-xl border border-emerald-200 bg-emerald-50 px-2 text-xs font-black text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-300/40 dark:border-emerald-400/30 dark:bg-slate-950 dark:text-white sm:w-[138px]"
                 title="Test sanasi"
               />
             </div>
@@ -128,11 +135,11 @@ export function Header() {
 
           <button
             onClick={handleLogout}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger sm:h-10 sm:w-10"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-white/10 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-red-500/10 dark:hover:text-red-300"
             title="Chiqish"
             aria-label="Chiqish"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="h-5 w-5" />
           </button>
         </div>
       </div>

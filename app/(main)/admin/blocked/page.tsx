@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AdminLayout from "@/components/admin/admin-layout";
 import StaffVaultModal from "@/components/admin/staff-vault-modal";
 import AdminVaultModal from "@/components/admin/admin-vault-modal";
-import { ShieldOff, TrainFront, Trash2, UserCog, Users } from "lucide-react";
+import { ShieldOff, TrainFront, Trash2, UserCog, UserPlus, Users } from "lucide-react";
 import {
   subscribeBlockedCodes,
   blockCode,
@@ -22,6 +22,7 @@ export default function AdminBlockedPage() {
   const [vaultOpen, setVaultOpen] = useState(false);
   const [adminVaultOpen, setAdminVaultOpen] = useState(false);
   const [rusumOpenRequest, setRusumOpenRequest] = useState(0);
+  const [operatorOpenRequest, setOperatorOpenRequest] = useState(0);
 
   const blockedSet = useMemo(
     () => new Set(rows.map((r) => r.code.trim())),
@@ -88,6 +89,11 @@ export default function AdminBlockedPage() {
     setRusumOpenRequest((value) => value + 1);
   }
 
+  function handleOpenOperatorVault() {
+    setVaultOpen(true);
+    setOperatorOpenRequest((value) => value + 1);
+  }
+
   return (
     <AdminLayout>
       <div className="max-w-3xl space-y-8 pb-12">
@@ -121,6 +127,14 @@ export default function AdminBlockedPage() {
             </button>
             <button
               type="button"
+              onClick={handleOpenOperatorVault}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-sky-600 px-5 py-3.5 text-xs font-black uppercase text-white shadow-[0_0_20px_rgba(14,165,233,0.5)]"
+            >
+              <UserPlus className="w-5 h-5" />
+              Operator qo'shish
+            </button>
+            <button
+              type="button"
               onClick={handleOpenAdminVault}
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3.5 text-xs font-black uppercase text-white shadow-[0_0_20px_rgba(124,58,237,0.5)]"
             >
@@ -134,6 +148,7 @@ export default function AdminBlockedPage() {
           open={vaultOpen}
           onClose={() => setVaultOpen(false)}
           rusumOpenRequest={rusumOpenRequest}
+          operatorOpenRequest={operatorOpenRequest}
           blockedCodes={blockedSet}
           onBlockByTabel={blockByTabel}
           onUnblockByTabel={unblockByTabel}

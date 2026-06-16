@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/common/theme-provider";
 import OnlineStatus from "@/components/common/online-status";
 import NumberInputWheelGuard from "@/components/common/number-input-wheel-guard";
+import ServiceWorkerRegistrar from "@/components/common/service-worker-registrar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -49,34 +50,9 @@ export default function RootLayout({
         >
           <OnlineStatus />
           <NumberInputWheelGuard />
+          <ServiceWorkerRegistrar />
           {children}
         </ThemeProvider>
-        
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                var host = location.hostname;
-                var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
-                if (isLocal) {
-                  // Dev: eski service worker sahifani qayta yuklatib turishi mumkin —
-                  // shuning uchun localhost'da registratsiya qilmaymiz va eskilarini olib tashlaymiz.
-                  navigator.serviceWorker.getRegistrations().then(function(regs) {
-                    regs.forEach(function(r) { r.unregister(); });
-                  }).catch(function() {});
-                } else {
-                  window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                      console.log('ServiceWorker registration successful');
-                    }, function(err) {
-                      console.log('ServiceWorker registration failed: ', err);
-                    });
-                  });
-                }
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   );

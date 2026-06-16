@@ -499,8 +499,8 @@ export default function RentCalendar({
           </div>
 
           {/* Tugmalar */}
-          <div className="flex justify-between items-center gap-2 flex-wrap">
-            <div className="flex flex-wrap gap-2">
+          <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="order-2 flex min-w-0 flex-wrap gap-2 lg:order-1">
               <button
                 type="button"
                 onClick={onClose}
@@ -531,7 +531,7 @@ export default function RentCalendar({
                 className="px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-pink-600 text-white hover:bg-pink-500 disabled:opacity-40 min-w-[104px]"
                 title="Predpriyatie ma'lumotlarini PDF qilish"
               >
-                Предприятие.pdf
+                {busy === "predpriyatie" ? "..." : "PRED PDF"}
               </button>
               <button
                 type="button"
@@ -552,12 +552,12 @@ export default function RentCalendar({
                 {busy === "remont" ? "..." : "Remont PDF"}
               </button>
             </div>
-            <div className="flex gap-2">
+            <div className="order-1 grid grid-cols-2 gap-2 sm:flex lg:order-2 lg:justify-end">
               <button
                 type="button"
                 disabled={!rangeStart || !!busy}
                 onClick={() => void runExport("pdf")}
-                className="px-5 py-2 rounded-xl text-[10px] font-black uppercase bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 min-w-[80px]"
+                className="px-5 py-2 rounded-xl text-[10px] font-black uppercase bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 min-w-[80px] shadow-lg shadow-emerald-600/25"
               >
                 {busy === "pdf" ? "..." : pdfLabel}
               </button>
@@ -566,7 +566,7 @@ export default function RentCalendar({
                   type="button"
                   disabled={!rangeStart || !!busy}
                   onClick={() => void runExport("erju")}
-                  className="px-5 py-2 rounded-xl text-[10px] font-black uppercase bg-fuchsia-600 text-white hover:bg-fuchsia-500 disabled:opacity-40 min-w-[80px]"
+                  className="px-5 py-2 rounded-xl text-[10px] font-black uppercase bg-fuchsia-600 text-white hover:bg-fuchsia-500 disabled:opacity-40 min-w-[80px] shadow-lg shadow-fuchsia-600/25"
                 >
                   {busy === "erju" ? "..." : "Y.PDF"}
                 </button>

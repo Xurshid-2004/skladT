@@ -21,12 +21,10 @@ export function CodeInput({ code, onChange, error }: CodeInputProps) {
     <input
       ref={inputRef}
       type="text"
-      inputMode="numeric"
-      maxLength={4}
-      pattern="[0-9]*"
+      inputMode="text"
       autoComplete="off"
       value={code}
-      onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 4))}
+      onChange={(e) => onChange(e.target.value)}
       aria-label="Kirish kodi"
       aria-invalid={error ? "true" : "false"}
       placeholder="Kodni kiriting"

@@ -1274,6 +1274,33 @@ export default function HisobotlarPage() {
     }
   }, [globalCategory, staffMap]);
 
+  /** Taqvimdagi asosiy PDF: har doim barcha yozuvlar bo'yicha operativ hisobot */
+  const exportAllPdfForDateRange = useCallback(async (start: Date, endDay: Date) => {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(endDay);
+    e.setHours(23, 59, 59, 999);
+    setGlobalDateRange({ start: s, end: e });
+    setGlobalPdfLoading(true);
+    try {
+      const rows = await fetchAllSubmissionsInRange(s, e);
+      if (!rows.length) {
+        window.alert("Tanlangan davr uchun yozuv yo'q.");
+        return;
+      }
+      const endForTitle = new Date(endDay);
+      endForTitle.setHours(0, 0, 0, 0);
+      const titleLine = buildOperationalPdfTitle(s, endForTitle);
+      const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
+      exportPDF(rows, fileSlug, titleLine, staffMap, true);
+    } catch (err) {
+      console.error(err);
+      window.alert("PDF tayyorlashda xato. Firestore indeksini tekshiring.");
+    } finally {
+      setGlobalPdfLoading(false);
+    }
+  }, [staffMap]);
+
   /** Taqvimdagi L.PDF: tanlangan davr bo'yicha faqat lokomotiv yozuvlari */
   const exportLokomotivPdfForDateRange = useCallback(async (start: Date, endDay: Date) => {
     const s = new Date(start);
@@ -1979,11 +2006,11 @@ export default function HisobotlarPage() {
       <RentCalendar
         isOpen={showGlobalCal}
         onClose={() => setShowGlobalCal(false)}
-        pdfLabel={CATEGORY_PDF_LABEL[globalCategory] ?? 'PDF'}
-        showErjuPdf={globalCategory === 'all'}
+        pdfLabel="PDF"
+        showErjuPdf
         onExportPdf={async (start, endDay) => {
           if (!start || !endDay) return;
-          await exportPdfForDateRange(start, endDay);
+          await exportAllPdfForDateRange(start, endDay);
         }}
         onExportLokomotivPdf={async (start, endDay) => {
           if (!start || !endDay) return;
