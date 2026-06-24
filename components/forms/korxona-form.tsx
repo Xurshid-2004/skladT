@@ -5,6 +5,7 @@ import { addSubmission } from "@/lib/firebase/submissions-service";
 import { appendFuelRecordForErjuJu } from "@/lib/firebase/fuel-record-writer";
 import { getSession } from "@/lib/utils/session";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
+import { subtractOperatorStationFuel } from "@/lib/operator/operator-balance";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface KorxonaFormProps {
@@ -100,6 +101,12 @@ export default function KorxonaForm({ stationId, onSaved }: KorxonaFormProps) {
         await savePendingSubmission(submissionData);
       }
 
+      await subtractOperatorStationFuel(stationId, submissionData.qancha, {
+        category: "korxona",
+        staffCode: session.code,
+        staffName: session.displayName,
+        nodeId: session.nodeId,
+      });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       handleReset();

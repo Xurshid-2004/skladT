@@ -3,9 +3,16 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Fuel, MapPin, Send, X } from "lucide-react";
+import { ArrowLeft, Fuel, MapPin, Send, Truck, X } from "lucide-react";
 
 import AdminLayout from "@/components/admin/admin-layout";
+import {
+  changeOperatorStationFuelBalance,
+  readOperatorBalances,
+  readOperatorOverlimits,
+  setOperatorStationFuelBalance,
+  subscribeOperatorFuelState,
+} from "@/lib/operator/operator-balance";
 import type { Zapravka } from "@/lib/types";
 
 type OperatorStationClientProps = {
@@ -36,7 +43,8 @@ type OperatorShipment = {
 };
 
 const OPERATOR_SHIPMENTS_KEY = "operator_pending_shipments";
-const OPERATOR_BALANCES_KEY = "operator_station_fuel_balances";
+const REALIZATION_STATION_ID = "realizatsiya-paneli";
+const REALIZATION_STATION_NAME = "Realizatsiya paneli";
 
 function OperatorVault({ open, title, accentClass, children, onClose }: OperatorVaultProps) {
   if (!open) return null;
@@ -78,8 +86,9 @@ function parseFuelAmount(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function normalizeFuelKg(kg: number) {
-  return Math.round(kg * 1000) / 1000;
+function parsePositiveFuelAmount(value: string) {
+  const parsed = parseFuelAmount(value);
+  return parsed !== null && parsed > 0 ? parsed : null;
 }
 
 function formatFuelAmount(kg: number) {
@@ -138,61 +147,16 @@ function writeOperatorShipments(shipments: OperatorShipment[]) {
   window.dispatchEvent(new Event("operatorShipmentsChanged"));
 }
 
-function readOperatorBalances() {
-  if (typeof window === "undefined") return {};
-
-  try {
-    const rawBalances = window.localStorage.getItem(OPERATOR_BALANCES_KEY);
-    if (!rawBalances) return {};
-
-    const parsedBalances = JSON.parse(rawBalances);
-    if (!parsedBalances || typeof parsedBalances !== "object" || Array.isArray(parsedBalances)) {
-      return {};
-    }
-
-    return Object.fromEntries(
-      Object.entries(parsedBalances)
-        .filter(([, value]) => typeof value === "number" && Number.isFinite(value))
-        .map(([stationId, value]) => [stationId, normalizeFuelKg(value as number)]),
-    ) as Record<string, number>;
-  } catch {
-    return {};
-  }
-}
-
-function writeOperatorBalances(balances: Record<string, number>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(OPERATOR_BALANCES_KEY, JSON.stringify(balances));
-  window.dispatchEvent(new Event("operatorBalancesChanged"));
-}
-
-function setStationFuelBalance(stationId: string, amountKg: number) {
-  const balances = readOperatorBalances();
-  const nextBalances = {
-    ...balances,
-    [stationId]: Math.max(0, normalizeFuelKg(amountKg)),
-  };
-
-  writeOperatorBalances(nextBalances);
-  return nextBalances;
-}
-
-function changeStationFuelBalance(stationId: string, deltaKg: number) {
-  const balances = readOperatorBalances();
-  const currentAmount = balances[stationId] ?? 0;
-  const nextBalances = {
-    ...balances,
-    [stationId]: Math.max(0, normalizeFuelKg(currentAmount + deltaKg)),
-  };
-
-  writeOperatorBalances(nextBalances);
-  return nextBalances;
-}
-
 function getPendingShipmentsForStation(stationId: string) {
   return readOperatorShipments()
     .filter((shipment) => shipment.toStationId === stationId && shipment.status === "pending")
     .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+function getPendingAmountForStation(shipments: OperatorShipment[], stationId: string) {
+  return shipments
+    .filter((shipment) => shipment.toStationId === stationId && shipment.status === "pending")
+    .reduce((sum, shipment) => sum + shipment.amountKg, 0);
 }
 
 function createShipmentId() {
@@ -201,6 +165,24 @@ function createShipmentId() {
   }
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+const STATION_CARD_TONES = [
+  "from-emerald-400 via-green-500 to-teal-600",
+  "from-amber-300 via-orange-400 to-rose-500",
+  "from-sky-400 via-blue-500 to-indigo-600",
+  "from-cyan-400 via-sky-500 to-blue-600",
+  "from-lime-300 via-emerald-400 to-green-600",
+  "from-violet-400 via-purple-500 to-fuchsia-600",
+  "from-orange-300 via-amber-400 to-yellow-500",
+  "from-teal-300 via-cyan-400 to-sky-500",
+  "from-rose-300 via-pink-400 to-red-500",
+];
+
+function getStationCardTone(index: number, pendingKg: number, overlimitKg: number) {
+  if (overlimitKg > 0) return "from-red-400 via-rose-500 to-red-700";
+  if (pendingKg > 0) return "from-amber-300 via-orange-400 to-yellow-600";
+  return STATION_CARD_TONES[index % STATION_CARD_TONES.length];
 }
 
 export default function OperatorStationClient({ card, erjuName, cards }: OperatorStationClientProps) {
@@ -217,37 +199,103 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
   const [distributionError, setDistributionError] = useState("");
   const [distributionSuccess, setDistributionSuccess] = useState("");
   const [stationBalances, setStationBalances] = useState<Record<string, number>>({});
+  const [stationOverlimits, setStationOverlimits] = useState<Record<string, number>>({});
   const [receiveStation, setReceiveStation] = useState("default");
   const [sendAmount, setSendAmount] = useState("");
   const [sendError, setSendError] = useState("");
   const [sendStation, setSendStation] = useState(stationOptions[0]?.id ?? "");
   const [distributionStation, setDistributionStation] = useState(stationOptions[0]?.id ?? "");
   const [sentStationName, setSentStationName] = useState("Yuborilmalar yo'q");
+  const [operatorShipments, setOperatorShipments] = useState<OperatorShipment[]>([]);
   const [incomingShipments, setIncomingShipments] = useState<OperatorShipment[]>([]);
-  const activeIncomingShipment = incomingShipments[0] ?? null;
+  const [selectedIncomingShipmentId, setSelectedIncomingShipmentId] = useState<string | null>(null);
+  const stationIncomingShipment = incomingShipments.find((shipment) => shipment.fromStationId !== REALIZATION_STATION_ID) ?? null;
+  const realizationIncomingShipment = incomingShipments.find((shipment) => shipment.fromStationId === REALIZATION_STATION_ID) ?? null;
+  const activeIncomingShipment = selectedIncomingShipmentId
+    ? incomingShipments.find((shipment) => shipment.id === selectedIncomingShipmentId) ?? null
+    : null;
   const currentFuelKg = stationBalances[card.id] ?? 0;
+  const currentOverlimitKg = stationOverlimits[card.id] ?? 0;
+  const realizationShipments = operatorShipments
+    .filter((shipment) => shipment.fromStationId === REALIZATION_STATION_ID)
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === "pending" ? -1 : 1;
+      return b.createdAt - a.createdAt;
+    });
+  const realizationPendingTotal = realizationShipments
+    .filter((shipment) => shipment.status === "pending")
+    .reduce((sum, shipment) => sum + shipment.amountKg, 0);
+  const realizationSentTotal = realizationShipments.reduce((sum, shipment) => sum + shipment.amountKg, 0);
+  const realizationAcceptedTotal = realizationShipments
+    .filter((shipment) => shipment.status === "accepted")
+    .reduce((sum, shipment) => sum + (shipment.acceptedKg ?? shipment.amountKg), 0);
   const gaugeValue = formatFuelAmount(currentFuelKg);
   const fuelDisplay = splitFuelDisplay(gaugeValue);
   const gaugeValueSizeClass = fuelDisplay.amount.length > 4 ? "text-[3.2rem]" : "text-[4.8rem]";
   const fuelFillPercent = getFuelFillPercent(currentFuelKg);
+  const canConfirmTransfer = parsePositiveFuelAmount(receiveTransferAmount) !== null;
+  const totalStationBalanceKg = stationOptions.reduce(
+    (sum, station) => sum + (stationBalances[station.id] ?? 0),
+    0,
+  );
+  const activeStationCount = stationOptions.filter((station) => (stationBalances[station.id] ?? 0) > 0).length;
+  const totalBalanceDisplay = splitFuelDisplay(formatFuelAmount(totalStationBalanceKg));
+  const totalBalanceValueSizeClass =
+    totalBalanceDisplay.amount.length > 6
+      ? "text-[2rem]"
+      : totalBalanceDisplay.amount.length > 5
+        ? "text-[2.35rem]"
+        : "text-[3.2rem]";
+  const realizationChartTotalKg = realizationPendingTotal + totalStationBalanceKg;
+  const pendingRingDegrees =
+    realizationChartTotalKg > 0 ? (realizationPendingTotal / realizationChartTotalKg) * 360 : 0;
+  const realizationRingBackground =
+    realizationChartTotalKg > 0
+      ? `conic-gradient(from 180deg, #ef4444 0deg ${pendingRingDegrees}deg, #22c55e ${pendingRingDegrees}deg 360deg)`
+      : "conic-gradient(#e5e7eb 0deg 360deg)";
+
+  const openIncomingShipment = (shipment: OperatorShipment) => {
+    setSelectedIncomingShipmentId(shipment.id);
+    setReceiveTransferAmount("");
+    setReceiveTransferError("");
+    setReceiveTransferOpen(true);
+  };
+
+  const closeReceiveTransfer = () => {
+    setReceiveTransferOpen(false);
+    setSelectedIncomingShipmentId(null);
+    setReceiveTransferAmount("");
+    setReceiveTransferError("");
+  };
 
   useEffect(() => {
     const refreshBalances = () => {
       setStationBalances(readOperatorBalances());
+      setStationOverlimits(readOperatorOverlimits());
     };
 
     refreshBalances();
     window.addEventListener("storage", refreshBalances);
     window.addEventListener("operatorBalancesChanged", refreshBalances);
+    window.addEventListener("operatorOverlimitsChanged", refreshBalances);
 
     return () => {
       window.removeEventListener("storage", refreshBalances);
       window.removeEventListener("operatorBalancesChanged", refreshBalances);
+      window.removeEventListener("operatorOverlimitsChanged", refreshBalances);
     };
   }, []);
 
   useEffect(() => {
+    return subscribeOperatorFuelState(({ balances, overlimits }) => {
+      setStationBalances(balances);
+      setStationOverlimits(overlimits);
+    });
+  }, []);
+
+  useEffect(() => {
     const refreshIncomingShipments = () => {
+      setOperatorShipments(readOperatorShipments());
       setIncomingShipments(getPendingShipmentsForStation(card.id));
     };
 
@@ -269,14 +317,16 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
       return;
     }
 
-    setStationBalances(setStationFuelBalance(card.id, parsedAmount));
+    const result = setOperatorStationFuelBalance(card.id, parsedAmount);
+    setStationBalances(result.balances);
+    setStationOverlimits(result.overlimits);
     setReceiveAmount("");
     setReceiveError("");
     setReceiveOpen(false);
   };
 
   const handleReceiveTransferConfirm = () => {
-    const parsedAmount = parseFuelAmount(receiveTransferAmount);
+    const parsedAmount = parsePositiveFuelAmount(receiveTransferAmount);
 
     if (!activeIncomingShipment) {
       setReceiveTransferError("Sizga jo'natma yo'q.");
@@ -284,11 +334,13 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
     }
 
     if (parsedAmount === null) {
-      setReceiveTransferError("Qabul qilingan miqdorni to'g'ri kiriting.");
+      setReceiveTransferError("Qabul qilingan miqdorni kiriting. Miqdor 0 dan katta bo'lishi kerak.");
       return;
     }
 
-    setStationBalances(changeStationFuelBalance(card.id, parsedAmount));
+    const result = changeOperatorStationFuelBalance(card.id, parsedAmount);
+    setStationBalances(result.balances);
+    setStationOverlimits(result.overlimits);
 
     const updatedShipments = readOperatorShipments().map((shipment) =>
       shipment.id === activeIncomingShipment.id
@@ -303,6 +355,7 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
 
     writeOperatorShipments(updatedShipments);
     setIncomingShipments(getPendingShipmentsForStation(card.id));
+    setSelectedIncomingShipmentId(null);
     setReceiveTransferAmount("");
     setReceiveTransferError("");
     setReceiveTransferOpen(false);
@@ -349,7 +402,9 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
       status: "pending",
     };
 
-    setStationBalances(changeStationFuelBalance(card.id, -parsedAmount));
+    const result = changeOperatorStationFuelBalance(card.id, -parsedAmount);
+    setStationBalances(result.balances);
+    setStationOverlimits(result.overlimits);
     writeOperatorShipments([...readOperatorShipments(), newShipment]);
     setSentStationName(selectedStation.name);
     setSendAmount("");
@@ -377,43 +432,142 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
       return;
     }
 
-    setStationBalances(changeStationFuelBalance(selectedStation.id, parsedAmount));
+    const newShipment: OperatorShipment = {
+      id: createShipmentId(),
+      fromStationId: REALIZATION_STATION_ID,
+      fromStationName: REALIZATION_STATION_NAME,
+      toStationId: selectedStation.id,
+      toStationName: selectedStation.name,
+      amountKg: parsedAmount,
+      createdAt: Date.now(),
+      status: "pending",
+    };
+    const nextShipments = [...readOperatorShipments(), newShipment];
+
+    writeOperatorShipments(nextShipments);
+    setOperatorShipments(nextShipments);
     setDistributionAmount("");
     setDistributionError("");
-    setDistributionSuccess(`${selectedStation.name} zapravkasiga ${formatFuelAmount(parsedAmount)} qo'shildi.`);
+    setDistributionSuccess(`${selectedStation.name} zapravkasiga ${formatFuelAmount(parsedAmount)} yo'lga chiqarildi.`);
   };
 
   if (isAllStationsPage) {
     return (
       <AdminLayout hideHeader>
-        <div className="w-full max-w-[96rem] pb-3">
-          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-2xl shadow-slate-300/35">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 px-5 py-4">
+        <div className="w-full max-w-[84rem] pb-2">
+          <section className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-xl shadow-slate-300/30">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 px-4 py-3">
               <div>
-                <p className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
-                  Barcha zapravkalar
+                <p className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">
+                  Realizatsiya bo'limi
                 </p>
-                <h1 className="mt-2 text-3xl font-black uppercase leading-tight text-slate-950">
-                  Tarqatish paneli
+                <h1 className="mt-1.5 text-2xl font-black uppercase leading-tight text-slate-950 sm:text-3xl">
+                  Реализация панели
                 </h1>
-                <p className="mt-1 text-sm font-bold text-slate-600">
-                  Tanlangan zapravkaga kiritilgan yoqilg'i miqdori qo'shiladi.
+                <p className="mt-0.5 text-sm font-bold text-slate-600">
+                  Yuborilgan yoqilg'i avval yo'lda turadi, qabul qilingandan keyin balansga qo'shiladi.
                 </p>
               </div>
 
               <Link
                 href="/admin/operator"
-                className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-950/18 transition hover:brightness-110"
+                className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-950/18 transition hover:brightness-110"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Orqaga
               </Link>
             </div>
 
-            <div className="grid gap-4 px-5 py-5">
-              <div className="grid gap-3 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div className="grid gap-3 px-4 py-4">
+              <div className="overflow-hidden rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="grid gap-5 md:grid-cols-[15rem_1fr] md:items-center">
+                  <div className="grid place-items-center">
+                    <p className="mb-2 text-center text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
+                      Barcha zapravkalar balansi
+                    </p>
+                    <div
+                      className="relative grid h-52 w-52 place-items-center rounded-full p-3 shadow-2xl shadow-slate-300/70"
+                      style={{ background: realizationRingBackground }}
+                    >
+                      <div className="grid h-36 w-36 place-items-center rounded-full bg-white text-center shadow-inner shadow-slate-300/70">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                            Остаток всё
+                          </p>
+                          <p
+                            className={[
+                              "mt-1 font-black leading-none tracking-normal text-slate-950 tabular-nums",
+                              totalBalanceValueSizeClass,
+                            ].join(" ")}
+                          >
+                            {totalBalanceDisplay.amount}
+                            <span className="ml-1 text-xl uppercase text-emerald-700">
+                              {totalBalanceDisplay.unit}
+                            </span>
+                          </p>
+                          <p className="mt-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+                            {activeStationCount}/{stationOptions.length} zapravka
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                          Realizatsiya statistikasi
+                        </p>
+                        <h2 className="mt-1 text-xl font-black uppercase text-slate-950">
+                          Yuborilgan yoqilg'i holati
+                        </h2>
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-[11px] font-black uppercase tracking-wide text-slate-600">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="h-3 w-3 rounded-full bg-red-500" />
+                          Yo'lda / kutilmoqda
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="h-3 w-3 rounded-full bg-emerald-500" />
+                          Qabul / balansda
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          Jami yuborilgan
+                        </p>
+                        <p className="mt-1 text-xl font-black tabular-nums text-slate-950">
+                          {formatFuelAmount(realizationSentTotal)}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-2.5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700/60">
+                          Qabul qilingan
+                        </p>
+                        <p className="mt-1 text-xl font-black tabular-nums text-emerald-700">
+                          {formatFuelAmount(realizationAcceptedTotal)}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-red-100 bg-red-50 px-3 py-2.5">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-red-700/60">
+                          Yo'lda
+                        </p>
+                        <p className="mt-1 text-xl font-black tabular-nums text-red-600">
+                          {formatFuelAmount(realizationPendingTotal)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-2 rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                 <label className="block">
-                  <span className="text-xs font-black uppercase tracking-wide text-slate-700">Tarqatish</span>
+                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-700">Realizatsiya</span>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -424,13 +578,13 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                       setDistributionError("");
                       setDistributionSuccess("");
                     }}
-                    className="mt-2 h-14 w-full rounded-2xl border-2 border-slate-200 bg-white px-4 text-xl font-black text-slate-950 outline-none transition focus:border-emerald-500"
+                    className="mt-1.5 h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-3 text-lg font-black text-slate-950 outline-none transition focus:border-emerald-500"
                     placeholder="Masalan: 1500"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="text-xs font-black uppercase tracking-wide text-slate-700">
+                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-700">
                     Qaysi zapravkaga
                   </span>
                   <select
@@ -440,7 +594,7 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                       setDistributionError("");
                       setDistributionSuccess("");
                     }}
-                    className="mt-2 h-14 w-full rounded-2xl border-2 border-slate-200 bg-white px-4 text-base font-black text-slate-950 outline-none transition focus:border-emerald-500"
+                    className="mt-1.5 h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-3 text-base font-black text-slate-950 outline-none transition focus:border-emerald-500"
                   >
                     {stationOptions.map((station) => (
                       <option key={station.id} value={station.id}>
@@ -453,9 +607,9 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                 <button
                   type="button"
                   onClick={handleDistributionConfirm}
-                  className="h-14 rounded-2xl bg-emerald-500 px-6 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400"
+                  className="h-12 rounded-xl bg-emerald-500 px-6 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
                 >
-                  Tarqatish
+                  Yuborish
                 </button>
               </div>
 
@@ -470,18 +624,163 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                 </p>
               ) : null}
 
-              <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 xl:grid-cols-5">
-                {stationOptions.map((station) => (
-                  <div
-                    key={station.id}
-                    className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
-                  >
-                    <p className="line-clamp-1 text-sm font-black uppercase text-slate-950">{station.name}</p>
-                    <p className="mt-1 text-xs font-black text-emerald-600">
-                      {formatFuelAmount(stationBalances[station.id] ?? 0)}
+              <div className="overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                      Jo'natmalar
+                    </p>
+                    <h2 className="text-lg font-black uppercase text-slate-950">
+                      Realizatsiyadan yuborilganlar
+                    </h2>
+                  </div>
+                  <div className="rounded-2xl bg-amber-50 px-4 py-2 text-right">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700/70">
+                      Yo'lda jami
+                    </p>
+                    <p className="text-lg font-black tabular-nums text-amber-700">
+                      {formatFuelAmount(realizationPendingTotal)}
                     </p>
                   </div>
-                ))}
+                </div>
+
+                {realizationShipments.length === 0 ? (
+                  <div className="px-4 py-6 text-sm font-bold text-slate-500">
+                    Hozircha realizatsiyadan jo'natilgan yoqilg'i yo'q.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="bg-white text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <tr>
+                          <th className="px-4 py-3">#</th>
+                          <th className="px-4 py-3">Zapravka</th>
+                          <th className="px-4 py-3 text-right">Miqdor</th>
+                          <th className="px-4 py-3">Holat</th>
+                          <th className="px-4 py-3">Vaqt</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {realizationShipments.map((shipment, index) => (
+                          <tr key={shipment.id} className="text-slate-800">
+                            <td className="px-4 py-3 font-black text-slate-400">{index + 1}</td>
+                            <td className="px-4 py-3 font-black text-slate-950">
+                              {shipment.toStationName}
+                            </td>
+                            <td className="px-4 py-3 text-right font-black tabular-nums text-slate-950">
+                              {formatFuelAmount(shipment.amountKg)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={[
+                                  "inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide",
+                                  shipment.status === "pending"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-emerald-100 text-emerald-700",
+                                ].join(" ")}
+                              >
+                                {shipment.status === "pending" ? "Yo'lda" : "Qabul qilindi"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-bold text-slate-500">
+                              {new Date(shipment.createdAt).toLocaleString("uz-UZ")}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {stationOptions.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center">
+                  <p className="text-sm font-black uppercase tracking-wide text-slate-500">
+                    Zapravkalar topilmadi
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {stationOptions.map((station, index) => {
+                  const overlimitKg = stationOverlimits[station.id] ?? 0;
+                  const balanceKg = stationBalances[station.id] ?? 0;
+                  const pendingKg = getPendingAmountForStation(operatorShipments, station.id);
+                  const cardTone = getStationCardTone(index, pendingKg, overlimitKg);
+
+                  return (
+                    <div
+                      key={station.id}
+                      className={[
+                        "group relative min-h-[13rem] overflow-hidden rounded-[1.7rem] border border-white/45 bg-gradient-to-br p-4 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl",
+                        cardTone,
+                      ].join(" ")}
+                    >
+                      <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/22 blur-2xl" />
+                      <div className="pointer-events-none absolute -bottom-10 left-8 h-28 w-28 rounded-full bg-black/12 blur-2xl" />
+
+                      <div className="relative z-10 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="line-clamp-1 text-2xl font-black uppercase leading-tight tracking-normal text-white drop-shadow-sm">
+                            {station.name}
+                          </p>
+                          <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-white/75">
+                            {station.slug}
+                          </p>
+                        </div>
+                        <span
+                          className={[
+                            "shrink-0 rounded-full border border-white/25 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide backdrop-blur-md",
+                            pendingKg > 0
+                              ? "bg-white/25 text-white"
+                              : "bg-black/14 text-white",
+                          ].join(" ")}
+                        >
+                          {pendingKg > 0 ? "Yo'lda" : "Tayyor"}
+                        </span>
+                      </div>
+
+                      <div className="relative z-10 mt-5 grid gap-3">
+                        <div className="rounded-2xl border border-white/60 bg-white/92 px-3 py-3 shadow-lg shadow-black/10 backdrop-blur-md">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Balans
+                          </p>
+                          <p className="mt-1 text-3xl font-black leading-none tabular-nums text-slate-950">
+                            {formatFuelAmount(balanceKg)}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-2xl border border-white/55 bg-white/88 px-3 py-2.5 shadow-md shadow-black/10 backdrop-blur-md">
+                            <div className="flex items-center gap-1.5 text-amber-600">
+                              <Truck className="h-3.5 w-3.5" strokeWidth={3} />
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                Yo'lda
+                              </p>
+                            </div>
+                            <p className="mt-1 text-lg font-black tabular-nums text-slate-950">
+                              {formatFuelAmount(pendingKg)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/55 bg-white/88 px-3 py-2.5 shadow-md shadow-black/10 backdrop-blur-md">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                              Holat
+                            </p>
+                            <p className="mt-1 text-lg font-black text-slate-950">
+                              {pendingKg > 0 ? "Kutilmoqda" : "Tayyor"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {overlimitKg > 0 ? (
+                        <p className="relative z-10 mt-3 rounded-2xl border border-white/18 bg-black/18 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-white backdrop-blur-md">
+                          Oshgan: {formatFuelAmount(overlimitKg)}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -524,17 +823,31 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button
                     type="button"
-                    disabled={!activeIncomingShipment}
-                    onClick={() => activeIncomingShipment && setReceiveTransferOpen(true)}
+                    disabled={!stationIncomingShipment}
+                    onClick={() => stationIncomingShipment && openIncomingShipment(stationIncomingShipment)}
                     className={[
                       "inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black uppercase tracking-wide shadow-lg transition",
-                      activeIncomingShipment
+                      stationIncomingShipment
                         ? "bg-emerald-500 text-white shadow-emerald-900/30 hover:-translate-y-0.5 hover:bg-emerald-400"
                         : "cursor-not-allowed bg-slate-100 text-slate-400 shadow-slate-200/40",
                     ].join(" ")}
                   >
                     <Fuel className="h-5 w-5" strokeWidth={3} />
-                    Sizga jo'natma bor
+                    {stationIncomingShipment ? "Sizga jo'natma bor" : "Sizga jo'natma yo'q"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!realizationIncomingShipment}
+                    onClick={() => realizationIncomingShipment && openIncomingShipment(realizationIncomingShipment)}
+                    className={[
+                      "inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black uppercase tracking-wide shadow-lg transition",
+                      realizationIncomingShipment
+                        ? "bg-cyan-500 text-white shadow-cyan-900/30 hover:-translate-y-0.5 hover:bg-cyan-400"
+                        : "cursor-not-allowed bg-slate-100 text-slate-400 shadow-slate-200/40",
+                    ].join(" ")}
+                  >
+                    <Truck className="h-5 w-5" strokeWidth={3} />
+                    {realizationIncomingShipment ? "Yo'lda kelmoqda" : "Realizatsiya yo'q"}
                   </button>
                   <button
                     type="button"
@@ -547,7 +860,7 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Zapravka</p>
                   <p className="mt-1 break-words text-lg font-black text-slate-950">{card.name}</p>
@@ -560,6 +873,46 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                     {sentStationName}
                   </p>
                 </div>
+                <div
+                  className={[
+                    "rounded-2xl border px-4 py-3",
+                    currentOverlimitKg > 0
+                      ? "border-red-200 bg-red-50"
+                      : "border-slate-200 bg-slate-50",
+                  ].join(" ")}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Limitdan oshgan
+                  </p>
+                  <p
+                    className={[
+                      "mt-1 break-words text-lg font-black",
+                      currentOverlimitKg > 0 ? "text-red-600" : "text-slate-950",
+                    ].join(" ")}
+                  >
+                    {formatFuelAmount(currentOverlimitKg)}
+                  </p>
+                </div>
+                {stationIncomingShipment ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                      Jo'natma
+                    </p>
+                    <p className="mt-1 break-words text-lg font-black text-emerald-700">
+                      {formatFuelAmount(stationIncomingShipment.amountKg)}
+                    </p>
+                  </div>
+                ) : null}
+                {realizationIncomingShipment ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                      Realizatsiya yo'lda
+                    </p>
+                    <p className="mt-1 break-words text-lg font-black text-amber-700">
+                      {formatFuelAmount(realizationIncomingShipment.amountKg)}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -616,6 +969,11 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                         <p className="mt-2 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-100/80">
                           {currentFuelKg <= 0 ? "Kutilmoqda" : "Qabul qilingan"}
                         </p>
+                        {currentOverlimitKg > 0 ? (
+                          <p className="mt-2 rounded-lg bg-red-500/20 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-red-100">
+                            Oshgan: {formatFuelAmount(currentOverlimitKg)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -742,9 +1100,9 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
 
       <OperatorVault
         open={receiveTransferOpen}
-        title="Qabul qilish2"
+        title="Qabul qilish"
         accentClass="bg-cyan-500"
-        onClose={() => setReceiveTransferOpen(false)}
+        onClose={closeReceiveTransfer}
       >
         <div className="space-y-4">
           <label className="block">
@@ -755,6 +1113,7 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
               type="text"
               inputMode="decimal"
               autoComplete="off"
+              required
               value={receiveTransferAmount}
               onChange={(event) => {
                 setReceiveTransferAmount(event.target.value);
@@ -762,6 +1121,9 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
               }}
               className="mt-2 h-14 w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 text-xl font-black text-slate-950 outline-none transition focus:border-cyan-500 focus:bg-white"
             />
+            <p className="mt-2 text-xs font-bold text-slate-500">
+              Majburiy: qabul qilingan miqdor 0 dan katta bo'lishi kerak.
+            </p>
           </label>
 
           {activeIncomingShipment ? (
@@ -781,8 +1143,14 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
 
           <button
             type="button"
+            disabled={!activeIncomingShipment || !canConfirmTransfer}
             onClick={handleReceiveTransferConfirm}
-            className="h-14 w-full rounded-2xl bg-cyan-500 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-400"
+            className={[
+              "h-14 w-full rounded-2xl text-sm font-black uppercase tracking-widest text-white shadow-lg transition",
+              activeIncomingShipment && canConfirmTransfer
+                ? "bg-cyan-500 shadow-cyan-500/25 hover:bg-cyan-400"
+                : "cursor-not-allowed bg-slate-300 shadow-slate-200/30",
+            ].join(" ")}
           >
             Qabul qildim
           </button>

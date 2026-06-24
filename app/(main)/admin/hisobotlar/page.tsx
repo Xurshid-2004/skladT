@@ -1359,6 +1359,7 @@ export default function HisobotlarPage() {
         titleLine,
         staffMap,
         showDateGroups: true,
+        hideStaffCodeColumn: true,
       });
     } catch (err) {
       console.error(err);

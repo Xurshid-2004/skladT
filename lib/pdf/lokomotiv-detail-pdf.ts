@@ -989,6 +989,7 @@ interface ExportCategoryDetailPdfOptions {
   titleLine: string;
   staffMap?: Map<string, string>;
   showDateGroups?: boolean;
+  hideStaffCodeColumn?: boolean;
 }
 
 function tamirTuriValue(raw: unknown) {
@@ -1001,44 +1002,59 @@ function tamirTuriValue(raw: unknown) {
   return labels[key] ?? textVal(raw);
 }
 
-function categoryConfig(category: DetailCategory) {
+function categoryConfig(category: DetailCategory, hideStaffCodeColumn = false) {
   if (category === "korxona") {
+    const head = [
+      "Vaqt",
+      "Zapravka",
+      "Poyezd raqami",
+      "Necha Sutkalik & Index",
+      "Qancha (kg)",
+      "Mashina",
+      "Mas'ul",
+    ];
+    if (!hideStaffCodeColumn) head.push("Kod");
+
     return {
       filePrefix: "predpriyatie",
       stationColSpan: 4,
-      totalColSpan: 4,
-      head: [[
-        "Время",
-        "Заправка",
-        "Номер поезда",
-        "Necha Sutkalik & Index",
-        "Количество (кг)",
-        "Машина",
-        "Ответственный",
-        "Код",
-      ]],
-      row: (row: any, map?: Map<string, string>) => [
-        fmtTime(row),
-        pdfText(stationName(String(row?.stationId ?? "other"))),
-        pdfText(textVal(row?.poyezdNumber)),
-        pdfText(textVal(row?.ruxsatIndeksi)),
-        numVal(row?.qancha),
-        pdfText(mashinaValue(row)),
-        pdfText(staffName(row, map)),
-        pdfText(textVal(row?.staffCode)),
-      ],
-      total: (row: any) => parsePdfNumber(row?.qancha ?? 0),
-      footerLabel: "Всего выдано",
-      columnStyles: {
-        0: { cellWidth: 12 },
-        1: { cellWidth: 22 },
-        2: { cellWidth: 24 },
-        3: { cellWidth: 34 },
-        4: { cellWidth: 22, halign: "right" as const },
-        5: { cellWidth: 23 },
-        6: { cellWidth: 31 },
-        7: { cellWidth: 19 },
+      totalColSpan: hideStaffCodeColumn ? 3 : 4,
+      head: [head],
+      row: (row: any, map?: Map<string, string>) => {
+        const cells = [
+          fmtTime(row),
+          pdfText(stationName(String(row?.stationId ?? "other"))),
+          pdfText(textVal(row?.poyezdNumber)),
+          pdfText(textVal(row?.ruxsatIndeksi)),
+          numVal(row?.qancha),
+          pdfText(mashinaValue(row)),
+          pdfText(staffName(row, map)),
+        ];
+        if (!hideStaffCodeColumn) cells.push(pdfText(textVal(row?.staffCode)));
+        return cells;
       },
+      total: (row: any) => parsePdfNumber(row?.qancha ?? 0),
+      footerLabel: "Jami berildi",
+      columnStyles: hideStaffCodeColumn
+        ? {
+            0: { cellWidth: 12 },
+            1: { cellWidth: 24 },
+            2: { cellWidth: 28 },
+            3: { cellWidth: 38 },
+            4: { cellWidth: 24, halign: "right" as const },
+            5: { cellWidth: 26 },
+            6: { cellWidth: 40 },
+          }
+        : {
+            0: { cellWidth: 12 },
+            1: { cellWidth: 22 },
+            2: { cellWidth: 24 },
+            3: { cellWidth: 34 },
+            4: { cellWidth: 22, halign: "right" as const },
+            5: { cellWidth: 23 },
+            6: { cellWidth: 31 },
+            7: { cellWidth: 19 },
+          },
     };
   }
 
@@ -1142,9 +1158,9 @@ function categoryConfig(category: DetailCategory) {
 
 export function exportCategoryDetailPdf(
   rows: any[],
-  { category, fileSlug, titleLine, staffMap, showDateGroups = false }: ExportCategoryDetailPdfOptions,
+  { category, fileSlug, titleLine, staffMap, showDateGroups = false, hideStaffCodeColumn = false }: ExportCategoryDetailPdfOptions,
 ) {
-  const config = categoryConfig(category);
+  const config = categoryConfig(category, hideStaffCodeColumn);
   const sortedRows = sortRowsOldestFirst(rows);
   const doc = new jsPDF("landscape", "mm", "a4");
   useCyrillicPdfFont(doc);

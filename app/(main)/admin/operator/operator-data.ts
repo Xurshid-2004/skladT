@@ -4,7 +4,7 @@ import type { Zapravka } from "@/lib/types";
 export const SUMMARY_OPERATOR_CARD: Zapravka = {
   id: "all-zapravkalar",
   uzelId: "all",
-  name: "Barcha zapravkalar",
+  name: "Realizatsiya bo'limi",
   slug: "all-zapravkalar",
 };
 

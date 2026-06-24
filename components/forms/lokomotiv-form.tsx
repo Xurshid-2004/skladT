@@ -16,6 +16,7 @@ import {
 import { getSession } from "@/lib/utils/session";
 import { parsePdfNumber } from "@/lib/utils/pdf-number";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
+import { subtractOperatorStationFuel } from "@/lib/operator/operator-balance";
 import { HarakatTuri, Rusumi, LokomotivSubmission } from "@/lib/types";
 import { CheckCircle2, AlertCircle, Loader2, ChevronDown } from "lucide-react";
 import { db } from "@/lib/firebase/config";
@@ -496,6 +497,12 @@ export default function LokomotivForm({ stationId, onSaved }: LokomotivFormProps
         await savePendingSubmission(submissionData);
       }
 
+      await subtractOperatorStationFuel(stationId, submissionData.qanchaBerildi, {
+        category: "lokomotiv",
+        staffCode: session.code,
+        staffName: session.displayName,
+        nodeId: session.nodeId,
+      });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       handleReset();

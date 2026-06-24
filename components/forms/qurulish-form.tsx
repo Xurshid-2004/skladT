@@ -6,6 +6,7 @@ import { appendFuelRecordForErjuJu } from "@/lib/firebase/fuel-record-writer";
 import { getSession } from "@/lib/utils/session";
 import { parsePdfNumber } from "@/lib/utils/pdf-number";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
+import { subtractOperatorStationFuel } from "@/lib/operator/operator-balance";
 import { Loader2 } from "lucide-react";
 
 interface QurulishFormProps {
@@ -89,6 +90,12 @@ export default function QurulishForm({ stationId, onSaved }: QurulishFormProps) 
         await savePendingSubmission(submissionData);
       }
 
+      await subtractOperatorStationFuel(stationId, submissionData.qanchaBerildi, {
+        category: "qurulish",
+        staffCode: session.code,
+        staffName: session.displayName,
+        nodeId: session.nodeId,
+      });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       handleReset();

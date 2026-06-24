@@ -6,6 +6,7 @@ import { appendFuelRecordForErjuJu } from "@/lib/firebase/fuel-record-writer";
 import { getSession } from "@/lib/utils/session";
 import { parsePdfNumber } from "@/lib/utils/pdf-number";
 import { savePendingSubmission } from "@/lib/offline/offline-storage";
+import { subtractOperatorStationFuel } from "@/lib/operator/operator-balance";
 import { SERIYA_LIST, TAMIRLASH_TURI_LIST } from "@/lib/data/sections-config";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -86,6 +87,12 @@ export default function TamirlashForm({ stationId, onSaved }: TamirlashFormProps
         await savePendingSubmission(submissionData);
       }
 
+      await subtractOperatorStationFuel(stationId, submissionData.qanchaBerildi, {
+        category: "tamirlash",
+        staffCode: session.code,
+        staffName: session.displayName,
+        nodeId: session.nodeId,
+      });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       handleReset();

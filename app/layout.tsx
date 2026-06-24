@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "UZ Temiryo'l Energiya Ta'minot",
+  title: "UZ Temiryo'l Yoqilg'i Ta'minot",
   description: "O'zbekiston temir yo'l zapravkalaridagi dizel yoqilg'i hisob tizimi",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     title: "UZ Temiryo'l",
   },
   openGraph: {
-    title: "UZ Temiryo'l Energiya Ta'minot",
+    title: "UZ Temiryo'l Yoqilg'i Ta'minot",
     description: "O'zbekiston temir yo'l zapravkalaridagi dizel yoqilg'i hisob tizimi",
     url: "https://uz-temiryo-l-energo-tamin.web.app",
     siteName: "UZ Temiryo'l",

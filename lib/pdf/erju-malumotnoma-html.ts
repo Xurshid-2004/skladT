@@ -534,6 +534,7 @@ ${ucells}
 <html lang="uz">
 <head>
 <meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>${titleEsc}</title>
 <style>
   @page { size: A4 landscape; margin: 10mm 12mm; }
@@ -553,6 +554,7 @@ ${ucells}
     border-radius: 4px;
     box-shadow: 0 1px 3px rgba(0,0,0,.08);
   }
+  .report-title { text-align: center; margin: 6px 0 10px; font-size: 11px; }
 
   table { border-collapse: collapse; width: 100%; margin-bottom: 12px; height: auto; }
   th, td { border: 0.55px solid #000; padding: 2px 4px; vertical-align: middle; }
@@ -575,11 +577,14 @@ ${ucells}
 </style>
 </head>
 <body>
-<div class="sheet">
+<main class="sheet">
 
-<h2 style="text-align:center;margin:6px 0 10px;font-size:11px;">${titleEsc}</h2>
+<header>
+<h1 class="report-title">${titleEsc}</h1>
+</header>
 
-<table class="main">
+<section aria-label="Asosiy ma'lumotnoma jadvali">
+<table class="main" aria-label="Asosiy ma'lumotnoma">
 <thead>
 <tr>
 <th rowspan="2">№</th>
@@ -593,18 +598,21 @@ ${activeCols.map((c) => `<th>${esc(c.label)}</th>`).join('')}
 </tr>
 </thead>
 <tbody>
-${mainTbody || `<tr><td colspan="${colSpanMain}" style="text-align:center">Maʼlumot yoʻq</td></tr>`}
+${mainTbody || `<tr><td colspan="${colSpanMain}" style="text-align:center">Ma'lumot yo'q</td></tr>`}
 </tbody>
 </table>
+</section>
 
 ${orderedBuckets.length
-    ? `<table class="pivot">
+    ? `<section aria-label="Yig'ma jadval">
+<table class="pivot" aria-label="Yig'ma">
 <thead><tr>${pivotTHEAD}</tr></thead>
 <tbody>${pivotBODY}</tbody>
-</table>`
+</table>
+</section>`
     : ''}
 
-</div>
+</main>
 </body>
 </html>`;
 
