@@ -1,0 +1,10 @@
+{
+  "name": "UZ Temiryo'l Yoqilg'i Ta'minot",
+  "short_name": "UZ Yoqilg'i",
+  "description": "O'zbekiston temir yo'l zapravkalaridagi dizel yoqilg'i hisob tizimi",
+  "start_url": "/login/",
+  "display": "standalone",
+  "background_color": "#071126",
+  "theme_color": "#1e3a8a",
+  "icons": []
+}

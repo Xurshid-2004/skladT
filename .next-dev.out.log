@@ -1,0 +1,39 @@
+
+> temp-app@0.1.0 dev
+> next dev --webpack --hostname 127.0.0.1
+
+▲ Next.js 16.2.4 (webpack)
+- Local:         http://127.0.0.1:3000
+- Network:       http://127.0.0.1:3000
+- Environments: .env.local
+✓ Ready in 1374ms
+
+○ Compiling /login ...
+ GET /login/ 200 in 15.1s (next.js: 13.9s, application-code: 1226ms)
+ GET /login/ 200 in 120ms (next.js: 11ms, application-code: 108ms)
+ GET /login/ 200 in 83ms (next.js: 11ms, application-code: 72ms)
+○ Compiling /admin ...
+ GET /admin/ 200 in 6.3s (next.js: 5.8s, application-code: 531ms)
+ GET /login/ 200 in 61ms (next.js: 4ms, application-code: 57ms)
+ GET /login/ 200 in 5.5s (next.js: 5.0s, application-code: 541ms)
+ GET /admin/ 200 in 55ms (next.js: 6ms, application-code: 49ms)
+ GET /login/ 200 in 412ms (next.js: 6ms, application-code: 406ms)
+ GET /admin/ 200 in 369ms (next.js: 5ms, application-code: 364ms)
+ GET /admin/ 200 in 56ms (next.js: 8ms, application-code: 48ms)
+ GET /admin/operator/ 200 in 1096ms (next.js: 1040ms, application-code: 55ms)
+ GET /admin/operator/ 200 in 29ms (next.js: 4ms, application-code: 25ms)
+ GET /admin/operator/ 200 in 32ms (next.js: 6ms, application-code: 26ms)
+○ Compiling /admin/operator/[id] ...
+ GET /admin/operator/all-zapravkalar/ 200 in 4.3s (next.js: 4.3s, generate-params: 933ms, application-code: 56ms)
+ GET /admin/operator/ 200 in 40ms (next.js: 11ms, application-code: 29ms)
+ GET /admin/operator/qumqurgon/ 200 in 46ms (next.js: 12ms, generate-params: 7ms, application-code: 34ms)
+ GET /admin/operator/ 200 in 30ms (next.js: 5ms, application-code: 26ms)
+ GET /admin/operator/toshkent/ 200 in 40ms (next.js: 11ms, generate-params: 7ms, application-code: 28ms)
+ GET /admin/operator/ 200 in 29ms (next.js: 5ms, application-code: 24ms)
+ GET /admin/operator/qongirot/ 200 in 41ms (next.js: 11ms, generate-params: 7ms, application-code: 31ms)
+ GET /admin/operator/ 200 in 25ms (next.js: 4ms, application-code: 21ms)
+ GET /admin/operator/ 200 in 25ms (next.js: 4ms, application-code: 21ms)
+ GET /admin/operator/all-zapravkalar/ 200 in 39ms (next.js: 10ms, generate-params: 6ms, application-code: 29ms)
+ GET /admin/operator/ 200 in 26ms (next.js: 4ms, application-code: 22ms)
+ GET /admin/operator/ 200 in 39ms (next.js: 5ms, application-code: 34ms)
+ GET /admin/ 200 in 42ms (next.js: 19ms, application-code: 23ms)

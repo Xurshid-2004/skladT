@@ -3,7 +3,9 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Fuel, MapPin, Send, Truck, X } from "lucide-react";
+import { ArrowLeft, Download, Fuel, MapPin, Send, Truck, X } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import AdminLayout from "@/components/admin/admin-layout";
 import {
@@ -13,6 +15,8 @@ import {
   setOperatorStationFuelBalance,
   subscribeOperatorFuelState,
 } from "@/lib/operator/operator-balance";
+import { PDF_CYRILLIC_FONT, useCyrillicPdfFont } from "@/lib/pdf/cyrillic-font";
+import { savePdfDocument } from "@/lib/pdf/save-pdf";
 import type { Zapravka } from "@/lib/types";
 
 type OperatorStationClientProps = {
@@ -183,6 +187,267 @@ function getStationCardTone(index: number, pendingKg: number, overlimitKg: numbe
   if (overlimitKg > 0) return "from-red-400 via-rose-500 to-red-700";
   if (pendingKg > 0) return "from-amber-300 via-orange-400 to-yellow-600";
   return STATION_CARD_TONES[index % STATION_CARD_TONES.length];
+}
+
+function shipmentAcceptedKg(shipment: OperatorShipment) {
+  return shipment.status === "accepted" ? shipment.acceptedKg ?? shipment.amountKg : 0;
+}
+
+function shipmentPendingKg(shipment: OperatorShipment) {
+  return shipment.status === "pending" ? shipment.amountKg : 0;
+}
+
+function formatTonsNumber(kg: number) {
+  return Number((kg / 1000).toFixed(3)).toLocaleString("uz-UZ", {
+    maximumFractionDigits: 3,
+  });
+}
+
+function formatDateTime(value?: number) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("uz-UZ");
+}
+
+function getLastAutoTableY(doc: jsPDF, fallback: number) {
+  return (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? fallback;
+}
+
+function exportOperatorRealizationPdf({
+  stationOptions,
+  stationBalances,
+  stationOverlimits,
+  shipments,
+}: {
+  stationOptions: Zapravka[];
+  stationBalances: Record<string, number>;
+  stationOverlimits: Record<string, number>;
+  shipments: OperatorShipment[];
+}) {
+  const doc = new jsPDF("landscape", "mm", "a4");
+  useCyrillicPdfFont(doc);
+
+  const now = new Date();
+  const realizationShipments = shipments.filter((shipment) => shipment.fromStationId === REALIZATION_STATION_ID);
+  const oldiBerdiShipments = shipments.filter((shipment) => shipment.fromStationId !== REALIZATION_STATION_ID);
+  const sumKg = (items: OperatorShipment[], getValue: (shipment: OperatorShipment) => number) =>
+    items.reduce((sum, shipment) => sum + getValue(shipment), 0);
+
+  const realizationSentTotal = sumKg(realizationShipments, (shipment) => shipment.amountKg);
+  const realizationAcceptedTotal = sumKg(realizationShipments, shipmentAcceptedKg);
+  const realizationPendingTotal = sumKg(realizationShipments, shipmentPendingKg);
+  const oldiBerdiSentTotal = sumKg(oldiBerdiShipments, (shipment) => shipment.amountKg);
+  const oldiBerdiAcceptedTotal = sumKg(oldiBerdiShipments, shipmentAcceptedKg);
+  const oldiBerdiPendingTotal = sumKg(oldiBerdiShipments, shipmentPendingKg);
+  const balanceTotal = stationOptions.reduce((sum, station) => sum + (stationBalances[station.id] ?? 0), 0);
+  const overlimitTotal = stationOptions.reduce((sum, station) => sum + (stationOverlimits[station.id] ?? 0), 0);
+
+  doc.setFont(PDF_CYRILLIC_FONT, "bold");
+  doc.setFontSize(13);
+  doc.text("Operator bo'limi: realizatsiya va oldi-berdi hisoboti", 148.5, 12, { align: "center" });
+  doc.setFont(PDF_CYRILLIC_FONT, "normal");
+  doc.setFontSize(8);
+  doc.text(`Sana: ${formatDateTime(now.getTime())}`, 148.5, 18, { align: "center" });
+  doc.text(
+    "Izoh: yo'ldagi yoqilg'i balansga kirmaydi. Faqat qabul qilingandan keyin haqiqiy qoldiqqa qo'shiladi.",
+    148.5,
+    23,
+    { align: "center" },
+  );
+
+  autoTable(doc, {
+    startY: 28,
+    theme: "grid",
+    margin: { left: 8, right: 8 },
+    styles: {
+      font: PDF_CYRILLIC_FONT,
+      fontSize: 7,
+      cellPadding: 1.1,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.15,
+      valign: "middle",
+    },
+    headStyles: {
+      font: PDF_CYRILLIC_FONT,
+      fillColor: [232, 235, 232],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+      lineColor: [0, 0, 0],
+      lineWidth: 0.2,
+    },
+    head: [["Ko'rsatkich", "Miqdor, t", "Izoh"]],
+    body: [
+      ["Realizatsiyadan yuborilgan", formatTonsNumber(realizationSentTotal), "Qabul + yo'lda"],
+      ["Realizatsiyadan qabul qilingan", formatTonsNumber(realizationAcceptedTotal), "Balansga kirgan"],
+      ["Realizatsiyadan yo'lda", formatTonsNumber(realizationPendingTotal), "Balansga kirmagan"],
+      ["Oldi-berdi yuborilgan", formatTonsNumber(oldiBerdiSentTotal), "Zapravkalar orasida"],
+      ["Oldi-berdi qabul qilingan", formatTonsNumber(oldiBerdiAcceptedTotal), "Qabul qilingan qismi"],
+      ["Oldi-berdi yo'lda", formatTonsNumber(oldiBerdiPendingTotal), "Hali kelmagan"],
+      ["Jami qoldiq", formatTonsNumber(balanceTotal), "Operator balanslari"],
+      ["Limitdan oshgan", formatTonsNumber(overlimitTotal), "Minus qoldiq hisobidan"],
+    ],
+    columnStyles: {
+      1: { halign: "right" },
+    },
+  });
+
+  autoTable(doc, {
+    startY: getLastAutoTableY(doc, 28) + 6,
+    theme: "grid",
+    margin: { left: 8, right: 8 },
+    styles: {
+      font: PDF_CYRILLIC_FONT,
+      fontSize: 6.3,
+      cellPadding: 0.85,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.15,
+      valign: "middle",
+    },
+    headStyles: {
+      font: PDF_CYRILLIC_FONT,
+      fillColor: [232, 235, 232],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+      lineColor: [0, 0, 0],
+      lineWidth: 0.2,
+    },
+    head: [
+      [
+        "#",
+        "Zapravka",
+        "Real. yub.",
+        "Real. qabul",
+        "Real. yo'lda",
+        "Oldi qabul",
+        "Oldi yo'lda",
+        "Berdi",
+        "Qoldiq",
+        "Oshgan",
+      ],
+    ],
+    body: stationOptions.map((station, index) => {
+      const realizationForStation = realizationShipments.filter((shipment) => shipment.toStationId === station.id);
+      const oldiIncomingForStation = oldiBerdiShipments.filter((shipment) => shipment.toStationId === station.id);
+      const oldiOutgoingForStation = oldiBerdiShipments.filter((shipment) => shipment.fromStationId === station.id);
+
+      return [
+        String(index + 1),
+        station.name,
+        formatTonsNumber(sumKg(realizationForStation, (shipment) => shipment.amountKg)),
+        formatTonsNumber(sumKg(realizationForStation, shipmentAcceptedKg)),
+        formatTonsNumber(sumKg(realizationForStation, shipmentPendingKg)),
+        formatTonsNumber(sumKg(oldiIncomingForStation, shipmentAcceptedKg)),
+        formatTonsNumber(sumKg(oldiIncomingForStation, shipmentPendingKg)),
+        formatTonsNumber(sumKg(oldiOutgoingForStation, (shipment) => shipment.amountKg)),
+        formatTonsNumber(stationBalances[station.id] ?? 0),
+        formatTonsNumber(stationOverlimits[station.id] ?? 0),
+      ];
+    }),
+    columnStyles: {
+      0: { halign: "center", cellWidth: 8 },
+      1: { cellWidth: 35 },
+      2: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "right" },
+      6: { halign: "right" },
+      7: { halign: "right" },
+      8: { halign: "right" },
+      9: { halign: "right" },
+    },
+  });
+
+  const nextSectionY = getLastAutoTableY(doc, 90) + 8;
+  doc.setFont(PDF_CYRILLIC_FONT, "bold");
+  doc.setFontSize(9);
+  doc.text("Realizatsiyadan yuborilganlar", 8, nextSectionY);
+
+  autoTable(doc, {
+    startY: nextSectionY + 3,
+    theme: "grid",
+    margin: { left: 8, right: 8 },
+    styles: {
+      font: PDF_CYRILLIC_FONT,
+      fontSize: 6.2,
+      cellPadding: 0.8,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.15,
+      valign: "middle",
+    },
+    headStyles: {
+      font: PDF_CYRILLIC_FONT,
+      fillColor: [232, 235, 232],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+    },
+    head: [["#", "Realizatsiya -> zapravka", "Yuborildi, t", "Qabul, t", "Yo'lda, t", "Holat", "Yuborilgan vaqt", "Qabul vaqti"]],
+    body:
+      realizationShipments.length > 0
+        ? realizationShipments.map((shipment, index) => [
+            String(index + 1),
+            shipment.toStationName,
+            formatTonsNumber(shipment.amountKg),
+            formatTonsNumber(shipmentAcceptedKg(shipment)),
+            formatTonsNumber(shipmentPendingKg(shipment)),
+            shipment.status === "pending" ? "Yo'lda" : "Qabul qilindi",
+            formatDateTime(shipment.createdAt),
+            formatDateTime(shipment.acceptedAt),
+          ])
+        : [["-", "Ma'lumot yo'q", "0", "0", "0", "-", "-", "-"]],
+    columnStyles: {
+      0: { halign: "center", cellWidth: 8 },
+      2: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+    },
+  });
+
+  const oldiBerdiStartY = getLastAutoTableY(doc, nextSectionY + 20) + 8;
+  doc.setFont(PDF_CYRILLIC_FONT, "bold");
+  doc.setFontSize(9);
+  doc.text("Oldi-berdi jo'natmalari", 8, oldiBerdiStartY);
+
+  autoTable(doc, {
+    startY: oldiBerdiStartY + 3,
+    theme: "grid",
+    margin: { left: 8, right: 8 },
+    styles: {
+      font: PDF_CYRILLIC_FONT,
+      fontSize: 6.2,
+      cellPadding: 0.8,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.15,
+      valign: "middle",
+    },
+    headStyles: {
+      font: PDF_CYRILLIC_FONT,
+      fillColor: [232, 235, 232],
+      textColor: [0, 0, 0],
+      fontStyle: "bold",
+    },
+    head: [["#", "Berdi", "Oldi", "Yuborildi, t", "Qabul, t", "Yo'lda, t", "Holat", "Yuborilgan vaqt", "Qabul vaqti"]],
+    body:
+      oldiBerdiShipments.length > 0
+        ? oldiBerdiShipments.map((shipment, index) => [
+            String(index + 1),
+            shipment.fromStationName,
+            shipment.toStationName,
+            formatTonsNumber(shipment.amountKg),
+            formatTonsNumber(shipmentAcceptedKg(shipment)),
+            formatTonsNumber(shipmentPendingKg(shipment)),
+            shipment.status === "pending" ? "Kelmadi / yo'lda" : "Keldi / qabul qilindi",
+            formatDateTime(shipment.createdAt),
+            formatDateTime(shipment.acceptedAt),
+          ])
+        : [["-", "Ma'lumot yo'q", "-", "0", "0", "0", "-", "-", "-"]],
+    columnStyles: {
+      0: { halign: "center", cellWidth: 8 },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "right" },
+    },
+  });
+
+  savePdfDocument(doc, `operator_realizatsiya_oldi_berdi_${now.toISOString().slice(0, 10)}.pdf`);
 }
 
 export default function OperatorStationClient({ card, erjuName, cards }: OperatorStationClientProps) {
@@ -604,13 +869,30 @@ export default function OperatorStationClient({ card, erjuName, cards }: Operato
                   </select>
                 </label>
 
-                <button
-                  type="button"
-                  onClick={handleDistributionConfirm}
-                  className="h-12 rounded-xl bg-emerald-500 px-6 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
-                >
-                  Yuborish
-                </button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={handleDistributionConfirm}
+                    className="h-12 rounded-xl bg-emerald-500 px-6 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
+                  >
+                    Yuborish
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      exportOperatorRealizationPdf({
+                        stationOptions,
+                        stationBalances,
+                        stationOverlimits,
+                        shipments: operatorShipments,
+                      })
+                    }
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-slate-950/18 transition hover:brightness-110"
+                  >
+                    <Download className="h-4 w-4" strokeWidth={3} />
+                    PDF
+                  </button>
+                </div>
               </div>
 
               {distributionError ? (

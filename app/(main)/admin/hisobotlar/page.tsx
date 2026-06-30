@@ -279,6 +279,18 @@ function toIsoDateLocal(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+function toDmy(d: Date): string {
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+function isSameDayLocal(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 /** Y.PDF uchun submissions yozuvlarini ERJU fuel row formatiga moslash */
 function timeFromSubmission(row: any): string {
   const ms = rowCreatedMs(row);
@@ -561,6 +573,166 @@ function groupRowsByStationAndStaff(rows: any[], staffMap?: Map<string, string>)
       return staffDiff || a.index - b.index;
     })
     .map(({ group }) => group);
+}
+
+function getDizMaslaAmount(row: any): number {
+  return parsePdfNumber(row?.dizMasla ?? row?.maslaAmount ?? row?.dizMaslaKg ?? 0);
+}
+
+function fuelRecordToDizMaslaRow(row: any): any {
+  const moveType = String(row?.moveType ?? '').trim();
+  return {
+    ...row,
+    stationId: String(row?.stationId ?? row?.locCode ?? '').trim(),
+    category: moveType === 'tamirlash' ? 'tamirlash' : 'lokomotiv',
+    harakatTuri: moveType || undefined,
+    rusumi: row?.rusumi ?? row?.locoSeries,
+    lokomotivNumber: row?.lokomotivNumber ?? row?.locoCode,
+    poyezdNumber: row?.poyezdNumber ?? row?.locoNumber,
+    ruxsatIndeksi: row?.ruxsatIndeksi ?? row?.trainIndex,
+    dizMasla: getDizMaslaAmount(row),
+  };
+}
+
+function dizMaslaRowDateKey(row: any): string {
+  const date = String(row?.dateISO ?? row?.date ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  const ts = row?.timestamp;
+  if (!ts) return '0000-00-00';
+  const d = typeof ts?.toDate === 'function' ? ts.toDate() : new Date(Number(ts));
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function dizMaslaRowDateTime(row: any): { date: string; time: string } {
+  const dateISO = String(row?.dateISO ?? row?.date ?? '').trim();
+  const time = String(row?.time ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) {
+    const [year, month, day] = dateISO.split('-');
+    return { date: `${day}.${month}.${year}`, time: time || '—' };
+  }
+  return fmtDate(row?.timestamp);
+}
+
+function exportDizMaslaPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
+  const sortedRows = sortRowsOldestFirst(rows);
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  useCyrillicPdfFont(doc);
+  const W = doc.internal.pageSize.width;
+  const tableWidth = 258;
+  const tableMarginX = (W - tableWidth) / 2;
+
+  doc.setFontSize(9);
+  doc.setFont(PDF_CYRILLIC_FONT, 'bold');
+  const lines = doc.splitTextToSize(reportTitleLine, tableWidth);
+  let yTitle = 8.5;
+  lines.forEach((line: string) => {
+    doc.text(line, W / 2, yTitle, { align: 'center' });
+    yTitle += 4.2;
+  });
+  doc.setFont(PDF_CYRILLIC_FONT, 'normal');
+
+  const dateGroups = new Map<string, any[]>();
+  for (const row of sortedRows) {
+    const key = dizMaslaRowDateKey(row);
+    if (!dateGroups.has(key)) dateGroups.set(key, []);
+    dateGroups.get(key)!.push(row);
+  }
+
+  const body: any[] = [];
+  const dateBg: [number, number, number] = [30, 50, 30];
+  const dateFg: [number, number, number] = [255, 220, 50];
+  const groupBg: [number, number, number] = [224, 232, 224];
+  const groupFg: [number, number, number] = [20, 60, 35];
+
+  for (const dateKey of [...dateGroups.keys()].sort()) {
+    const dateRows = dateGroups.get(dateKey)!;
+    if (showDateGroups) {
+      const [y, m, d] = dateKey.split('-');
+      body.push([{
+        content: `${d}.${m}.${y}`,
+        colSpan: 9,
+        styles: { halign: 'center' as const, fontStyle: 'bold' as const, fillColor: dateBg, textColor: dateFg },
+      }]);
+    }
+
+    for (const group of groupRowsByStationAndStaff(dateRows, staffMap)) {
+      const stationName = ZAPRAVKALAR.find((z) => z.id === group.stationId)?.name ?? group.stationId;
+      const title = group.staffName ? `${stationName} - ${group.staffName}` : stationName;
+      const groupTotal = group.rows.reduce((sum, row) => sum + getDizMaslaAmount(row), 0);
+      body.push([
+        {
+          content: pdfText(title),
+          colSpan: 5,
+          styles: { halign: 'left' as const, fontStyle: 'bold' as const, fillColor: groupBg, textColor: groupFg },
+        },
+        {
+          content: `jami diz.masla: ${formatPdfNumber(groupTotal)} kg`,
+          colSpan: 4,
+          styles: { halign: 'right' as const, fontStyle: 'italic' as const, fillColor: groupBg, textColor: groupFg },
+        },
+      ]);
+
+      for (const row of group.rows) {
+        const { date, time } = dizMaslaRowDateTime(row);
+        body.push([
+          date,
+          time,
+          pdfText(CAT_LABEL[row?.category] ?? row?.category ?? '—'),
+          pdfText(
+            HARAKAT_LABEL[row?.harakatTuri]
+              ?? row?.harakatTuri
+              ?? row?.tamirlashTuri
+              ?? '—',
+          ),
+          pdfText(row?.rusumi ?? row?.seriya ?? '—'),
+          pdfText(row?.lokomotivNumber ?? row?.raqami ?? '—'),
+          pdfText(row?.poyezdNumber ?? row?.stansiya ?? row?.korxonaNomi ?? '—'),
+          pdfText(row?.ruxsatIndeksi ?? '—'),
+          formatPdfNumber(getDizMaslaAmount(row)),
+        ]);
+      }
+    }
+  }
+
+  autoTable(doc, {
+    head: [[
+      'Sana',
+      'Vaqt',
+      'Kategoriya',
+      'Harakat turi',
+      'Rusumi',
+      'Raqami',
+      'Poyezd / obyekt',
+      'Indeks',
+      'Diz.masla kg',
+    ]],
+    body,
+    startY: yTitle + 2,
+    theme: 'grid',
+    styles: { font: PDF_CYRILLIC_FONT, fontSize: 7, cellPadding: 1, valign: 'middle', lineColor: [0, 0, 0], lineWidth: 0.18 },
+    headStyles: { font: PDF_CYRILLIC_FONT, fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 7, lineColor: [0, 0, 0], lineWidth: 0.25 },
+    alternateRowStyles: { fillColor: [250, 250, 250] },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 16 },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 25 },
+      5: { cellWidth: 25 },
+      6: { cellWidth: 46 },
+      7: { cellWidth: 42 },
+      8: { cellWidth: 31, halign: 'right' as const },
+    },
+    tableWidth,
+    margin: { left: tableMarginX, right: tableMarginX },
+  });
+
+  const totalMasla = sortedRows.reduce((sum, row) => sum + getDizMaslaAmount(row), 0);
+  const finalY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(8);
+  doc.setFont(PDF_CYRILLIC_FONT, 'bold');
+  doc.text(`Umumiy diz.masla: ${formatPdfNumber(totalMasla)} kg`, tableMarginX, finalY + 8);
+  savePdfDocument(doc, `diz_masla_${fileSlug}.pdf`);
 }
 
 function exportTamirlashPDF(rows: any[], fileSlug: string, reportTitleLine: string, staffMap?: Map<string, string>, showDateGroups = false) {
@@ -1435,6 +1607,43 @@ export default function HisobotlarPage() {
     }
   }, [staffMap]);
 
+  /** Taqvimdagi Diz.masla PDF: tanlangan davr bo'yicha faqat diz.masla yozuvlari */
+  const exportDizMaslaPdfForDateRange = useCallback(async (start: Date, endDay: Date) => {
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(endDay);
+    e.setHours(23, 59, 59, 999);
+    setGlobalDateRange({ start: s, end: e });
+    setGlobalPdfLoading(true);
+    try {
+      const fileSlug = `${toIsoDateLocal(s)}_${toIsoDateLocal(endDay)}`;
+      let rows: any[] = [];
+      try {
+        rows = (await fetchAllFuelRecordsInRange(toIsoDateLocal(s), toIsoDateLocal(endDay)))
+          .filter((row) => getDizMaslaAmount(row) > 0)
+          .map(fuelRecordToDizMaslaRow);
+      } catch (fuelErr) {
+        console.warn("Diz.masla fuelRecords o'qilmadi, submissions fallback ishlaydi:", fuelErr);
+      }
+      if (!rows.length) {
+        rows = (await fetchAllSubmissionsInRange(s, e)).filter((row) => getDizMaslaAmount(row) > 0);
+      }
+      if (!rows.length) {
+        window.alert("Tanlangan davr uchun diz.masla ma'lumoti yo'q.");
+        return;
+      }
+      const endForTitle = new Date(endDay);
+      endForTitle.setHours(0, 0, 0, 0);
+      const titleLine = `${toDmy(s)}${isSameDayLocal(s, endForTitle) ? '' : ` - ${toDmy(endForTitle)}`} diz.masla bo'yicha ma'lumot`;
+      exportDizMaslaPDF(rows, fileSlug, titleLine, staffMap, true);
+    } catch (err) {
+      console.error(err);
+      window.alert("Diz.masla PDF tayyorlashda xato. Firestore indeksini tekshiring.");
+    } finally {
+      setGlobalPdfLoading(false);
+    }
+  }, [staffMap]);
+
   const runErjuYpdfExport = useCallback(async (rangeStart: Date, rangeEnd: Date) => {
     setGlobalErjuPdfLoading(true);
     try {
@@ -2028,6 +2237,10 @@ export default function HisobotlarPage() {
         onExportRemontPdf={async (start, endDay) => {
           if (!start || !endDay) return;
           await exportRemontPdfForDateRange(start, endDay);
+        }}
+        onExportDizMaslaPdf={async (start, endDay) => {
+          if (!start || !endDay) return;
+          await exportDizMaslaPdfForDateRange(start, endDay);
         }}
         onExportErjuPdf={async (start, endDay) => {
           if (!start || !endDay) return;

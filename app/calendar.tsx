@@ -14,6 +14,7 @@ export type RentCalendarProps = {
   onExportPredpriyatiePdf?: (start: Date | null, end: Date | null) => void | Promise<void>;
   onExportStroitelstvoPdf?: (start: Date | null, end: Date | null) => void | Promise<void>;
   onExportRemontPdf?: (start: Date | null, end: Date | null) => void | Promise<void>;
+  onExportDizMaslaPdf?: (start: Date | null, end: Date | null) => void | Promise<void>;
   pdfLabel?: string;
   showErjuPdf?: boolean;
 };
@@ -149,6 +150,7 @@ export default function RentCalendar({
   onExportPredpriyatiePdf,
   onExportStroitelstvoPdf,
   onExportRemontPdf,
+  onExportDizMaslaPdf,
   pdfLabel = "PDF",
   showErjuPdf = true,
 }: RentCalendarProps) {
@@ -167,7 +169,7 @@ export default function RentCalendar({
   const [rangeEnd,   setRangeEnd]     = useState<Date | null>(null);
   const [hoverDate,  setHoverDate]    = useState<Date | null>(null);
   const [closedDates, setClosedDates] = useState<string[]>([]);
-  const [busy, setBusy]               = useState<"" | "pdf" | "erju" | "lokomotiv" | "predpriyatie" | "stroitelstvo" | "remont">("");
+  const [busy, setBusy]               = useState<"" | "pdf" | "erju" | "lokomotiv" | "predpriyatie" | "stroitelstvo" | "remont" | "dizMasla">("");
 
   const leftMonthDate  = currentMonthAnchor;
   const rightMonthDate = useMemo(() => addMonths(currentMonthAnchor, 1), [currentMonthAnchor]);
@@ -283,7 +285,7 @@ export default function RentCalendar({
     return Math.round((e - s) / 86400000) + 1;
   };
 
-  const runExport = async (kind: "pdf" | "erju" | "lokomotiv" | "predpriyatie" | "stroitelstvo" | "remont") => {
+  const runExport = async (kind: "pdf" | "erju" | "lokomotiv" | "predpriyatie" | "stroitelstvo" | "remont" | "dizMasla") => {
     if (!rangeStart) return;
     setBusy(kind);
     try {
@@ -302,6 +304,8 @@ export default function RentCalendar({
         await Promise.resolve(onExportStroitelstvoPdf(s, endNorm));
       } else if (kind === "remont" && onExportRemontPdf) {
         await Promise.resolve(onExportRemontPdf(s, endNorm));
+      } else if (kind === "dizMasla" && onExportDizMaslaPdf) {
+        await Promise.resolve(onExportDizMaslaPdf(s, endNorm));
       }
       onClose();
     } finally {
@@ -549,7 +553,16 @@ export default function RentCalendar({
                 className="px-3 py-2 rounded-xl text-[10px] font-black uppercase bg-amber-600 text-white hover:bg-amber-500 disabled:opacity-40 min-w-[92px]"
                 title="Remont ma'lumotlarini PDF qilish"
               >
-                {busy === "remont" ? "..." : "Remont PDF"}
+                {busy === "remont" ? "Remont..." : "Remont PDF"}
+              </button>
+              <button
+                type="button"
+                disabled={!rangeStart || !!busy || !onExportDizMaslaPdf}
+                onClick={() => void runExport("dizMasla")}
+                className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-orange-600 text-white hover:bg-orange-500 disabled:opacity-40 min-w-[124px] shadow-lg shadow-orange-600/25"
+                title="Diz masla ma'lumotlarini PDF qilish"
+              >
+                {busy === "dizMasla" ? "Diz.masla..." : "Diz.masla PDF"}
               </button>
             </div>
             <div className="order-1 grid grid-cols-2 gap-2 sm:flex lg:order-2 lg:justify-end">

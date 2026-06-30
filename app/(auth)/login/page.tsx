@@ -181,22 +181,26 @@ export default function LoginPage() {
   const canSubmit = !!code.trim() && !verifying;
 
   return (
-    <div className="flex min-h-screen w-full bg-[#030005]">
-      <LoginHeroPanel className="bg-[#030005]" />
+    <div className="flex h-screen w-full overflow-hidden bg-[#071126]">
+      <LoginHeroPanel className="border-r border-white/10" />
 
-      <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[linear-gradient(140deg,#030005_0%,#13001e_32%,#4b0870_58%,#c7133a_86%,#ffdc5d_118%)] lg:w-1/2">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.075)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.065)_1px,transparent_1px),linear-gradient(155deg,rgba(255,220,93,0.22)_0%,transparent_28%,transparent_58%,rgba(255,34,92,0.22)_100%),linear-gradient(25deg,rgba(142,70,255,0.26)_0%,transparent_42%)] bg-[size:48px_48px,48px_48px,auto,auto]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-[linear-gradient(180deg,transparent_0%,rgba(3,0,5,0.72)_100%)]" />
+      <div className="relative flex h-screen flex-1 flex-col overflow-hidden bg-[#071126] lg:w-[48%] xl:w-[46%]">
+        <div className="pointer-events-none absolute inset-0 bg-[url('/login/slide-4.png')] bg-cover bg-center opacity-20" />
+        <div className="pointer-events-none absolute inset-0 bg-[#071126]/82" />
+        <div className="pointer-events-none absolute -right-20 top-8 h-64 w-64 rounded-full bg-blue-600/25 blur-3xl" />
+        <div className="pointer-events-none absolute -left-24 bottom-8 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.045)_1px,transparent_1px)] bg-[size:52px_52px]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(59,130,246,0.22),transparent_32%),radial-gradient(circle_at_18%_86%,rgba(16,185,129,0.18),transparent_34%)]" />
 
-        <header className="relative z-10 flex items-center justify-end px-5 pt-5 sm:px-8">
+        <header className="relative z-10 flex shrink-0 items-center justify-end px-5 pt-4 sm:px-8">
           <ThemeToggle />
         </header>
 
-        <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pb-8 pt-6 sm:px-10">
-          <div className="w-full max-w-[420px]">
-            <div className="mb-5 flex items-center justify-between gap-4">
+        <main className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-4 pb-5 pt-3 sm:px-10">
+          <div className="w-full max-w-[430px] -translate-y-6 sm:-translate-y-8">
+            <div className="mb-3 flex items-center justify-between gap-4 rounded-[1.5rem] border border-white/12 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-md">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(135deg,#ff3b58,#8b35ff)] text-sm font-black text-white shadow-lg shadow-fuchsia-950/35">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-950/35">
                   UZ
                 </div>
                 <div className="min-w-0">
@@ -213,7 +217,7 @@ export default function LoginPage() {
                 onClick={() => {
                   window.location.href = "/admin.html";
                 }}
-                className="hidden items-center gap-1.5 rounded-full border border-[#ffd85d]/35 bg-[#ffd85d]/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-[#ffe79a] shadow-sm shadow-black/20 transition-all hover:bg-[#ffd85d]/25 active:scale-95 sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-emerald-100 shadow-sm shadow-black/20 transition-all hover:bg-emerald-300/18 active:scale-95 sm:inline-flex"
                 aria-label="Admin panelga o'tish"
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
@@ -221,12 +225,13 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <section className="rounded-3xl border border-white/25 bg-white/[0.94] p-5 shadow-2xl shadow-black/45 backdrop-blur-xl sm:p-7">
-              <div className="mb-7">
-                <div className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-[#eee7ff] text-[#6246ff]">
+            <section className="relative overflow-hidden rounded-[1.8rem] border border-white/20 bg-white/[0.96] p-4 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-5">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-emerald-400 to-orange-400" />
+              <div className="mb-5">
+                <div className="mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm">
                   <KeyRound className="h-5 w-5" />
                 </div>
-                <h2 className="text-2xl font-black tracking-tight text-[#111827] sm:text-3xl">
+                <h2 className="text-3xl font-black tracking-tight text-[#111827] sm:text-4xl">
                   Tizimga kirish
                 </h2>
                 <p className="mt-2 text-sm font-semibold leading-6 text-[#667085]">
@@ -234,7 +239,7 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <CodeInput code={code} onChange={setCode} error={!!error} />
 
                 {error ? (
@@ -250,7 +255,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={handleVerify}
                   disabled={!canSubmit}
-                  className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-400 via-green-500 to-emerald-600 px-5 py-4 text-base font-black text-white shadow-xl shadow-emerald-700/25 transition-all duration-200 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none disabled:active:scale-100"
+                  className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 via-emerald-500 to-green-500 px-5 py-4 text-base font-black text-white shadow-xl shadow-emerald-700/25 transition-all duration-200 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none disabled:active:scale-100"
                 >
                   {verifying ? "Tekshirilmoqda..." : "Tasdiqlash"}
                 </button>
