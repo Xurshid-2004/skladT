@@ -44,13 +44,15 @@ export default function QurulishClient() {
       <main className="w-full">
         {/* Header + Form — cheklangan kenglik */}
         <div className="w-full px-3 pt-3 sm:px-5 sm:pt-4">
-          <SectionTabs />
+          <div className="mx-auto grid w-full max-w-[1500px] gap-4 md:grid-cols-[15rem_minmax(0,1fr)] md:items-start xl:grid-cols-[16rem_minmax(0,1fr)]">
+            <SectionTabs />
 
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <QurulishForm
-              stationId={zapravka.id}
-              onSaved={() => setTableKey(k => k + 1)}
-            />
+            <div className="min-w-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <QurulishForm
+                stationId={zapravka.id}
+                onSaved={() => setTableKey(k => k + 1)}
+              />
+            </div>
           </div>
         </div>
 
